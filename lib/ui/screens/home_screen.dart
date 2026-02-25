@@ -63,18 +63,23 @@ class HomeScreen extends StatelessWidget {
             ),
             
             // Categories Header
-            const SliverPadding(
-              padding: EdgeInsets.fromLTRB(16.0, 24.0, 16.0, 16.0),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16.0, 24.0, 16.0, 16.0),
               sliver: SliverToBoxAdapter(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Categories',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                    Icon(Icons.chevron_right, color: Colors.grey),
-                  ],
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.pushNamed(context, '/categories');
+                  },
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: const [
+                      Text(
+                        'Categories',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      Icon(Icons.chevron_right, color: Colors.grey),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -136,6 +141,12 @@ class HomeScreen extends StatelessWidget {
                       subtitle: ['dozen', '2.0 lbs', '1.50 lbs', '1.50 lbs', '1 kg'][index % 5],
                       image: 'lib/ui/themes/images/image copy 2.png',
                       hasCounter: index == 1 || index == 3,
+                      onTap: () {
+                        Navigator.pushNamed(context, '/product_details');
+                      },
+                      onAddToCart: () {
+                        Navigator.pushNamed(context, '/product_details');
+                      },
                     );
                   },
                   childCount: 5,
