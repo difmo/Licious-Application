@@ -1,11 +1,22 @@
 import 'package:flutter/material.dart';
 import '../../widgets/custom_cart.dart';
+import '../../providers/cart_provider.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
+  static const _products = [
+    {'title': 'Fresh Shrimps', 'price': '\$8.00', 'subtitle': 'dozen',   'image': 'lib/ui/themes/images/image copy 2.png'},
+    {'title': 'Avacoda',       'price': '\$7.00', 'subtitle': '2.0 lbs', 'image': 'lib/ui/themes/images/image copy 2.png'},
+    {'title': 'White Shrimps', 'price': '\$9.90', 'subtitle': '1.50 lbs','image': 'lib/ui/themes/images/image copy 2.png'},
+    {'title': 'Pomegranate',   'price': '\$2.09', 'subtitle': '1.50 lbs','image': 'lib/ui/themes/images/image copy 2.png'},
+    {'title': 'Fresh Broccoli','price': '\$3.00', 'subtitle': '1 kg',    'image': 'lib/ui/themes/images/image copy 2.png'},
+  ];
+
   @override
   Widget build(BuildContext context) {
+    final cart = CartProviderScope.of(context);
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -26,7 +37,7 @@ class HomeScreen extends StatelessWidget {
                       hintText: 'Search keywords..',
                       hintStyle: TextStyle(color: Colors.grey, fontSize: 14),
                       prefixIcon: Icon(Icons.search, color: Colors.grey),
-                      suffixIcon: Icon(Icons.tune, color: Colors.grey), // Filter icon
+                      suffixIcon: Icon(Icons.tune, color: Colors.grey),
                       border: InputBorder.none,
                       contentPadding: EdgeInsets.symmetric(vertical: 14),
                     ),
@@ -34,7 +45,7 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
             ),
-            
+
             // Banner
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -44,7 +55,7 @@ class HomeScreen extends StatelessWidget {
                   child: Stack(
                     children: [
                       Image.asset(
-                        'lib/ui/themes/images/image copy.png', // Main banner image
+                        'lib/ui/themes/images/image copy.png',
                         width: double.infinity,
                         height: 180,
                         fit: BoxFit.cover,
@@ -61,29 +72,60 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
             ),
-            
+
             // Categories Header
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(16.0, 24.0, 16.0, 16.0),
               sliver: SliverToBoxAdapter(
-                child: GestureDetector(
-                  onTap: () {
-                    Navigator.pushNamed(context, '/categories');
-                  },
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: const [
-                      Text(
-                        'Categories',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    GestureDetector(
+                      onTap: () => Navigator.pushNamed(context, '/categories'),
+                      child: const Row(
+                        children: [
+                          Text(
+                            'Categories',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                          Icon(Icons.chevron_right, color: Colors.grey),
+                        ],
                       ),
-                      Icon(Icons.chevron_right, color: Colors.grey),
-                    ],
-                  ),
+                    ),
+                    // Cart icon with badge
+                    GestureDetector(
+                      onTap: () => Navigator.pushNamed(context, '/cart'),
+                      child: Stack(
+                        children: [
+                          const Icon(Icons.shopping_cart_outlined, color: Colors.black, size: 28),
+                          if (cart.itemCount > 0)
+                            Positioned(
+                              right: 0,
+                              top: 0,
+                              child: Container(
+                                padding: const EdgeInsets.all(3),
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFF38B24D),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Text(
+                                  '${cart.itemCount}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-            
+
             // Categories List
             SliverToBoxAdapter(
               child: SizedBox(
@@ -105,7 +147,7 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
             ),
-            
+
             // Featured Products Header
             const SliverPadding(
               padding: EdgeInsets.fromLTRB(16.0, 24.0, 16.0, 16.0),
@@ -122,7 +164,7 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
             ),
-            
+
             // Featured Products Grid
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -135,37 +177,69 @@ class HomeScreen extends StatelessWidget {
                 ),
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
+                    final product = _products[index % _products.length];
                     return CustomCart(
-                      title: ['Fresh Shrimps', 'Avacoda', 'White Shrimps', 'Pomegranate', 'Fresh Broccoli'][index % 5],
-                      price: ['\$8.00', '\$7.00', '\$9.90', '\$2.09', '\$3.00'][index % 5],
-                      subtitle: ['dozen', '2.0 lbs', '1.50 lbs', '1.50 lbs', '1 kg'][index % 5],
-                      image: 'lib/ui/themes/images/image copy 2.png',
-                      hasCounter: index == 1 || index == 3,
+                      title: product['title']!,
+                      price: product['price']!,
+                      subtitle: product['subtitle']!,
+                      image: product['image']!,
+                      hasCounter: cart.isInCart(product['title']!),
                       onTap: () {
-                        Navigator.pushNamed(context, '/product_details');
+                        Navigator.pushNamed(
+                          context,
+                          '/product_details',
+                          arguments: product,
+                        );
                       },
                       onAddToCart: () {
-                        Navigator.pushNamed(context, '/product_details');
+                        Navigator.pushNamed(
+                          context,
+                          '/product_details',
+                          arguments: product,
+                        );
                       },
+                      onIncrement: () => cart.increment(product['title']!),
+                      onDecrement: () => cart.decrement(product['title']!),
                     );
                   },
-                  childCount: 5,
+                  childCount: _products.length,
                 ),
               ),
             ),
-            
+
             // Bottom padding for fab
             const SliverPadding(padding: EdgeInsets.only(bottom: 80)),
           ],
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {},
+        onPressed: () => Navigator.pushNamed(context, '/cart'),
         backgroundColor: const Color(0xFF68B92E),
-        child: const Icon(Icons.shopping_bag_outlined, color: Colors.white),
         elevation: 2,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(30),
+        ),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            const Icon(Icons.shopping_bag_outlined, color: Colors.white),
+            if (cart.itemCount > 0)
+              Positioned(
+                right: 0,
+                top: 0,
+                child: Container(
+                  padding: const EdgeInsets.all(3),
+                  decoration: const BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Text(
+                    '${cart.itemCount}',
+                    style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
@@ -188,7 +262,6 @@ class HomeScreen extends StatelessWidget {
               icon: const Icon(Icons.favorite_border),
               onPressed: () {},
             ),
-            // Empty space for the floating action button
             const SizedBox(width: 48),
           ],
         ),
@@ -216,6 +289,4 @@ class HomeScreen extends StatelessWidget {
       ],
     );
   }
-
 }
-

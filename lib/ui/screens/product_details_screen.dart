@@ -1,17 +1,38 @@
 import 'package:flutter/material.dart';
+import '../../providers/cart_provider.dart';
+import '../../models/cart_item.dart';
 
 class ProductDetailsScreen extends StatefulWidget {
-  const ProductDetailsScreen({super.key});
+  final String? title;
+  final String? price;
+  final String? subtitle;
+  final String? image;
+
+  const ProductDetailsScreen({
+    super.key,
+    this.title,
+    this.price,
+    this.subtitle,
+    this.image,
+  });
 
   @override
   State<ProductDetailsScreen> createState() => _ProductDetailsScreenState();
 }
 
 class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
-  int quantity = 3;
+  int quantity = 1;
+
+  String get productTitle => widget.title ?? 'Fresh Shrimps';
+  String get productPrice => widget.price ?? '\$2.22';
+  String get productSubtitle => widget.subtitle ?? '1.50 lbs';
+  String get productImage => widget.image ?? 'lib/ui/themes/images/image copy 2.png';
 
   @override
   Widget build(BuildContext context) {
+    final cart = CartProviderScope.of(context);
+    final inCart = cart.isInCart(productTitle);
+
     return Scaffold(
       backgroundColor: const Color(0xFFFAFAFA),
       extendBodyBehindAppBar: true,
@@ -25,6 +46,35 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
             onPressed: () => Navigator.pop(context),
           ),
         ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 12.0),
+            child: GestureDetector(
+              onTap: () => Navigator.pushNamed(context, '/cart'),
+              child: Stack(
+                children: [
+                  const Icon(Icons.shopping_bag_outlined, color: Colors.black, size: 28),
+                  if (cart.itemCount > 0)
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF38B24D),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(
+                          '${cart.itemCount}',
+                          style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
       body: Stack(
         children: [
@@ -36,7 +86,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
               width: 300,
               height: 300,
               decoration: const BoxDecoration(
-                color: Color(0xFFF1F8EB), // Light green tint
+                color: Color(0xFFF1F8EB),
                 shape: BoxShape.circle,
               ),
             ),
@@ -48,12 +98,12 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
               width: 350,
               height: 350,
               decoration: const BoxDecoration(
-                color: Color(0xFFF1F8EB), // Light green tint
+                color: Color(0xFFF1F8EB),
                 shape: BoxShape.circle,
               ),
             ),
           ),
-          
+
           SafeArea(
             bottom: false,
             child: Column(
@@ -62,11 +112,11 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
                   child: Hero(
-                    tag: 'product_image',
+                    tag: 'product_image_$productTitle',
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(32),
                       child: Image.asset(
-                        'lib/ui/themes/images/image copy 2.png',
+                        productImage,
                         width: double.infinity,
                         height: 240,
                         fit: BoxFit.cover,
@@ -81,9 +131,9 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                     ),
                   ),
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 // Bottom Details Card
                 Expanded(
                   child: Container(
@@ -103,9 +153,9 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text(
-                              '\$2.22',
-                              style: TextStyle(
+                            Text(
+                              productPrice,
+                              style: const TextStyle(
                                 fontSize: 24,
                                 fontWeight: FontWeight.bold,
                                 color: Color(0xFF38B24D),
@@ -115,21 +165,21 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                           ],
                         ),
                         const SizedBox(height: 8),
-                        
+
                         // Title
-                        const Text(
-                          'Fresh Shrimps',
-                          style: TextStyle(
+                        Text(
+                          productTitle,
+                          style: const TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
                             color: Colors.black,
                           ),
                         ),
                         const SizedBox(height: 4),
-                        
+
                         // Subtitle
                         Text(
-                          '1.50 lbs',
+                          productSubtitle,
                           style: TextStyle(
                             fontSize: 14,
                             color: Colors.grey.shade500,
@@ -137,7 +187,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        
+
                         // Rating
                         Row(
                           children: [
@@ -149,7 +199,6 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                               ),
                             ),
                             const SizedBox(width: 4),
-                            // Stars
                             Row(
                               children: List.generate(5, (index) {
                                 return Icon(
@@ -170,7 +219,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                           ],
                         ),
                         const SizedBox(height: 24),
-                        
+
                         // Description
                         Expanded(
                           child: SingleChildScrollView(
@@ -183,7 +232,8 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                                 ),
                                 children: const [
                                   TextSpan(
-                                    text: "Organic Mountain works as a seller for many organic growers of organic lemons. Organic lemons are easy to spot in your produce aisle. They are just like regular lemons, but they will usually have a few more scars on the outside of the lemon skin. Organic lemons are considered to be the world's finest lemon for juicing ",
+                                    text:
+                                        "Organic Mountain works as a seller for many organic growers of organic lemons. Organic lemons are easy to spot in your produce aisle. They are just like regular lemons, but they will usually have a few more scars on the outside of the lemon skin. Organic lemons are considered to be the world's finest lemon for juicing ",
                                   ),
                                   TextSpan(
                                     text: 'more',
@@ -197,61 +247,78 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                             ),
                           ),
                         ),
-                        
+
                         // Bottom Actions (Quantity & Cart)
                         Padding(
                           padding: const EdgeInsets.only(top: 16.0),
                           child: Row(
                             children: [
-                              // Quantity Selector
-                              Container(
-                                height: 56,
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  border: Border.all(color: Colors.grey.shade200),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                padding: const EdgeInsets.symmetric(horizontal: 4),
-                                child: Row(
-                                  children: [
-                                    IconButton(
-                                      onPressed: () {
-                                        if (quantity > 1) {
-                                          setState(() => quantity--);
-                                        }
-                                      },
-                                      icon: const Icon(Icons.remove, color: Color(0xFF38B24D)),
-                                    ),
-                                    SizedBox(
-                                      width: 24,
-                                      child: Text(
-                                        '$quantity',
-                                        textAlign: TextAlign.center,
-                                        style: const TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.w600,
+                              // Quantity Selector (hidden when already in cart)
+                              if (!inCart) ...[
+                                Container(
+                                  height: 56,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    border: Border.all(color: Colors.grey.shade200),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                                  child: Row(
+                                    children: [
+                                      IconButton(
+                                        onPressed: () {
+                                          if (quantity > 1) {
+                                            setState(() => quantity--);
+                                          }
+                                        },
+                                        icon: const Icon(Icons.remove, color: Color(0xFF38B24D)),
+                                      ),
+                                      SizedBox(
+                                        width: 24,
+                                        child: Text(
+                                          '$quantity',
+                                          textAlign: TextAlign.center,
+                                          style: const TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.w600,
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                    IconButton(
-                                      onPressed: () {
-                                        setState(() => quantity++);
-                                      },
-                                      icon: const Icon(Icons.add, color: Color(0xFF38B24D)),
-                                    ),
-                                  ],
+                                      IconButton(
+                                        onPressed: () {
+                                          setState(() => quantity++);
+                                        },
+                                        icon: const Icon(Icons.add, color: Color(0xFF38B24D)),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 16),
-                              
-                              // Add to Cart Button
+                                const SizedBox(width: 16),
+                              ],
+
+                              // Add to Cart / Go to Cart Button
                               Expanded(
                                 child: SizedBox(
                                   height: 56,
                                   child: ElevatedButton(
-                                    onPressed: () {},
+                                    onPressed: () {
+                                      if (inCart) {
+                                        Navigator.pushNamed(context, '/cart');
+                                      } else {
+                                        cart.addToCart(CartItem(
+                                          title: productTitle,
+                                          price: productPrice,
+                                          subtitle: productSubtitle,
+                                          image: productImage,
+                                          quantity: quantity,
+                                        ));
+                                        setState(() {});
+                                      }
+                                    },
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFF38B24D),
+                                      backgroundColor: inCart
+                                          ? const Color(0xFF1565C0)
+                                          : const Color(0xFF38B24D),
                                       foregroundColor: Colors.white,
                                       elevation: 0,
                                       shape: RoundedRectangleBorder(
@@ -260,16 +327,21 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                                     ),
                                     child: Row(
                                       mainAxisAlignment: MainAxisAlignment.center,
-                                      children: const [
+                                      children: [
                                         Text(
-                                          'Add to cart',
-                                          style: TextStyle(
+                                          inCart ? 'Go to Cart' : 'Add to cart',
+                                          style: const TextStyle(
                                             fontSize: 16,
                                             fontWeight: FontWeight.w600,
                                           ),
                                         ),
-                                        SizedBox(width: 8),
-                                        Icon(Icons.shopping_bag_outlined, size: 20),
+                                        const SizedBox(width: 8),
+                                        Icon(
+                                          inCart
+                                              ? Icons.shopping_cart_outlined
+                                              : Icons.shopping_bag_outlined,
+                                          size: 20,
+                                        ),
                                       ],
                                     ),
                                   ),
@@ -278,7 +350,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 16), // Bottom safe area space
+                        const SizedBox(height: 16),
                       ],
                     ),
                   ),
