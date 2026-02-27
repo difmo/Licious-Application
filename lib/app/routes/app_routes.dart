@@ -1,0 +1,17 @@
+class AppRoutes {
+  static const String splash = '/splash';
+  static const String initialRoute = '/';
+  static const String deals = '/deals';
+
+  static const String welcome = '/welcome';
+  static const String forgotPassword = '/forgot-password';
+  static const String login = '/login';
+  static const String signup = '/signup';
+  static const String home = '/home';
+  static const String productDetails = '/product_details';
+  static const String categories = '/categories';
+  static const String vegetables = '/vegetables';
+  static const String cart = '/cart';
+  static const String shippingAddress = '/shipping_address';
+  static const String paymentMethod = '/payment_method';
+}
