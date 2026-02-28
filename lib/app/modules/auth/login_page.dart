@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../data/services/auth_service.dart';
+import '../../data/services/db_service.dart';
+import '../../data/models/food_models.dart';
 import '../../widgets/common_button.dart';
 import 'widgets/input_field.dart';
 
@@ -10,8 +13,79 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
+  final _identifierController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _authService = AuthService();
+
   bool _obscurePassword = true;
   bool _agreeToTerms = false;
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _identifierController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  void _login() async {
+    final identifier = _identifierController.text.trim();
+    final password = _passwordController.text;
+
+    if (identifier.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please fill all fields')));
+      return;
+    }
+
+    if (!_agreeToTerms) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please agree to the Terms & Conditions'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    final response = await _authService.login(
+      identifier: identifier,
+      password: password,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _isLoading = false;
+    });
+
+    if (response.success) {
+      if (response.data != null) {
+        CartProviderScope.of(context).updateUserProfile(
+          UserProfile(
+            name: response.data!.fullName,
+            email: response.data!.email,
+            phone: response.data!.phoneNumber,
+            profileImage: 'assets/images/image copy 2.png',
+          ),
+        );
+      }
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(response.message)));
+      Navigator.pushReplacementNamed(context, '/home');
+    } else {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(response.message)));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -63,6 +137,7 @@ class _LoginPageState extends State<LoginPage> {
 
                   // Username/Email field
                   InputField(
+                    controller: _identifierController,
                     label: 'Username/Email',
                     hintText: 'Enter your username',
                     prefixIcon: Icons.email_outlined,
@@ -72,6 +147,7 @@ class _LoginPageState extends State<LoginPage> {
 
                   // Password field
                   InputField(
+                    controller: _passwordController,
                     label: 'Password',
                     hintText: 'Enter your password',
                     prefixIcon: Icons.lock_outline,
@@ -173,23 +249,9 @@ class _LoginPageState extends State<LoginPage> {
                   const SizedBox(height: 28),
 
                   // Login button
-                  CommonButton(
-                    text: 'Login',
-                    onPressed: () {
-                      if (!_agreeToTerms) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Please agree to the Terms & Conditions',
-                            ),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                        return;
-                      }
-                      Navigator.pushReplacementNamed(context, '/home');
-                    },
-                  ),
+                  _isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : CommonButton(text: 'Login', onPressed: _login),
                   const SizedBox(height: 28),
 
                   // Sign up link

@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../data/services/auth_service.dart';
+import '../../data/services/db_service.dart';
+import '../../data/models/food_models.dart';
 import 'widgets/input_field.dart';
 
 class RegisterPage extends StatefulWidget {
@@ -9,8 +12,98 @@ class RegisterPage extends StatefulWidget {
 }
 
 class _RegisterPageState extends State<RegisterPage> {
+  final _fullNameController = TextEditingController();
+  final _usernameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+
+  final _authService = AuthService();
+  bool _isLoading = false;
+
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
+
+  @override
+  void dispose() {
+    _fullNameController.dispose();
+    _usernameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+
+  void _register() async {
+    final fullName = _fullNameController.text.trim();
+    final username = _usernameController.text.trim();
+    final email = _emailController.text.trim();
+    final phone = _phoneController.text.trim();
+    final password = _passwordController.text;
+    final confirmPassword = _confirmPasswordController.text;
+
+    if (fullName.isEmpty ||
+        username.isEmpty ||
+        email.isEmpty ||
+        phone.isEmpty ||
+        password.isEmpty ||
+        confirmPassword.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please fill all fields')));
+      return;
+    }
+
+    if (password != confirmPassword) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Passwords do not match')));
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    final response = await _authService.register(
+      fullName: fullName,
+      username: username,
+      email: email,
+      phoneNumber: phone,
+      password: password,
+      confirmPassword: confirmPassword,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _isLoading = false;
+    });
+
+    if (response.success) {
+      if (response.data != null) {
+        CartProviderScope.of(context).updateUserProfile(
+          UserProfile(
+            name: response.data!.fullName,
+            email: response.data!.email,
+            phone: response.data!.phoneNumber,
+            profileImage: 'assets/images/image copy 2.png',
+          ),
+        );
+      }
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(response.message)));
+      Navigator.pushReplacementNamed(context, '/home');
+    } else {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(response.message)));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -62,8 +155,6 @@ class _RegisterPageState extends State<RegisterPage> {
               ],
             ),
 
-            // ── Second food image ──
-
             // ── Form section ──
             Container(
               padding: const EdgeInsets.fromLTRB(24, 28, 24, 32),
@@ -87,7 +178,8 @@ class _RegisterPageState extends State<RegisterPage> {
                   const SizedBox(height: 28),
 
                   // Full Name
-                  const InputField(
+                  InputField(
+                    controller: _fullNameController,
                     label: 'Full Name',
                     hintText: 'Enter your full name',
                     prefixIcon: Icons.person_outline,
@@ -95,9 +187,20 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                   const SizedBox(height: 20),
 
+                  // Username
+                  InputField(
+                    controller: _usernameController,
+                    label: 'Username',
+                    hintText: 'Enter your username',
+                    prefixIcon: Icons.account_circle_outlined,
+                    keyboardType: TextInputType.text,
+                  ),
+                  const SizedBox(height: 20),
+
                   // Email
-                  const InputField(
-                    label: 'Username/Email',
+                  InputField(
+                    controller: _emailController,
+                    label: 'Email Address',
                     hintText: 'Enter your email address',
                     prefixIcon: Icons.email_outlined,
                     keyboardType: TextInputType.emailAddress,
@@ -105,7 +208,8 @@ class _RegisterPageState extends State<RegisterPage> {
                   const SizedBox(height: 20),
 
                   // Phone
-                  const InputField(
+                  InputField(
+                    controller: _phoneController,
                     label: 'Phone Number',
                     hintText: 'Enter your phone number',
                     prefixIcon: Icons.phone_outlined,
@@ -115,6 +219,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
                   // Password
                   InputField(
+                    controller: _passwordController,
                     label: 'Password',
                     hintText: 'Enter your password',
                     prefixIcon: Icons.lock_outline,
@@ -127,6 +232,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
                   // Confirm Password
                   InputField(
+                    controller: _confirmPasswordController,
                     label: 'Confirm Password',
                     hintText: 'Re-enter your password',
                     prefixIcon: Icons.lock_outline,
@@ -150,15 +256,16 @@ class _RegisterPageState extends State<RegisterPage> {
                         ),
                         elevation: 0,
                       ),
-                      onPressed: () =>
-                          Navigator.pushReplacementNamed(context, '/home'),
-                      child: const Text(
-                        'Create Account',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
+                      onPressed: _isLoading ? null : _register,
+                      child: _isLoading
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : const Text(
+                              'Create Account',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
                     ),
                   ),
                   const SizedBox(height: 24),
