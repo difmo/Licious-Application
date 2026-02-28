@@ -85,7 +85,7 @@ class CartProvider extends ChangeNotifier {
     ),
   ];
 
-  final List<UserAddress> _addresses = [
+  List<UserAddress> _addresses = [
     const UserAddress(
       id: 'ADDR001',
       title: 'Home',
@@ -444,6 +444,11 @@ class CartProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void updateUserAddresses(List<UserAddress> newAddresses) {
+    _addresses = newAddresses;
+    notifyListeners();
+  }
+
   int get itemCount => _items.fold(0, (sum, item) => sum + item.quantity);
 
   double get subtotal => _items.fold(0.0, (sum, item) => sum + item.totalPrice);
@@ -505,9 +510,21 @@ class CartProviderScope extends InheritedNotifier<CartProvider> {
     required super.child,
   }) : super(notifier: provider);
 
-  static CartProvider of(BuildContext context) {
-    return context
-        .dependOnInheritedWidgetOfExactType<CartProviderScope>()!
-        .notifier!;
+  static CartProvider of(BuildContext context, {bool listen = true}) {
+    if (listen) {
+      return context
+          .dependOnInheritedWidgetOfExactType<CartProviderScope>()!
+          .notifier!;
+    } else {
+      final scope =
+          context
+                  .getElementForInheritedWidgetOfExactType<CartProviderScope>()
+                  ?.widget
+              as CartProviderScope?;
+      if (scope == null) {
+        throw Exception('CartProviderScope not found in widget tree');
+      }
+      return scope.notifier!;
+    }
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../data/services/auth_service.dart';
 import 'widgets/input_field.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
@@ -9,10 +10,50 @@ class ForgotPasswordPage extends StatefulWidget {
 }
 
 class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
-  bool _emailSent = false;
+  final _emailController = TextEditingController();
+  final _authService = AuthService();
 
-  void _sendResetLink() {
-    setState(() => _emailSent = true);
+  bool _emailSent = false;
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    super.dispose();
+  }
+
+  void _sendResetLink() async {
+    final email = _emailController.text.trim();
+
+    if (email.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please enter your email')));
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    final response = await _authService.forgotPassword(email: email);
+
+    if (!mounted) return;
+
+    setState(() {
+      _isLoading = false;
+    });
+
+    if (response.success) {
+      setState(() => _emailSent = true);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(response.message)));
+    } else {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(response.message)));
+    }
   }
 
   @override
@@ -130,7 +171,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         const SizedBox(height: 32),
 
         // Email input
-        const InputField(
+        InputField(
+          controller: _emailController,
           label: 'Email Address',
           hintText: 'Enter your registered email',
           prefixIcon: Icons.email_outlined,
@@ -143,7 +185,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           width: double.infinity,
           height: 54,
           child: ElevatedButton(
-            onPressed: _sendResetLink,
+            onPressed: _isLoading ? null : _sendResetLink,
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF2E7D32),
               foregroundColor: Colors.white,
@@ -152,10 +194,12 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            child: const Text(
-              'Send Reset Link',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-            ),
+            child: _isLoading
+                ? const CircularProgressIndicator(color: Colors.white)
+                : const Text(
+                    'Send Reset Link',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  ),
           ),
         ),
         const SizedBox(height: 24),

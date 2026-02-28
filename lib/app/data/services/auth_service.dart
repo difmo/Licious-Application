@@ -79,4 +79,32 @@ class AuthService {
       );
     }
   }
+
+  Future<AuthResponseModel> forgotPassword({required String email}) async {
+    final url = Uri.parse('$baseUrl/forgot-password');
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email}),
+      );
+
+      final decodedData = jsonDecode(response.body);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return AuthResponseModel.fromJson(decodedData);
+      } else {
+        return AuthResponseModel(
+          success: false,
+          message: decodedData['message'] ?? 'Request failed',
+        );
+      }
+    } catch (e) {
+      return AuthResponseModel(
+        success: false,
+        message: 'Network error: ${e.toString()}',
+      );
+    }
+  }
 }

@@ -91,12 +91,14 @@ class UserProfile {
   final String email;
   final String phone;
   final String profileImage;
+  final String? token;
 
   const UserProfile({
     required this.name,
     required this.email,
     required this.phone,
     required this.profileImage,
+    this.token,
   });
 
   UserProfile copyWith({
@@ -104,12 +106,14 @@ class UserProfile {
     String? email,
     String? phone,
     String? profileImage,
+    String? token,
   }) {
     return UserProfile(
       name: name ?? this.name,
       email: email ?? this.email,
       phone: phone ?? this.phone,
       profileImage: profileImage ?? this.profileImage,
+      token: token ?? this.token,
     );
   }
 }

@@ -90,6 +90,7 @@ class _RegisterPageState extends State<RegisterPage> {
             email: response.data!.email,
             phone: response.data!.phoneNumber,
             profileImage: 'assets/images/image copy 2.png',
+            token: response.token,
           ),
         );
       }
@@ -97,7 +98,7 @@ class _RegisterPageState extends State<RegisterPage> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(response.message)));
-      Navigator.pushReplacementNamed(context, '/home');
+      Navigator.pushReplacementNamed(context, '/otp');
     } else {
       ScaffoldMessenger.of(
         context,

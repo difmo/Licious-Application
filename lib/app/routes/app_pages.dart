@@ -7,6 +7,7 @@ import '../modules/auth/welcome_page.dart';
 import '../modules/auth/login_page.dart';
 import '../modules/auth/register_page.dart';
 import '../modules/auth/forgot_password_page.dart';
+import '../modules/auth/otp_page.dart';
 import '../modules/home/view/main_page.dart';
 import '../modules/categories/view/categories_page.dart';
 import '../modules/categories/view/vegetables_page.dart';
@@ -22,6 +23,7 @@ class AppPages {
     AppRoutes.welcome: (context) => const WelcomePage(),
     AppRoutes.login: (context) => const LoginPage(),
     AppRoutes.signup: (context) => const RegisterPage(),
+    AppRoutes.otp: (context) => const OtpPage(),
     AppRoutes.forgotPassword: (context) => const ForgotPasswordPage(),
     AppRoutes.home: (context) => const MainPage(),
     AppRoutes.categories: (context) => const CategoriesPage(),

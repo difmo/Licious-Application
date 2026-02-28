@@ -72,6 +72,7 @@ class _LoginPageState extends State<LoginPage> {
             email: response.data!.email,
             phone: response.data!.phoneNumber,
             profileImage: 'assets/images/image copy 2.png',
+            token: response.token,
           ),
         );
       }
