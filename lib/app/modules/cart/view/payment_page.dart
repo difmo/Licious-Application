@@ -195,9 +195,10 @@ class _PaymentPageState extends State<PaymentPage> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: 0.3),
+            blurRadius: 15,
+            spreadRadius: 0,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -341,9 +342,10 @@ class _PaymentPageState extends State<PaymentPage> {
                 : null,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.02),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
+                color: Colors.black.withValues(alpha: 0.3),
+                blurRadius: 15,
+                spreadRadius: 0,
+                offset: const Offset(0, 8),
               ),
             ],
           ),
@@ -385,9 +387,10 @@ class _PaymentPageState extends State<PaymentPage> {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF68B92E).withValues(alpha: 0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
+            color: Colors.black.withValues(alpha: 0.3),
+            blurRadius: 15,
+            spreadRadius: 0,
+            offset: const Offset(0, 8),
           ),
         ],
       ),

@@ -77,9 +77,10 @@ class _MainPageState extends State<MainPage> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.2),
+              color: Colors.black.withValues(alpha: 0.3),
               blurRadius: 15,
-              offset: const Offset(0, 5),
+              spreadRadius: 0,
+              offset: const Offset(0, 8),
             ),
           ],
         ),
@@ -160,9 +161,10 @@ class _MainPageState extends State<MainPage> {
               borderRadius: BorderRadius.circular(35),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.1),
+                  color: Colors.black.withValues(alpha: 0.3),
                   blurRadius: 15,
-                  offset: const Offset(0, 5),
+                  spreadRadius: 0,
+                  offset: const Offset(0, 8),
                 ),
               ],
             ),
@@ -190,9 +192,10 @@ class _MainPageState extends State<MainPage> {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.15),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
+                      color: Colors.black.withValues(alpha: 0.3),
+                      blurRadius: 15,
+                      spreadRadius: 0,
+                      offset: const Offset(0, 8),
                     ),
                   ],
                   border: Border.all(

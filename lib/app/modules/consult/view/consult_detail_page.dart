@@ -144,9 +144,10 @@ class _ConsultDetailPageState extends State<ConsultDetailPage> {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
+                  color: Colors.black.withValues(alpha: 0.3),
+                  blurRadius: 15,
+                  spreadRadius: 0,
+                  offset: const Offset(0, 8),
                 ),
               ],
             ),
@@ -176,9 +177,10 @@ class _ConsultDetailPageState extends State<ConsultDetailPage> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withValues(alpha: 0.3),
             blurRadius: 15,
-            offset: const Offset(0, -5),
+            spreadRadius: 0,
+            offset: const Offset(0, -8),
           ),
         ],
       ),

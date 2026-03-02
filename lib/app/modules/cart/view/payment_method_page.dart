@@ -281,8 +281,9 @@ class _CreditCardWidget extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF68B92E).withValues(alpha: 0.4),
-            blurRadius: 16,
+            color: Colors.black.withValues(alpha: 0.3),
+            blurRadius: 15,
+            spreadRadius: 0,
             offset: const Offset(0, 8),
           ),
         ],

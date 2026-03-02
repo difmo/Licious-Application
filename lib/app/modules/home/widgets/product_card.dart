@@ -48,9 +48,10 @@ class ProductCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              color: Colors.black.withValues(alpha: 0.3),
+              blurRadius: 15,
+              spreadRadius: 0,
+              offset: const Offset(0, 8),
             ),
           ],
         ),
@@ -68,12 +69,12 @@ class ProductCard extends StatelessWidget {
                     ),
                     child: Image.asset(
                       product.image,
-                      height: 120,
+                      height: 110,
                       width: double.infinity,
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) {
                         return Container(
-                          height: 120,
+                          height: 110,
                           color: Colors.grey.shade200,
                           child: const Center(
                             child: Icon(Icons.broken_image, color: Colors.grey),
@@ -84,7 +85,7 @@ class ProductCard extends StatelessWidget {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(10),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -108,7 +109,7 @@ class ProductCard extends StatelessWidget {
                           color: Colors.grey,
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 8),
                       // Price & Add Area
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,

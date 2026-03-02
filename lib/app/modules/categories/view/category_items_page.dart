@@ -14,9 +14,9 @@ class CategoryItemsPage extends StatelessWidget {
     final products = cart.getProductsByCategory(categoryName);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFEBFFD7),
+      backgroundColor: const Color(0xFFF7F8FA),
       appBar: AppBar(
-        backgroundColor: const Color(0xFFEBFFD7),
+        backgroundColor: Colors.white,
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: true,
@@ -42,13 +42,13 @@ class CategoryItemsPage extends StatelessWidget {
       body: products.isEmpty
           ? _buildEmptyState()
           : GridView.builder(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
               physics: const BouncingScrollPhysics(),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
                 childAspectRatio: 0.75,
                 crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
+                mainAxisSpacing: 24,
               ),
               itemCount: products.length,
               itemBuilder: (context, index) {

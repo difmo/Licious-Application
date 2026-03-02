@@ -123,10 +123,10 @@ class _HomeHeaderState extends State<HomeHeader> {
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.grey.withValues(alpha: 0.3),
-                        blurRadius: 10,
-                        spreadRadius: 1,
-                        offset: const Offset(0, 4),
+                        color: Colors.black.withValues(alpha: 0.3),
+                        blurRadius: 15,
+                        spreadRadius: 0,
+                        offset: const Offset(0, 8),
                       ),
                     ],
                   ),

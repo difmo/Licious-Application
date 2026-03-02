@@ -98,9 +98,10 @@ class _FilterBarState extends State<FilterBar> {
           boxShadow: [
             if (isSelected)
               BoxShadow(
-                color: const Color(0xFF68B92E).withValues(alpha: 0.1),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
+                color: Colors.black.withValues(alpha: 0.3),
+                blurRadius: 15,
+                spreadRadius: 0,
+                offset: const Offset(0, 8),
               ),
           ],
         ),
