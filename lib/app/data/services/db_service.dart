@@ -3,7 +3,17 @@ import '../models/product_model.dart';
 import '../models/food_models.dart';
 
 class CartProvider extends ChangeNotifier {
-  final List<CartItem> _items = [];
+  final List<CartItem> _items = [
+    CartItem(
+      id: 'p1',
+      title: 'White Shrimp',
+      unitPrice: 349,
+      subtitle: '500g',
+      image: 'assets/images/image copy 11.png',
+      category: 'Indian White Shrimp',
+      quantity: 1,
+    ),
+  ];
 
   UserProfile _userProfile = const UserProfile(
     name: 'Raja',
@@ -15,21 +25,33 @@ class CartProvider extends ChangeNotifier {
   final List<FoodCategory> _foodCategories = const [
     FoodCategory(
       id: '1',
-      name: 'White Shrimp',
-      image: 'assets/images/image copy 11.png',
-      colorValue: 0xFFFFF8E1, // Light Orange
+      name: 'Pink Shrimp',
+      image: 'assets/images/image copy 4.png',
+      colorValue: 0xFFFCE4EC,
     ),
     FoodCategory(
       id: '2',
-      name: 'Tiger Shrimp',
-      image: 'assets/images/shrimp_tiger_trio.png',
-      colorValue: 0xFFE8F5E9, // Light Green
+      name: 'Vannamei Shrimp',
+      image: 'assets/images/image copy 5.png',
+      colorValue: 0xFFE3F2FD,
+    ),
+    FoodCategory(
+      id: '3',
+      name: 'Indian White Shrimp',
+      image: 'assets/images/image copy 6.png',
+      colorValue: 0xFFFFF8E1,
     ),
     FoodCategory(
       id: '4',
-      name: 'Peeled Shrimp',
-      image: 'assets/images/shrimp_cooked_duo.png',
-      colorValue: 0xFFF3E5F5, // Light Purple
+      name: 'Giant Freshwater Prawn',
+      image: 'assets/images/image copy 7.png',
+      colorValue: 0xFFE8F5E9,
+    ),
+    FoodCategory(
+      id: '5',
+      name: 'Black Tiger Shrimp',
+      image: 'assets/images/shrimp_tiger_trio.png',
+      colorValue: 0xFFECEFF1,
     ),
   ];
 
@@ -69,19 +91,19 @@ class CartProvider extends ChangeNotifier {
   final List<UserOrder> _orders = [
     UserOrder(
       id: 'ORD001',
-      restaurantName: 'New Pizza King',
+      restaurantName: 'Shrimpbite Origin',
       date: '24 Feb, 7:12 PM',
-      total: 349.00,
+      total: 848.00,
       status: 'Delivered',
-      items: ['1x Farmhouse Pizza', '1x Coke 500ml'],
+      items: ['1x Indian White Shrimp', '1x Pink Shrimp'],
     ),
     UserOrder(
       id: 'ORD002',
-      restaurantName: 'Burger Palace',
+      restaurantName: 'Shrimpbite Fresh',
       date: '22 Feb, 1:45 PM',
-      total: 199.00,
+      total: 499.00,
       status: 'Delivered',
-      items: ['2x Classic Veg Burger', '1x French Fries'],
+      items: ['1x Black Tiger Shrimp'],
     ),
   ];
 
@@ -125,7 +147,7 @@ class CartProvider extends ChangeNotifier {
       image: 'assets/images/image copy 11.png',
       price: 349,
       weight: '500g',
-      category: 'White Shrimp',
+      category: 'Indian White Shrimp',
       description:
           'White Shrimp is one of the most popular and widely consumed shrimp varieties across the world. Known for its mild flavor, firm texture, and high nutritional value, it is perfect for everyday home cooking as well as gourmet recipes. At Shrimpbite, our White Shrimp is sourced directly from trusted Indian aqua farmers, ensuring freshness, quality, and food safety in every pack.',
       whyChoose: [
@@ -143,7 +165,7 @@ class CartProvider extends ChangeNotifier {
       image: 'assets/images/shrimp_tiger_trio.png',
       price: 499,
       weight: '1kg',
-      category: 'Tiger Shrimp',
+      category: 'Black Tiger Shrimp',
       isFavorite: true,
       description:
           'Tiger Prawns are known for their spectacular size and bold, sweet flavor. Their distinctive stripes make them a chef favorite for presentation. These Jumbo prawns are perfect for big feasts.',
@@ -161,7 +183,7 @@ class CartProvider extends ChangeNotifier {
       image: 'assets/images/shrimp_lemon_herb.png',
       price: 649,
       weight: '500g',
-      category: 'White Shrimp',
+      category: 'Indian White Shrimp',
       description:
           'Authentic King Thai Shrimps, marinated with subtle herbs for a unique coastal flavor. Best enjoyed sautéed or in light broths. A premium variety sought after for its delicate snap.',
       whyChoose: [
@@ -177,7 +199,7 @@ class CartProvider extends ChangeNotifier {
       image: 'assets/images/shrimp_cooked_duo.png',
       price: 349,
       weight: '250g',
-      category: 'Peeled Shrimp',
+      category: 'Pink Shrimp',
       description:
           'Perfectly steamed and ready-to-eat prawns. Save time in the kitchen without compromising on that fresh seaside taste. These are pre-peeled and cooked to perfection.',
       whyChoose: [
@@ -193,7 +215,7 @@ class CartProvider extends ChangeNotifier {
       image: 'assets/images/shrimp_fresh_pile.png',
       price: 249,
       weight: '500g',
-      category: 'Peeled Shrimp',
+      category: 'Pink Shrimp',
       description:
           'Daily catch fresh shrimps, delivered straight from the coast to your kitchen. Vibrant, tender, and full of natural sea flavor. These are the foundation of any great seafood dish.',
       whyChoose: [
@@ -209,7 +231,7 @@ class CartProvider extends ChangeNotifier {
       image: 'assets/images/image copy 10.png',
       price: 549,
       weight: '1 portion',
-      category: 'Grocery',
+      category: 'Vannamei Shrimp',
       description:
           'Chef-crafted spicy prawn curry, ready to heat and eat. A perfect blend of traditional Indian spices and creamy coconut milk. Experience the authentic taste of the coast.',
       whyChoose: [
@@ -225,7 +247,7 @@ class CartProvider extends ChangeNotifier {
       image: 'assets/images/image copy 5.png',
       price: 599,
       weight: '1 plate',
-      category: 'Grocery',
+      category: 'Pink Shrimp',
       description:
           'Tangy and buttery lemon garlic shrimp. A restaurant-style delicacy in the comfort of your home. Perfect for a quick dinner or a fancy appetizer.',
       whyChoose: [
@@ -241,7 +263,7 @@ class CartProvider extends ChangeNotifier {
       image: 'assets/images/image copy 3.png',
       price: 429,
       weight: '500g',
-      category: 'White Shrimp',
+      category: 'Vannamei Shrimp',
       description:
           'Quality prawns from our sustainably managed aqua farms. Healthy, safe, and delicious. We monitor every stage of growth to ensure the highest standards.',
       whyChoose: [
@@ -257,7 +279,7 @@ class CartProvider extends ChangeNotifier {
       image: 'assets/images/shrimp_dish_1.png',
       price: 549,
       weight: '250g',
-      category: 'Grocery',
+      category: 'Giant Freshwater Prawn',
       description:
           'Our best-selling Sizzling Garlic Shrimp is a flavor explosion. Tossed in a rich garlic butter sauce with a hint of chili, it is the ultimate comfort food for seafood lovers.',
       whyChoose: [
@@ -273,7 +295,7 @@ class CartProvider extends ChangeNotifier {
       image: 'assets/images/shrimp_dish_2.png',
       price: 489,
       weight: '300g',
-      category: 'Grocery',
+      category: 'Vannamei Shrimp',
       description:
           'A rustic and hearty dish featuring prawns sautéed with crushed black pepper and caramelised onions. This dish brings out the earthy flavors of Indian coastal cuisine.',
       whyChoose: [
@@ -289,7 +311,7 @@ class CartProvider extends ChangeNotifier {
       image: 'assets/images/shrimp_dish_3.png',
       price: 599,
       weight: '1 plate',
-      category: 'Grocery',
+      category: 'Giant Freshwater Prawn',
       description:
           'A delightful Indo-Chinese fusion dish. Crispy shrimp glazed in a sweet and spicy honey-chili sauce, topped with sesame seeds. A perfect party starter.',
       whyChoose: [
@@ -305,7 +327,7 @@ class CartProvider extends ChangeNotifier {
       image: 'assets/images/shrimp_dish_4.png',
       price: 529,
       weight: '400g',
-      category: 'Grocery',
+      category: 'Indian White Shrimp',
       description:
           'Classic crispy fried shrimp with a spicy rub. These are golden-brown on the outside and tender on the inside. Served best with a tangy dip.',
       whyChoose: [
@@ -321,7 +343,7 @@ class CartProvider extends ChangeNotifier {
       image: 'assets/images/shrimp_dish_5.png',
       price: 649,
       weight: '350g',
-      category: 'Tiger Shrimp',
+      category: 'Black Tiger Shrimp',
       description:
           'Refresh your palate with these Zesty Lemon Prawns. Marinated in a citrusy blend of lemon juice, cilantro, and mild spices. Light and healthy.',
       whyChoose: [
@@ -337,7 +359,7 @@ class CartProvider extends ChangeNotifier {
       image: 'assets/images/shrimp_dish_6.png',
       price: 599,
       weight: '400g',
-      category: 'Peeled Shrimp',
+      category: 'Pink Shrimp',
       description:
           'Simple, elegant, and timeless. These shrimps are lightly seasoned and perfectly cooked to highlight their natural sweetness. The pure taste of Shrimpbite.',
       whyChoose: [

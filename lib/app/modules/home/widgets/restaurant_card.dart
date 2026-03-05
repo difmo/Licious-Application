@@ -51,7 +51,7 @@ class RestaurantCard extends StatelessWidget {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.7),
+                      color: Colors.black.withValues(alpha: 0.04),
                       borderRadius: const BorderRadius.only(
                         topLeft: Radius.circular(16),
                         bottomRight: Radius.circular(12),

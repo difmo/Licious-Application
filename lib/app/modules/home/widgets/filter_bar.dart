@@ -9,8 +9,6 @@ class FilterBar extends StatefulWidget {
 }
 
 class _FilterBarState extends State<FilterBar> {
-  String _selectedFilter = 'Near & Fast';
-
   @override
   Widget build(BuildContext context) {
     return SizedBox(
@@ -28,45 +26,6 @@ class _FilterBarState extends State<FilterBar> {
                 context,
                 MaterialPageRoute(builder: (_) => const FilterPage()),
               );
-            },
-          ),
-          const SizedBox(width: 8),
-          _buildFilterChip(
-            Icons.bolt,
-            'Near & Fast',
-            isSelected: _selectedFilter == 'Near & Fast',
-            onTap: () {
-              setState(() {
-                _selectedFilter = _selectedFilter == 'Near & Fast'
-                    ? ''
-                    : 'Near & Fast';
-              });
-            },
-          ),
-          const SizedBox(width: 8),
-          _buildFilterChip(
-            null,
-            'Under ₹150',
-            isSelected: _selectedFilter == 'Under ₹150',
-            onTap: () {
-              setState(() {
-                _selectedFilter = _selectedFilter == 'Under ₹150'
-                    ? ''
-                    : 'Under ₹150';
-              });
-            },
-          ),
-          const SizedBox(width: 8),
-          _buildFilterChip(
-            null,
-            'Schedule',
-            isSelected: _selectedFilter == 'Schedule',
-            onTap: () {
-              setState(() {
-                _selectedFilter = _selectedFilter == 'Schedule'
-                    ? ''
-                    : 'Schedule';
-              });
             },
           ),
         ],
@@ -90,10 +49,8 @@ class _FilterBarState extends State<FilterBar> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected
-                ? const Color(0xFF68B92E)
-                : Colors.grey.withValues(alpha: 0.2),
-            width: 1,
+            color: isSelected ? const Color(0xFF68B92E) : Colors.grey.shade200,
+            width: 1.5,
           ),
           boxShadow: [
             if (isSelected)

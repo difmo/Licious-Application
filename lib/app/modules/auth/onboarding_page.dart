@@ -14,10 +14,10 @@ class _OnboardingPageState extends State<OnboardingPage> {
   // ---------- page data ----------
   final List<Map<String, dynamic>> _pages = [
     {
-      'title': 'Get Discounts\nOn All Products',
+      'title': 'Welcome to\nShrimpbite',
       'subtitle': 'Fresh shrimp, fish & premium seafood at\nunbeatable prices.',
-      'image': 'assets/images/logowithoutback.png',
-      'layout': 'standard', // title top, image center
+      'image': 'assets/images/shrimpbite_logo.png',
+      'layout': 'standard',
     },
     {
       'title': 'Premium Quality\nFarm Fresh',
@@ -106,12 +106,36 @@ class _OnboardingPageState extends State<OnboardingPage> {
 
   // ─── Layout 1: Standard (title top, logo center) ──────────────────────────
   Widget _buildStandardLayout(Map<String, dynamic> page) {
+    final isBrandPage = page['title'].toString().contains('Shrimpbite');
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(24, 32, 24, 120),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (isBrandPage) ...[
+              Row(
+                children: [
+                  Image.asset(
+                    'assets/images/shrimpbite_logo.png',
+                    width: 36,
+                    height: 36,
+                    fit: BoxFit.contain,
+                  ),
+                  const SizedBox(width: 10),
+                  const Text(
+                    'Shrimpbite',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFFE85C1A),
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+            ],
             Text(
               page['title'],
               style: const TextStyle(

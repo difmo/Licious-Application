@@ -104,7 +104,7 @@ class _GoogleProfilePageState extends State<GoogleProfilePage> {
                       Text(
                         account.email,
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.85),
+                          color: Colors.white.withValues(alpha: 0.04),
                           fontSize: 14,
                         ),
                       ),
@@ -276,7 +276,7 @@ class _SectionCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(14),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.3),
+                color: Colors.black.withValues(alpha: 0.04),
                 blurRadius: 15,
                 spreadRadius: 0,
                 offset: const Offset(0, 8),

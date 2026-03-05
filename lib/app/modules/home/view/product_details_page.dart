@@ -41,7 +41,7 @@ class ProductDetailsPage extends StatelessWidget {
                 leading: Padding(
                   padding: const EdgeInsets.only(left: 16),
                   child: CircleAvatar(
-                    backgroundColor: Colors.white.withValues(alpha: 0.9),
+                    backgroundColor: Colors.white.withValues(alpha: 0.04),
                     child: IconButton(
                       icon: const Icon(Icons.arrow_back, color: Colors.black87),
                       onPressed: () => Navigator.pop(context),
@@ -52,7 +52,7 @@ class ProductDetailsPage extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.only(right: 16),
                     child: CircleAvatar(
-                      backgroundColor: Colors.white.withValues(alpha: 0.9),
+                      backgroundColor: Colors.white.withValues(alpha: 0.04),
                       child: IconButton(
                         icon: Icon(
                           product.isFavorite
@@ -218,10 +218,10 @@ class ProductDetailsPage extends StatelessWidget {
                 color: Colors.white,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.3),
+                    color: Colors.black.withValues(alpha: 0.01),
                     blurRadius: 15,
                     spreadRadius: 0,
-                    offset: const Offset(0, -8),
+                    offset: const Offset(0, -1),
                   ),
                 ],
               ),

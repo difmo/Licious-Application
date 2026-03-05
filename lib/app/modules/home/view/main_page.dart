@@ -80,7 +80,7 @@ class _MainPageState extends State<MainPage> {
               color: Colors.black.withValues(alpha: 0.3),
               blurRadius: 15,
               spreadRadius: 0,
-              offset: const Offset(0, 8),
+              offset: const Offset(0, 1),
             ),
           ],
         ),
@@ -89,7 +89,7 @@ class _MainPageState extends State<MainPage> {
             Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: const Color(0xFF68B92E).withValues(alpha: 0.2),
+                color: const Color(0xFF68B92E).withValues(alpha: 0.04),
                 shape: BoxShape.circle,
               ),
               child: const Icon(
@@ -147,15 +147,15 @@ class _MainPageState extends State<MainPage> {
   Widget _buildCustomBottomBar() {
     bool isCartSelected = _controller.currentIndex == 2;
     return Container(
-      height: 100,
+      height: 105,
       decoration: const BoxDecoration(color: Colors.transparent),
       child: Stack(
         alignment: Alignment.bottomCenter,
         children: [
           // Background Bar
           Container(
-            height: 70,
-            margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+            height: 68,
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             decoration: BoxDecoration(
               color: const Color(0xFFEBFFD7),
               borderRadius: BorderRadius.circular(35),
@@ -164,7 +164,7 @@ class _MainPageState extends State<MainPage> {
                   color: Colors.black.withValues(alpha: 0.3),
                   blurRadius: 15,
                   spreadRadius: 0,
-                  offset: const Offset(0, 8),
+                  offset: const Offset(0, 1),
                 ),
               ],
             ),
@@ -181,7 +181,7 @@ class _MainPageState extends State<MainPage> {
           ),
           // Central FAB (Cart)
           Positioned(
-            top: 5,
+            top: 2,
             child: GestureDetector(
               onTap: () => _controller.changePage(2),
               child: Container(
@@ -192,16 +192,16 @@ class _MainPageState extends State<MainPage> {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.3),
+                      color: Colors.black.withValues(alpha: 0.01),
                       blurRadius: 15,
                       spreadRadius: 0,
-                      offset: const Offset(0, 8),
+                      offset: const Offset(0, 1),
                     ),
                   ],
                   border: Border.all(
                     color: isCartSelected
                         ? const Color(0xFF68B92E)
-                        : const Color(0xFF68B92E).withValues(alpha: 0.2),
+                        : const Color(0xFF68B92E).withValues(alpha: 0.04),
                     width: 2,
                   ),
                 ),

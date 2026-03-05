@@ -90,85 +90,48 @@ class WelcomePage extends StatelessWidget {
         physics: const BouncingScrollPhysics(),
         child: Column(
           children: [
-            // ── Full-bleed image ──
-            Stack(
-              children: [
-                SizedBox(
-                  height: screenHeight * 0.52,
-                  width: double.infinity,
-                  child: Image.asset(
-                    'assets/images/liciousimage.jpeg',
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Container(
-                      color: Colors.grey.shade300,
-                      child: const Icon(
-                        Icons.image_not_supported,
-                        size: 60,
-                        color: Colors.grey,
-                      ),
+            // ── Branded logo hero section ──
+            Container(
+              height: screenHeight * 0.42,
+              width: double.infinity,
+              decoration: const BoxDecoration(color: Color(0xFFFFF4EE)),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Logo
+                  Image.asset(
+                    'assets/images/shrimpbite_logo.png',
+                    width: 140,
+                    height: 140,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) => const Icon(
+                      Icons.image_not_supported,
+                      size: 80,
+                      color: Colors.grey,
                     ),
                   ),
-                ),
-                Positioned.fill(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.center,
-                        colors: [
-                          Colors.black.withValues(alpha: 0.45),
-                          Colors.transparent,
-                        ],
-                      ),
+                  const SizedBox(height: 16),
+                  // App name
+                  const Text(
+                    'Shrimpbite',
+                    style: TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFFE85C1A),
+                      letterSpacing: -1,
                     ),
                   ),
-                ),
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  child: SafeArea(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      child: Row(
-                        children: [
-                          GestureDetector(
-                            onTap: () => Navigator.pop(context),
-                            child: Container(
-                              width: 36,
-                              height: 36,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.2),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.arrow_back,
-                                color: Colors.white,
-                                size: 20,
-                              ),
-                            ),
-                          ),
-                          const Expanded(
-                            child: Text(
-                              'Welcome',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 36),
-                        ],
-                      ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Fresh Seafood, Delivered Fast 🦐',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey.shade500,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
 
             // ── White card ──
@@ -184,16 +147,16 @@ class WelcomePage extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Welcome',
+                    'Welcome to Shrimpbite',
                     style: TextStyle(
-                      fontSize: 28,
+                      fontSize: 26,
                       fontWeight: FontWeight.w800,
                       color: Color(0xFF1A1A1A),
                     ),
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Lorem ipsum dolor sit amet, consetetur\nsadipscing elitr, sed diam nonumy',
+                    'Order fresh shrimp, prawns & premium seafood — delivered straight to your door.',
                     style: TextStyle(
                       fontSize: 14,
                       color: Color(0xFF999999),

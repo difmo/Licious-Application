@@ -17,67 +17,80 @@ class CategoryCircles extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Categories',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1A1A1A),
-                ),
-              ),
-            ],
+          padding: EdgeInsets.fromLTRB(16, 8, 16, 12),
+          child: Text(
+            'Categories',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1A1A1A),
+            ),
           ),
         ),
-        // Distributed Categories Row
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: categories
-                .map((category) => _buildCategoryItem(category))
-                .toList(),
+
+        SizedBox(
+          height: 106,
+          child: ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            scrollDirection: Axis.horizontal,
+            itemCount: categories.length,
+            separatorBuilder: (context, index) => const SizedBox(width: 24),
+            itemBuilder: (context, index) {
+              return _buildCategoryItem(categories[index]);
+            },
           ),
         ),
+
+        const SizedBox(height: 4),
       ],
     );
   }
 
   Widget _buildCategoryItem(FoodCategory category) {
+    const double size = 62.0;
     return GestureDetector(
       onTap: () => onCategorySelected(category.name),
       behavior: HitTestBehavior.opaque,
-      child: Column(
-        children: [
-          Container(
-            width: 70,
-            height: 70,
-            decoration: BoxDecoration(
-              color: Color(category.colorValue),
-              shape: BoxShape.circle,
-            ),
-            child: ClipOval(
-              child: Image.asset(
-                category.image,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) =>
-                    const Icon(Icons.category, size: 32, color: Colors.grey),
+      child: SizedBox(
+        width: 76,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: size,
+              height: size,
+              decoration: BoxDecoration(
+                color: Color(category.colorValue),
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.grey.shade200, width: 1.5),
+              ),
+              child: ClipOval(
+                child: Image.asset(
+                  category.image,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Icon(
+                    Icons.category,
+                    size: size * 0.45,
+                    color: Colors.grey,
+                  ),
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            category.name,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w400,
-              color: Colors.grey.shade600,
+            const SizedBox(height: 6),
+            Text(
+              category.name,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey.shade700,
+                height: 1.2,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

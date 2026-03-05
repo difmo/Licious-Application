@@ -121,14 +121,7 @@ class _HomeHeaderState extends State<HomeHeader> {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.3),
-                        blurRadius: 15,
-                        spreadRadius: 0,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
+                    border: Border.all(color: Colors.grey.shade200, width: 1.5),
                   ),
                   child: TextField(
                     decoration: InputDecoration(
@@ -180,7 +173,7 @@ class _HomeHeaderState extends State<HomeHeader> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.03)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
