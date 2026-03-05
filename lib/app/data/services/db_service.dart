@@ -31,6 +31,12 @@ class CartProvider extends ChangeNotifier {
       image: 'assets/images/shrimp_cooked_duo.png',
       colorValue: 0xFFF3E5F5, // Light Purple
     ),
+    FoodCategory(
+      id: '5',
+      name: 'Subscription',
+      image: 'assets/images/subscription_badge.png',
+      colorValue: 0xFFE3F2FD, // Light Blue
+    ),
   ];
 
   final List<Restaurant> _restaurants = const [

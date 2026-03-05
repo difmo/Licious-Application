@@ -8,6 +8,7 @@ class CommonButton extends StatelessWidget {
   final double borderRadius;
   final double height;
   final Widget? icon;
+  final bool isLoading;
 
   const CommonButton({
     super.key,
@@ -18,6 +19,7 @@ class CommonButton extends StatelessWidget {
     this.borderRadius = 8.0,
     this.height = 54.0,
     this.icon,
+    this.isLoading = false,
   });
 
   @override
@@ -32,32 +34,40 @@ class CommonButton extends StatelessWidget {
       padding: icon != null ? const EdgeInsets.symmetric(vertical: 16) : null,
     );
 
-    if (icon != null) {
-      return SizedBox(
-        width: double.infinity,
-        height: height,
-        child: ElevatedButton.icon(
-          style: style,
-          onPressed: onPressed,
-          icon: icon!,
-          label: Text(
-            text,
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-          ),
-        ),
-      );
-    }
+    final widgetContent = isLoading
+        ? SizedBox(
+            height: 20,
+            width: 20,
+            child: CircularProgressIndicator(
+              color: textColor,
+              strokeWidth: 2,
+            ),
+          )
+        : Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                icon!,
+                const SizedBox(width: 8),
+              ],
+              Text(
+                text,
+                style: TextStyle(
+                  fontSize: icon != null ? 15 : 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          );
 
     return SizedBox(
       width: double.infinity,
       height: height,
       child: ElevatedButton(
         style: style,
-        onPressed: onPressed,
-        child: Text(
-          text,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-        ),
+        onPressed: isLoading ? null : onPressed,
+        child: widgetContent,
       ),
     );
   }

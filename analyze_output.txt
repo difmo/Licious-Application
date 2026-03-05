@@ -1,17 +1,6 @@
-Resolving dependencies...
-Downloading packages...
-  meta 1.17.0 (1.18.1 available)
-Got dependencies!
-1 package has newer versions incompatible with dependency constraints.
-Try `flutter pub outdated` for more information.
-Analyzing licius_application...                                 
+Analyzing Shrimpbite...                                         
 
-   info - The 'child' argument should be last in widget constructor invocations - lib\ui\screens\home_screen.dart:153:9 - sort_child_properties_last
-   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\ui\screens\home_screen.dart:221:33 - deprecated_member_use
-   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\ui\screens\login_screen.dart:72:47 - deprecated_member_use
-   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\ui\screens\login_screen.dart:97:47 - deprecated_member_use
-   info - 'activeColor' is deprecated and shouldn't be used. Use activeThumbColor instead. This feature was deprecated after v3.31.0-2.0.pre - lib\ui\screens\login_screen.dart:140:29 - deprecated_member_use
-   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\ui\screens\signup_screen.dart:83:47 - deprecated_member_use
-   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\ui\screens\signup_screen.dart:108:47 - deprecated_member_use
-   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\ui\screens\signup_screen.dart:134:47 - deprecated_member_use
+   info - Statements in a for should be enclosed in a block - lib\app\modules\auth\otp_verification_page.dart:35:33 - curly_braces_in_flow_control_structures
+   info - Statements in a for should be enclosed in a block - lib\app\modules\auth\otp_verification_page.dart:36:32 - curly_braces_in_flow_control_structures
+   info - Statements in a for should be enclosed in a block - lib\app\modules\auth\otp_verification_page.dart:46:35 - curly_braces_in_flow_control_structures
 

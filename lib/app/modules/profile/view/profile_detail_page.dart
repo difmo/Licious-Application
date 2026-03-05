@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../data/services/db_service.dart';
+import '../../../data/services/subscription_service.dart';
+import '../../../data/models/subscription_model.dart';
 
 class ProfileDetailPage extends StatefulWidget {
   final String title;
@@ -14,6 +16,40 @@ class _ProfileDetailPageState extends State<ProfileDetailPage> {
   int? _expandedOrderIndex = 0; // Default first one expanded as in Image 3
   bool _makeDefaultAddress = true;
   bool _makeDefaultCard = true;
+
+  // ── Subscriptions state ───────────────────────────────────────────────────
+  final SubscriptionService _subscriptionService = SubscriptionService();
+  List<SubscriptionPlan> _subscriptionPlans = [];
+  bool _subscriptionsLoading = false;
+  String? _subscriptionsError;
+  String? _selectedPlanId;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.title == 'Subscriptions') {
+      _loadSubscriptions();
+    }
+  }
+
+  Future<void> _loadSubscriptions() async {
+    setState(() {
+      _subscriptionsLoading = true;
+      _subscriptionsError = null;
+    });
+    try {
+      final plans = await _subscriptionService.getSubscriptions();
+      setState(() {
+        _subscriptionPlans = plans;
+        _subscriptionsLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _subscriptionsError = e.toString().replaceFirst('ApiException(null): ', '');
+        _subscriptionsLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -72,6 +108,8 @@ class _ProfileDetailPageState extends State<ProfileDetailPage> {
         return _buildOrdersDetail(provider);
       case 'My Favorites':
         return _buildFavoritesDetail(provider);
+      case 'Subscriptions':
+        return _buildSubscriptionsDetail();
       case 'Transactions':
         return _buildTransactionsDetail();
       case 'Notifications':
@@ -1026,6 +1064,388 @@ class _ProfileDetailPageState extends State<ProfileDetailPage> {
         const SizedBox(height: 40),
         _buildSaveButton('Save settings'),
       ],
+    );
+  }
+
+  // ── SUBSCRIPTIONS DESIGN ───────────────────────────────────────────────────
+  Widget _buildSubscriptionsDetail() {
+    if (_subscriptionsLoading) {
+      return const SizedBox(
+        height: 300,
+        child: Center(
+          child: CircularProgressIndicator(
+            color: Color(0xFF439462),
+          ),
+        ),
+      );
+    }
+
+    if (_subscriptionsError != null) {
+      return SizedBox(
+        height: 300,
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, color: Colors.redAccent, size: 48),
+              const SizedBox(height: 12),
+              Text(
+                _subscriptionsError!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.grey, fontSize: 14),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: _loadSubscriptions,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Retry'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF439462),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_subscriptionPlans.isEmpty) {
+      return const SizedBox(
+        height: 300,
+        child: Center(
+          child: Text(
+            'No subscription plans available.',
+            style: TextStyle(color: Colors.grey, fontSize: 15),
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF1B4332), Color(0xFF439462)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF439462).withValues(alpha: 0.32),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.card_membership_outlined,
+                  color: Colors.white,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(width: 16),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Choose Your Plan',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Unlock exclusive shrimp benefits',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+
+        // Plan cards
+        ..._subscriptionPlans.map((plan) => _buildSubscriptionCard(plan)),
+        const SizedBox(height: 20),
+      ],
+    );
+  }
+
+  Widget _buildSubscriptionCard(SubscriptionPlan plan) {
+    final isSelected = _selectedPlanId == plan.id;
+    final isSilver = plan.name.toLowerCase().contains('silver');
+    final planColor = isSilver ? const Color(0xFF2979FF) : const Color(0xFFFF6D00);
+    final planGradient = isSilver
+        ? const LinearGradient(
+            colors: [Color(0xFF1565C0), Color(0xFF42A5F5)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          )
+        : const LinearGradient(
+            colors: [Color(0xFFE65100), Color(0xFFFFB74D)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          );
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isSelected ? planColor : Colors.transparent,
+          width: 2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: planColor.withValues(alpha: isSelected ? 0.22 : 0.10),
+            blurRadius: 18,
+            spreadRadius: 0,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Plan header gradient strip
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+            decoration: BoxDecoration(
+              gradient: planGradient,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(18),
+                topRight: Radius.circular(18),
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        plan.name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            '₹${plan.price}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 28,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: Text(
+                              '/${plan.billingCycle}',
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                if (plan.badge != null && plan.badge!.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      plan.badge!,
+                      style: TextStyle(
+                        color: planColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Description
+                Text(
+                  plan.description,
+                  style: const TextStyle(
+                    color: Color(0xFF6B7280),
+                    fontSize: 13,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                // Highlights row
+                Row(
+                  children: [
+                    _buildHighlightChip(
+                      Icons.discount_outlined,
+                      '${plan.discountPercentage}% off',
+                      planColor,
+                    ),
+                    const SizedBox(width: 8),
+                    _buildHighlightChip(
+                      Icons.shopping_bag_outlined,
+                      'Up to ${plan.maxOrderQuantity}kg',
+                      planColor,
+                    ),
+                    if (plan.priorityDelivery) ...
+                      [
+                        const SizedBox(width: 8),
+                        _buildHighlightChip(
+                          Icons.bolt,
+                          'Priority',
+                          planColor,
+                        ),
+                      ],
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Features
+                ...plan.features.map(
+                  (f) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 20,
+                          height: 20,
+                          decoration: BoxDecoration(
+                            color: planColor.withValues(alpha: 0.12),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.check,
+                            color: planColor,
+                            size: 13,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            f,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFF374151),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+
+                // Select button
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      setState(() => _selectedPlanId = plan.id);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor:
+                          isSelected ? planColor : planColor.withValues(alpha: 0.12),
+                      foregroundColor:
+                          isSelected ? Colors.white : planColor,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(
+                          color: planColor,
+                          width: isSelected ? 0 : 1.5,
+                        ),
+                      ),
+                    ),
+                    child: Text(
+                      isSelected ? 'Selected ✓' : 'Select ${plan.name.split(' ').first} Plan',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHighlightChip(IconData icon, String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

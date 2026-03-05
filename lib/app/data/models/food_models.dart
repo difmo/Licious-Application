@@ -12,6 +12,16 @@ class FoodCategory {
     this.colorValue = 0xFFF7F8FA,
     this.iconPath,
   });
+
+  factory FoodCategory.fromJson(Map<String, dynamic> json) {
+    return FoodCategory(
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      image: json['image']?.toString() ?? '',
+      colorValue: json['colorValue'] != null ? int.tryParse(json['colorValue'].toString()) ?? 0xFFF7F8FA : 0xFFF7F8FA,
+      iconPath: json['iconPath']?.toString(),
+    );
+  }
 }
 
 class Restaurant {
@@ -138,4 +148,19 @@ class Product {
     this.description = '',
     this.whyChoose = const [],
   });
+
+  factory Product.fromJson(Map<String, dynamic> json) {
+    return Product(
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      image: json['image']?.toString() ?? '',
+      price: double.tryParse(json['price']?.toString() ?? '0') ?? 0.0,
+      weight: json['weight']?.toString() ?? '',
+      category: json['category']?.toString() ?? '',
+      badgeText: json['badgeText']?.toString() ?? '',
+      isFavorite: json['isFavorite'] == true || json['isFavorite'] == 'true',
+      description: json['description']?.toString() ?? '',
+      whyChoose: (json['whyChoose'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? const [],
+    );
+  }
 }

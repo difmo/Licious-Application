@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../../data/models/food_models.dart';
+import '../../../widgets/bounce_widget.dart';
 
 class CategoryCircles extends StatelessWidget {
   final List<FoodCategory> categories;
@@ -31,14 +33,16 @@ class CategoryCircles extends StatelessWidget {
               ),
             ],
           ),
-        ),
+        ).animate().fadeIn(duration: 400.ms).slideX(begin: -0.1, duration: 400.ms),
         // Distributed Categories Row
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: categories
-                .map((category) => _buildCategoryItem(category))
+                .asMap()
+                .entries
+                .map((entry) => _buildCategoryItem(entry.value, entry.key))
                 .toList(),
           ),
         ),
@@ -46,10 +50,9 @@ class CategoryCircles extends StatelessWidget {
     );
   }
 
-  Widget _buildCategoryItem(FoodCategory category) {
-    return GestureDetector(
+  Widget _buildCategoryItem(FoodCategory category, int index) {
+    return BounceWidget(
       onTap: () => onCategorySelected(category.name),
-      behavior: HitTestBehavior.opaque,
       child: Column(
         children: [
           Container(
@@ -79,6 +82,6 @@ class CategoryCircles extends StatelessWidget {
           ),
         ],
       ),
-    );
+    ).animate(delay: (50 * index).ms).scale(duration: 400.ms, curve: Curves.easeOutBack).fadeIn(duration: 400.ms);
   }
 }

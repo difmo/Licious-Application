@@ -70,6 +70,11 @@ class ProfilePage extends StatelessWidget {
                   onTap: () => _navigateToDetail(context, 'My Favorites'),
                 ),
                 SettingsItem(
+                  icon: Icons.card_membership_outlined,
+                  title: 'Subscriptions',
+                  onTap: () => _navigateToDetail(context, 'Subscriptions'),
+                ),
+                SettingsItem(
                   icon: Icons.location_on_outlined,
                   title: 'My Address',
                   onTap: () => _navigateToDetail(context, 'My Address'),

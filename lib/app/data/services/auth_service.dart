@@ -1,82 +1,168 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 import '../models/auth_models.dart';
+import '../network/api_client.dart';
 
+/// Service layer for authentication.
+///
+/// Uses [ApiClient] for raw HTTP and returns typed [AuthResponseModel] objects.
+/// All network errors are caught here and surfaced via [AuthResponseModel.success] == false.
 class AuthService {
-  static const String baseUrl = 'https://shrimpbite-backend.vercel.app/api/app';
+  final ApiClient _client;
 
+  AuthService({ApiClient? client}) : _client = client ?? ApiClient();
+
+  // ── Register ──────────────────────────────────────────────────────────────
   Future<AuthResponseModel> register({
     required String fullName,
-    required String username,
     required String email,
     required String phoneNumber,
     required String password,
     required String confirmPassword,
   }) async {
-    final url = Uri.parse('$baseUrl/register');
-
     try {
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
+      final data = await _client.post(
+        '${ApiClient.baseUrl}/register',
+        data: {
           'fullName': fullName,
-          'username': username,
           'email': email,
           'phoneNumber': phoneNumber,
           'password': password,
           'confirmPassword': confirmPassword,
-        }),
+        },
       );
-
-      final decodedData = jsonDecode(response.body);
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        return AuthResponseModel.fromJson(decodedData);
-      } else {
-        // Handle error responses from the server
-        return AuthResponseModel(
-          success: false,
-          message: decodedData['message'] ?? 'Registration failed',
-        );
-      }
+      return AuthResponseModel.fromJson(data);
+    } on ApiException catch (e) {
+      return AuthResponseModel(success: false, message: e.message);
     } catch (e) {
-      // Handle network or parsing errors
       return AuthResponseModel(
-        success: false,
-        message: 'Network error: ${e.toString()}',
-      );
+          success: false, message: 'Unexpected error: ${e.toString()}');
     }
   }
 
+  // ── Login (phone + password) ───────────────────────────────────────────────
   Future<AuthResponseModel> login({
-    required String identifier,
+    required String phoneNumber,
     required String password,
   }) async {
-    final url = Uri.parse('$baseUrl/login');
-
     try {
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'identifier': identifier, 'password': password}),
+      final data = await _client.post(
+        '${ApiClient.baseUrl}/login',
+        data: {'phoneNumber': phoneNumber, 'password': password},
       );
-
-      final decodedData = jsonDecode(response.body);
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        return AuthResponseModel.fromJson(decodedData);
-      } else {
-        return AuthResponseModel(
-          success: false,
-          message: decodedData['message'] ?? 'Login failed',
-        );
+      final response = AuthResponseModel.fromJson(data);
+      // Persist token for future authenticated requests
+      if (response.success && response.token != null) {
+        await ApiClient.saveToken(response.token!);
       }
+      return response;
+    } on ApiException catch (e) {
+      return AuthResponseModel(success: false, message: e.message);
     } catch (e) {
       return AuthResponseModel(
-        success: false,
-        message: 'Network error: ${e.toString()}',
-      );
+          success: false, message: 'Unexpected error: ${e.toString()}');
     }
+  }
+
+  // ── Send / Resend OTP ─────────────────────────────────────────────────────
+  Future<AuthResponseModel> sendOtp({required String phoneNumber}) async {
+    try {
+      final data = await _client.post(
+        '${ApiClient.otpBaseUrl}/send',
+        data: {'phoneNumber': phoneNumber},
+      );
+      return AuthResponseModel.fromJson(data);
+    } on ApiException catch (e) {
+      return AuthResponseModel(success: false, message: e.message);
+    } catch (e) {
+      return AuthResponseModel(
+          success: false, message: 'Unexpected error: ${e.toString()}');
+    }
+  }
+
+  Future<AuthResponseModel> resendOtp({required String phoneNumber}) async {
+    // Usually the same as sendOtp, but explicitly named for clarity in UI
+    return sendOtp(phoneNumber: phoneNumber);
+  }
+
+  // ── Verify OTP ────────────────────────────────────────────────────────────
+  Future<AuthResponseModel> verifyOtp({
+    required String phoneNumber,
+    required String otp,
+  }) async {
+    try {
+      final data = await _client.post(
+        '${ApiClient.otpBaseUrl}/verify',
+        data: {'phoneNumber': phoneNumber, 'otp': otp},
+      );
+      return AuthResponseModel.fromJson(data);
+    } on ApiException catch (e) {
+      return AuthResponseModel(success: false, message: e.message);
+    } catch (e) {
+      return AuthResponseModel(
+          success: false, message: 'Unexpected error: ${e.toString()}');
+    }
+  }
+
+  // ── Forgot / Reset Password ───────────────────────────────────────────────
+  Future<AuthResponseModel> forgotPassword({
+    required String phoneNumber,
+  }) async {
+    try {
+      // NOTE: UI currently uses email, but service uses phoneNumber.
+      // Unified to phoneNumber to match backend expectations from previous integrations.
+      final data = await _client.post(
+        '${ApiClient.baseUrl}/forgot-password',
+        data: {'phoneNumber': phoneNumber},
+      );
+      return AuthResponseModel.fromJson(data);
+    } on ApiException catch (e) {
+      return AuthResponseModel(success: false, message: e.message);
+    } catch (e) {
+      return AuthResponseModel(
+          success: false, message: 'Unexpected error: ${e.toString()}');
+    }
+  }
+
+  Future<AuthResponseModel> resetPassword({
+    required String phoneNumber,
+    required String otp,
+    required String newPassword,
+  }) async {
+    try {
+      final data = await _client.post(
+        '${ApiClient.baseUrl}/reset-password',
+        data: {
+          'phoneNumber': phoneNumber,
+          'otp': otp,
+          'password': newPassword,
+        },
+      );
+      return AuthResponseModel.fromJson(data);
+    } on ApiException catch (e) {
+      return AuthResponseModel(success: false, message: e.message);
+    } catch (e) {
+      return AuthResponseModel(
+          success: false, message: 'Unexpected error: ${e.toString()}');
+    }
+  }
+
+  // ── Profile ───────────────────────────────────────────────────────────────
+  Future<AuthResponseModel> getProfile() async {
+    try {
+      final data = await _client.get(
+        '${ApiClient.baseUrl}/profile',
+        requiresAuth: true,
+      );
+      return AuthResponseModel.fromJson(data);
+    } on ApiException catch (e) {
+      return AuthResponseModel(success: false, message: e.message);
+    } catch (e) {
+      return AuthResponseModel(
+          success: false, message: 'Unexpected error: ${e.toString()}');
+    }
+  }
+
+  // ── Logout ────────────────────────────────────────────────────────────────
+  Future<void> logout() async {
+    await ApiClient.clearToken();
   }
 }

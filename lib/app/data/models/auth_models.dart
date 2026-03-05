@@ -2,23 +2,20 @@ class UserModel {
   final String id;
   final String fullName;
   final String email;
-  final String username;
   final String phoneNumber;
 
   UserModel({
     required this.id,
     required this.fullName,
     required this.email,
-    required this.username,
     required this.phoneNumber,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
-      id: json['id'] ?? '',
+      id: json['_id'] ?? json['id'] ?? '',
       fullName: json['fullName'] ?? '',
       email: json['email'] ?? '',
-      username: json['username'] ?? '',
       phoneNumber: json['phoneNumber'] ?? '',
     );
   }
@@ -28,7 +25,6 @@ class UserModel {
       'id': id,
       'fullName': fullName,
       'email': email,
-      'username': username,
       'phoneNumber': phoneNumber,
     };
   }
@@ -39,12 +35,14 @@ class AuthResponseModel {
   final String message;
   final String? token;
   final UserModel? data;
+  final String? otp; // returned by /api/otp/send in dev/dummy mode
 
   AuthResponseModel({
     required this.success,
     required this.message,
     this.token,
     this.data,
+    this.otp,
   });
 
   factory AuthResponseModel.fromJson(Map<String, dynamic> json) {
@@ -52,7 +50,10 @@ class AuthResponseModel {
       success: json['success'] ?? false,
       message: json['message'] ?? '',
       token: json['token'],
-      data: json['data'] != null ? UserModel.fromJson(json['data']) : null,
+      otp: json['otp']?.toString(),
+      data: json['data'] is Map<String, dynamic>
+          ? UserModel.fromJson(json['data'] as Map<String, dynamic>)
+          : null,
     );
   }
 }

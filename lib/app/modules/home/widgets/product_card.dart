@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../../data/models/food_models.dart';
 import '../../../data/services/db_service.dart';
 import '../../../data/models/product_model.dart';
 import '../view/product_details_page.dart';
+import '../../../widgets/bounce_widget.dart';
 
 class ProductCard extends StatelessWidget {
   final Product product;
@@ -33,7 +35,7 @@ class ProductCard extends StatelessWidget {
     );
     final isInCart = cartItem.quantity > 0;
 
-    return GestureDetector(
+    return BounceWidget(
       onTap: () {
         Navigator.push(
           context,
@@ -124,8 +126,9 @@ class ProductCard extends StatelessWidget {
                           ),
                           // Dynamic Cart Controls
                           if (!isInCart)
-                            GestureDetector(
+                            BounceWidget(
                               onTap: onAdd,
+                              scaleFactor: 0.9,
                               child: Container(
                                 padding: const EdgeInsets.all(6),
                                 decoration: BoxDecoration(
@@ -155,8 +158,9 @@ class ProductCard extends StatelessWidget {
                               ),
                               child: Row(
                                 children: [
-                                  GestureDetector(
+                                  BounceWidget(
                                     onTap: () => cart.decrement(product.name),
+                                    scaleFactor: 0.8,
                                     child: const Icon(
                                       Icons.remove,
                                       size: 14,
@@ -173,8 +177,9 @@ class ProductCard extends StatelessWidget {
                                     ),
                                   ),
                                   const SizedBox(width: 6),
-                                  GestureDetector(
+                                  BounceWidget(
                                     onTap: () => cart.increment(product.name),
+                                    scaleFactor: 0.8,
                                     child: const Icon(
                                       Icons.add,
                                       size: 14,
@@ -221,8 +226,9 @@ class ProductCard extends StatelessWidget {
             Positioned(
               top: 8,
               right: 8,
-              child: GestureDetector(
+              child: BounceWidget(
                 onTap: onFavorite,
+                scaleFactor: 0.8,
                 child: Container(
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
@@ -240,6 +246,6 @@ class ProductCard extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.05, end: 0, duration: 400.ms, curve: Curves.easeOutQuad);
   }
 }

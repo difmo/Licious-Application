@@ -1,22 +1,66 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'provider/auth_provider.dart';
 import 'widgets/input_field.dart';
 
-class ForgotPasswordPage extends StatefulWidget {
+class ForgotPasswordPage extends ConsumerStatefulWidget {
   const ForgotPasswordPage({super.key});
 
   @override
-  State<ForgotPasswordPage> createState() => _ForgotPasswordPageState();
+  ConsumerState<ForgotPasswordPage> createState() => _ForgotPasswordPageState();
 }
 
-class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
-  bool _emailSent = false;
+class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
+  final _phoneController = TextEditingController();
+  bool _otpSent = false;
 
-  void _sendResetLink() {
-    setState(() => _emailSent = true);
+  @override
+  void dispose() {
+    _phoneController.dispose();
+    super.dispose();
+  }
+
+  void _showSnackBar(String message, {Color backgroundColor = Colors.black87}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message, style: const TextStyle(fontWeight: FontWeight.w500)),
+        backgroundColor: backgroundColor,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  Future<void> _sendResetOtp() async {
+    final phone = _phoneController.text.trim();
+    if (phone.isEmpty) {
+      _showSnackBar('Please enter your phone number',
+          backgroundColor: Colors.orange.shade700);
+      return;
+    }
+
+    await ref.read(authProvider.notifier).forgotPassword(phoneNumber: phone);
+
+    if (!mounted) return;
+
+    final authState = ref.read(authProvider);
+    if (authState is AuthSuccess) {
+      setState(() => _otpSent = true);
+      _showSnackBar(authState.message, backgroundColor: Colors.green.shade600);
+      ref.read(authProvider.notifier).reset();
+    } else if (authState is AuthError) {
+      _showSnackBar(authState.message, backgroundColor: Colors.red);
+      ref.read(authProvider.notifier).reset();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final authState = ref.watch(authProvider);
+    final isLoading = authState is AuthLoading;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SingleChildScrollView(
@@ -50,7 +94,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                         colors: [
-                          Colors.black.withValues(alpha: 0.3),
+                          Colors.black.withOpacity(0.3),
                           Colors.transparent,
                         ],
                       ),
@@ -67,7 +111,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                       width: 38,
                       height: 38,
                       decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.3),
+                        color: Colors.black.withOpacity(0.3),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
@@ -85,7 +129,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
             Container(
               color: Colors.white,
               padding: const EdgeInsets.fromLTRB(24, 32, 24, 40),
-              child: _emailSent ? _buildSuccessState() : _buildFormState(),
+              child: _otpSent ? _buildSuccessState() : _buildFormState(isLoading),
             ),
           ],
         ),
@@ -94,7 +138,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   }
 
   // ── Form state ──────────────────────────────────────────────────────────
-  Widget _buildFormState() {
+  Widget _buildFormState(bool isLoading) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -124,17 +168,18 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         ),
         const SizedBox(height: 8),
         const Text(
-          'No worries! Enter your registered email address and we\'ll send you a password reset link.',
+          'No worries! Enter your registered phone number and we\'ll send you a verification code to reset your password.',
           style: TextStyle(fontSize: 14, color: Color(0xFF999999), height: 1.6),
         ),
         const SizedBox(height: 32),
 
-        // Email input
-        const InputField(
-          label: 'Email Address',
-          hintText: 'Enter your registered email',
-          prefixIcon: Icons.email_outlined,
-          keyboardType: TextInputType.emailAddress,
+        // Phone input
+        InputField(
+          controller: _phoneController,
+          label: 'Phone Number',
+          hintText: 'Enter your registered phone number',
+          prefixIcon: Icons.phone_outlined,
+          keyboardType: TextInputType.phone,
         ),
         const SizedBox(height: 32),
 
@@ -143,7 +188,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           width: double.infinity,
           height: 54,
           child: ElevatedButton(
-            onPressed: _sendResetLink,
+            onPressed: isLoading ? null : _sendResetOtp,
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF2E7D32),
               foregroundColor: Colors.white,
@@ -152,10 +197,16 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            child: const Text(
-              'Send Reset Link',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-            ),
+            child: isLoading
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                        color: Colors.white, strokeWidth: 2))
+                : const Text(
+                    'Get Verification Code',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  ),
           ),
         ),
         const SizedBox(height: 24),
@@ -190,7 +241,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     );
   }
 
-  // ── Success state (after email sent) ──────────────────────────────────────
+  // ── Success state (after OTP sent) ──────────────────────────────────────
   Widget _buildSuccessState() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -199,8 +250,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         Container(
           width: 80,
           height: 80,
-          decoration: BoxDecoration(
-            color: const Color(0xFFE8F5E9),
+          decoration: const BoxDecoration(
+            color: Color(0xFFE8F5E9),
             shape: BoxShape.circle,
           ),
           child: const Icon(
@@ -211,7 +262,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         ),
         const SizedBox(height: 24),
         const Text(
-          'Check your email',
+          'Code Sent!',
           style: TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.w800,
@@ -220,18 +271,21 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         ),
         const SizedBox(height: 12),
         const Text(
-          'We\'ve sent a password reset link to your email address. Please check your inbox.',
+          'We\'ve sent a verification code to your phone number. Please enter it to reset your password.',
           textAlign: TextAlign.center,
           style: TextStyle(fontSize: 14, color: Color(0xFF999999), height: 1.6),
         ),
         const SizedBox(height: 36),
 
-        // Back to Login
+        // Go to OTP (Simulated for now, usually navigates to a ResetPasswordPage)
         SizedBox(
           width: double.infinity,
           height: 54,
           child: ElevatedButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              // Navigator.pushNamed(context, '/reset-password', arguments: {'phone': _phoneController.text});
+              _showSnackBar('Transitioning to Reset Password flow...');
+            },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF2E7D32),
               foregroundColor: Colors.white,
@@ -241,7 +295,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
               ),
             ),
             child: const Text(
-              'Back to Login',
+              'Reset Password',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
             ),
           ),
@@ -249,9 +303,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         const SizedBox(height: 20),
 
         GestureDetector(
-          onTap: () => setState(() => _emailSent = false),
+          onTap: () => setState(() => _otpSent = false),
           child: const Text(
-            'Resend email',
+            'Change number',
             style: TextStyle(
               fontSize: 14,
               color: Color(0xFF2E7D32),

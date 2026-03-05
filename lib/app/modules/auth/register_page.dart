@@ -1,26 +1,23 @@
 import 'package:flutter/material.dart';
-import '../../data/services/auth_service.dart';
-import '../../data/services/db_service.dart';
-import '../../data/models/food_models.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../widgets/common_button.dart';
+import 'provider/auth_provider.dart';
 import 'widgets/input_field.dart';
+import 'otp_verification_page.dart';
 
-class RegisterPage extends StatefulWidget {
+class RegisterPage extends ConsumerStatefulWidget {
   const RegisterPage({super.key});
 
   @override
-  State<RegisterPage> createState() => _RegisterPageState();
+  ConsumerState<RegisterPage> createState() => _RegisterPageState();
 }
 
-class _RegisterPageState extends State<RegisterPage> {
+class _RegisterPageState extends ConsumerState<RegisterPage> {
   final _fullNameController = TextEditingController();
-  final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-
-  final _authService = AuthService();
-  bool _isLoading = false;
 
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
@@ -28,7 +25,6 @@ class _RegisterPageState extends State<RegisterPage> {
   @override
   void dispose() {
     _fullNameController.dispose();
-    _usernameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
     _passwordController.dispose();
@@ -36,77 +32,80 @@ class _RegisterPageState extends State<RegisterPage> {
     super.dispose();
   }
 
-  void _register() async {
+  // ── Helper ────────────────────────────────────────────────────────────────
+
+  void _showSnackBar(String message, {Color backgroundColor = Colors.black87}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message, style: const TextStyle(fontWeight: FontWeight.w500)),
+        backgroundColor: backgroundColor,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  // ── Register action ───────────────────────────────────────────────────────
+
+  Future<void> _register() async {
     final fullName = _fullNameController.text.trim();
-    final username = _usernameController.text.trim();
     final email = _emailController.text.trim();
     final phone = _phoneController.text.trim();
     final password = _passwordController.text;
     final confirmPassword = _confirmPasswordController.text;
 
     if (fullName.isEmpty ||
-        username.isEmpty ||
         email.isEmpty ||
         phone.isEmpty ||
         password.isEmpty ||
         confirmPassword.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Please fill all fields')));
+      _showSnackBar('Please fill all fields',
+          backgroundColor: Colors.orange.shade700);
       return;
     }
 
     if (password != confirmPassword) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Passwords do not match')));
+      _showSnackBar('Passwords do not match', backgroundColor: Colors.red);
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
-
-    final response = await _authService.register(
-      fullName: fullName,
-      username: username,
-      email: email,
-      phoneNumber: phone,
-      password: password,
-      confirmPassword: confirmPassword,
-    );
+    // Trigger Riverpod register action
+    await ref.read(authProvider.notifier).register(
+          fullName: fullName,
+          email: email,
+          phoneNumber: phone,
+          password: password,
+          confirmPassword: confirmPassword,
+        );
 
     if (!mounted) return;
 
-    setState(() {
-      _isLoading = false;
-    });
+    final authState = ref.read(authProvider);
 
-    if (response.success) {
-      if (response.data != null) {
-        CartProviderScope.of(context).updateUserProfile(
-          UserProfile(
-            name: response.data!.fullName,
-            email: response.data!.email,
-            phone: response.data!.phoneNumber,
-            profileImage: 'assets/images/image copy 2.png',
-          ),
-        );
-      }
-
-      ScaffoldMessenger.of(
+    if (authState is AuthSuccess) {
+      _showSnackBar(authState.message, backgroundColor: Colors.green.shade600);
+      ref.read(authProvider.notifier).reset();
+      Navigator.pushReplacement(
         context,
-      ).showSnackBar(SnackBar(content: Text(response.message)));
-      Navigator.pushReplacementNamed(context, '/home');
-    } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(response.message)));
+        MaterialPageRoute(
+          builder: (_) => OtpVerificationPage(phoneNumber: phone),
+        ),
+      );
+    } else if (authState is AuthError) {
+      _showSnackBar(authState.message, backgroundColor: Colors.red);
+      ref.read(authProvider.notifier).reset();
     }
   }
 
+  // ── Build ─────────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
+    final authState = ref.watch(authProvider);
+    final isLoading = authState is AuthLoading;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SingleChildScrollView(
@@ -124,11 +123,8 @@ class _RegisterPageState extends State<RegisterPage> {
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) => Container(
                       color: Colors.grey.shade300,
-                      child: const Icon(
-                        Icons.image_not_supported,
-                        size: 50,
-                        color: Colors.grey,
-                      ),
+                      child: const Icon(Icons.image_not_supported,
+                          size: 50, color: Colors.grey),
                     ),
                   ),
                 ),
@@ -144,11 +140,8 @@ class _RegisterPageState extends State<RegisterPage> {
                         color: Colors.black.withValues(alpha: 0.3),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(
-                        Icons.arrow_back,
-                        color: Colors.white,
-                        size: 20,
-                      ),
+                      child: const Icon(Icons.arrow_back,
+                          color: Colors.white, size: 20),
                     ),
                   ),
                 ),
@@ -165,10 +158,9 @@ class _RegisterPageState extends State<RegisterPage> {
                   const Text(
                     'Create account',
                     style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black),
                   ),
                   const SizedBox(height: 6),
                   const Text(
@@ -177,7 +169,6 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                   const SizedBox(height: 28),
 
-                  // Full Name
                   InputField(
                     controller: _fullNameController,
                     label: 'Full Name',
@@ -187,17 +178,6 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                   const SizedBox(height: 20),
 
-                  // Username
-                  InputField(
-                    controller: _usernameController,
-                    label: 'Username',
-                    hintText: 'Enter your username',
-                    prefixIcon: Icons.account_circle_outlined,
-                    keyboardType: TextInputType.text,
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Email
                   InputField(
                     controller: _emailController,
                     label: 'Email Address',
@@ -207,7 +187,6 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                   const SizedBox(height: 20),
 
-                  // Phone
                   InputField(
                     controller: _phoneController,
                     label: 'Phone Number',
@@ -217,7 +196,6 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                   const SizedBox(height: 20),
 
-                  // Password
                   InputField(
                     controller: _passwordController,
                     label: 'Password',
@@ -230,7 +208,6 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                   const SizedBox(height: 20),
 
-                  // Confirm Password
                   InputField(
                     controller: _confirmPasswordController,
                     label: 'Confirm Password',
@@ -244,29 +221,12 @@ class _RegisterPageState extends State<RegisterPage> {
                   const SizedBox(height: 32),
 
                   // Signup Button
-                  SizedBox(
-                    width: double.infinity,
-                    height: 54,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2E7D32),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 0,
-                      ),
-                      onPressed: _isLoading ? null : _register,
-                      child: _isLoading
-                          ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text(
-                              'Create Account',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                    ),
+                  CommonButton(
+                    text: 'Create Account',
+                    onPressed: _register,
+                    backgroundColor: const Color(0xFF2E7D32),
+                    borderRadius: 12,
+                    isLoading: isLoading,
                   ),
                   const SizedBox(height: 24),
 
@@ -283,9 +243,8 @@ class _RegisterPageState extends State<RegisterPage> {
                             TextSpan(
                               text: 'Login',
                               style: TextStyle(
-                                color: Color(0xFF2E7D32),
-                                fontWeight: FontWeight.bold,
-                              ),
+                                  color: Color(0xFF2E7D32),
+                                  fontWeight: FontWeight.bold),
                             ),
                           ],
                         ),

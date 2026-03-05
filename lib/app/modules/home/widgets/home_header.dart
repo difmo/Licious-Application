@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../../data/services/db_service.dart';
 import '../../cart/view/cart_page.dart';
 import '../controller/main_controller.dart';
+import '../../../widgets/bounce_widget.dart';
 
 class HomeHeader extends StatefulWidget {
   const HomeHeader({super.key});
@@ -11,7 +13,6 @@ class HomeHeader extends StatefulWidget {
 }
 
 class _HomeHeaderState extends State<HomeHeader> {
-  bool _isVegMode = false;
 
   @override
   Widget build(BuildContext context) {
@@ -57,7 +58,7 @@ class _HomeHeaderState extends State<HomeHeader> {
               const SizedBox(width: 8),
 
               // Cart Icon with Badge
-              GestureDetector(
+              BounceWidget(
                 onTap: () {
                   Navigator.push(
                     context,
@@ -95,7 +96,7 @@ class _HomeHeaderState extends State<HomeHeader> {
                 ),
               ),
               const SizedBox(width: 8),
-              GestureDetector(
+              BounceWidget(
                 onTap: () {
                   final mainController = MainControllerScope.of(context);
                   mainController.changePage(4);
@@ -171,30 +172,7 @@ class _HomeHeaderState extends State<HomeHeader> {
           ),
         ],
       ),
-    );
+    ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.1, duration: 400.ms, curve: Curves.easeOut);
   }
 
-  Widget _buildHeaderIcon(IconData icon, String? label, {Color? iconColor}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: iconColor ?? Colors.orange),
-          if (label != null) ...[
-            const SizedBox(width: 4),
-            Text(
-              label,
-              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
 }

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../view/filter_page.dart';
+import '../../../widgets/bounce_widget.dart';
 
 class FilterBar extends StatefulWidget {
   const FilterBar({super.key});
@@ -18,11 +20,13 @@ class _FilterBarState extends State<FilterBar> {
       child: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16),
         scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
         children: [
           _buildFilterChip(
             Icons.tune,
             'Filters',
             hasDropdown: true,
+            index: 0,
             onTap: () {
               Navigator.push(
                 context,
@@ -34,6 +38,7 @@ class _FilterBarState extends State<FilterBar> {
           _buildFilterChip(
             Icons.bolt,
             'Near & Fast',
+            index: 1,
             isSelected: _selectedFilter == 'Near & Fast',
             onTap: () {
               setState(() {
@@ -47,6 +52,7 @@ class _FilterBarState extends State<FilterBar> {
           _buildFilterChip(
             null,
             'Under ₹150',
+            index: 2,
             isSelected: _selectedFilter == 'Under ₹150',
             onTap: () {
               setState(() {
@@ -60,6 +66,7 @@ class _FilterBarState extends State<FilterBar> {
           _buildFilterChip(
             null,
             'Schedule',
+            index: 3,
             isSelected: _selectedFilter == 'Schedule',
             onTap: () {
               setState(() {
@@ -79,11 +86,11 @@ class _FilterBarState extends State<FilterBar> {
     String label, {
     bool isSelected = false,
     bool hasDropdown = false,
+    required int index,
     VoidCallback? onTap,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
+    return BounceWidget(
+      onTap: onTap ?? () {},
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
@@ -131,6 +138,6 @@ class _FilterBarState extends State<FilterBar> {
           ],
         ),
       ),
-    );
+    ).animate(delay: (index * 100).ms).fadeIn(duration: 400.ms).slideX(begin: 0.2, duration: 400.ms, curve: Curves.easeOutCubic);
   }
 }

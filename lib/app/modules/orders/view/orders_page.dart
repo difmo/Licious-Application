@@ -23,7 +23,7 @@ class OrdersPage extends StatelessWidget {
           ),
         ),
       ),
-      body: ConsumerOrProviderWidget(
+      body: _consumerOrProviderWidget(
         builder: (context) {
           final cart = CartProviderScope.of(context);
           final orders = cart.orders;
@@ -57,7 +57,7 @@ class OrdersPage extends StatelessWidget {
   }
 
   // Helper widget to read CartProviderScope since it's an InheritedNotifier
-  Widget ConsumerOrProviderWidget({required WidgetBuilder builder}) {
+  Widget _consumerOrProviderWidget({required WidgetBuilder builder}) {
     return Builder(builder: builder);
   }
 

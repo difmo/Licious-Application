@@ -1,0 +1,92 @@
+interactive rebase in progress; onto d8ba301
+Last command done (1 command done):
+   pick 350beb4 Final check and push of all code changes
+No commands remaining.
+You are currently rebasing branch 'sadhana' on 'd8ba301'.
+  (all conflicts fixed: run "git rebase --continue")
+
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+	deleted:    analyze_output.txt
+	modified:   android/app/src/main/AndroidManifest.xml
+	modified:   android/app/src/main/res/mipmap-hdpi/ic_launcher.png
+	modified:   android/app/src/main/res/mipmap-mdpi/ic_launcher.png
+	modified:   android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
+	modified:   android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+	modified:   android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+	modified:   assets/images/logo.png
+	modified:   ios/Runner.xcodeproj/project.pbxproj
+	modified:   ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-1024x1024@1x.png
+	modified:   ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-20x20@1x.png
+	modified:   ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-20x20@2x.png
+	modified:   ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-20x20@3x.png
+	modified:   ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-29x29@1x.png
+	modified:   ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-29x29@2x.png
+	modified:   ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-29x29@3x.png
+	modified:   ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-40x40@1x.png
+	modified:   ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-40x40@2x.png
+	modified:   ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-40x40@3x.png
+	new file:   ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-50x50@1x.png
+	new file:   ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-50x50@2x.png
+	new file:   ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-57x57@1x.png
+	new file:   ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-57x57@2x.png
+	modified:   ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-60x60@2x.png
+	modified:   ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-60x60@3x.png
+	new file:   ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-72x72@1x.png
+	new file:   ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-72x72@2x.png
+	modified:   ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-76x76@1x.png
+	modified:   ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-76x76@2x.png
+	modified:   ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-83.5x83.5@2x.png
+	modified:   ios/Runner/Info.plist
+	modified:   lib/app/data/models/auth_models.dart
+	modified:   lib/app/data/repository/auth_repository.dart
+	modified:   lib/app/data/services/auth_service.dart
+	modified:   lib/app/modules/auth/controller/auth_controller.dart
+	modified:   lib/app/modules/auth/login_page.dart
+	new file:   lib/app/modules/auth/otp_verification_page.dart
+	modified:   lib/app/modules/auth/register_page.dart
+	modified:   lib/app/modules/home/widgets/category_circles.dart
+	modified:   lib/app/modules/home/widgets/filter_bar.dart
+	modified:   lib/app/modules/home/widgets/home_banner.dart
+	modified:   lib/app/modules/home/widgets/home_header.dart
+	modified:   lib/app/modules/home/widgets/product_card.dart
+	modified:   lib/app/modules/orders/view/orders_page.dart
+	new file:   lib/app/widgets/bounce_widget.dart
+	modified:   lib/app/widgets/common_card.dart
+	modified:   lib/main.dart
+	modified:   pubspec.lock
+	modified:   pubspec.yaml
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   lib/app/data/models/auth_models.dart
+	modified:   lib/app/data/models/food_models.dart
+	modified:   lib/app/data/services/auth_service.dart
+	modified:   lib/app/data/services/db_service.dart
+	modified:   lib/app/modules/auth/forgot_password_page.dart
+	modified:   lib/app/modules/auth/login_page.dart
+	modified:   lib/app/modules/auth/otp_verification_page.dart
+	modified:   lib/app/modules/auth/register_page.dart
+	modified:   lib/app/modules/home/view/home_page.dart
+	modified:   lib/app/modules/profile/view/profile_detail_page.dart
+	modified:   lib/app/modules/profile/view/profile_page.dart
+	modified:   lib/app/widgets/common_button.dart
+	modified:   lib/main.dart
+	modified:   macos/Flutter/GeneratedPluginRegistrant.swift
+	modified:   pubspec.lock
+	modified:   pubspec.yaml
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	analyze_output.txt
+	analyze_output_2.txt
+	assets/images/subscription_badge.png
+	lib/app/data/models/subscription_model.dart
+	lib/app/data/network/
+	lib/app/data/services/product_service.dart
+	lib/app/data/services/subscription_service.dart
+	lib/app/modules/auth/provider/
+	lib/app/modules/subscription/
+	status.txt
+

@@ -7,6 +7,7 @@ import '../widgets/filter_bar.dart';
 import '../widgets/home_banner.dart';
 import '../widgets/product_card.dart';
 import '../../categories/view/category_items_page.dart';
+import '../../subscription/subscription_page.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -31,13 +32,22 @@ class HomePage extends StatelessWidget {
                 child: CategoryCircles(
                   categories: categories,
                   onCategorySelected: (name) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            CategoryItemsPage(categoryName: name),
-                      ),
-                    );
+                    if (name == 'Subscription') {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const SubscriptionPage(),
+                        ),
+                      );
+                    } else {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              CategoryItemsPage(categoryName: name),
+                        ),
+                      );
+                    }
                   },
                 ),
               ),

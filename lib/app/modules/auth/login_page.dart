@@ -1,94 +1,139 @@
 import 'package:flutter/material.dart';
-import '../../data/services/auth_service.dart';
-import '../../data/services/db_service.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/models/food_models.dart';
+import '../../data/services/db_service.dart';
 import '../../widgets/common_button.dart';
+import 'provider/auth_provider.dart';
 import 'widgets/input_field.dart';
 
-class LoginPage extends StatefulWidget {
+class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  ConsumerState<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
-  final _identifierController = TextEditingController();
+class _LoginPageState extends ConsumerState<LoginPage> {
+  final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _authService = AuthService();
 
   bool _obscurePassword = true;
   bool _agreeToTerms = false;
-  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Show "verified" toast only when arriving from OTP verification
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final args = ModalRoute.of(context)?.settings.arguments;
+      if (args is Map && args['verified'] == true) {
+        _showSnackBar(
+          '✅ User verified! Please log in.',
+          backgroundColor: Colors.green.shade600,
+          icon: Icons.verified,
+        );
+      }
+    });
+  }
 
   @override
   void dispose() {
-    _identifierController.dispose();
+    _phoneController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
-  void _login() async {
-    final identifier = _identifierController.text.trim();
+  // ── Helpers ──────────────────────────────────────────────────────────────
+
+  void _showSnackBar(
+    String message, {
+    Color backgroundColor = Colors.black87,
+    IconData? icon,
+  }) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            if (icon != null) ...[
+              Icon(icon, color: Colors.white, size: 18),
+              const SizedBox(width: 8),
+            ],
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: backgroundColor,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  // ── Login action ─────────────────────────────────────────────────────────
+
+  Future<void> _login() async {
+    final phone = _phoneController.text.trim();
     final password = _passwordController.text;
 
-    if (identifier.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Please fill all fields')));
+    if (phone.isEmpty || password.isEmpty) {
+      _showSnackBar('Please fill all fields',
+          backgroundColor: Colors.orange.shade700);
       return;
     }
 
     if (!_agreeToTerms) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please agree to the Terms & Conditions'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      _showSnackBar('Please agree to the Terms & Conditions',
+          backgroundColor: Colors.red);
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
-
-    final response = await _authService.login(
-      identifier: identifier,
-      password: password,
-    );
+    // Trigger Riverpod login action
+    await ref
+        .read(authProvider.notifier)
+        .login(phoneNumber: phone, password: password);
 
     if (!mounted) return;
 
-    setState(() {
-      _isLoading = false;
-    });
+    // React to new state
+    final authState = ref.read(authProvider);
 
-    if (response.success) {
-      if (response.data != null) {
-        CartProviderScope.of(context).updateUserProfile(
-          UserProfile(
-            name: response.data!.fullName,
-            email: response.data!.email,
-            phone: response.data!.phoneNumber,
-            profileImage: 'assets/images/image copy 2.png',
-          ),
-        );
-      }
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(response.message)));
+    if (authState is AuthAuthenticated) {
+      // Update legacy CartProvider profile (kept for rest of UI compatibility)
+      CartProviderScope.of(context).updateUserProfile(
+        UserProfile(
+          name: authState.user.fullName,
+          email: authState.user.email,
+          phone: authState.user.phoneNumber,
+          profileImage: 'assets/images/image copy 2.png',
+        ),
+      );
+      _showSnackBar('Welcome back!',
+          backgroundColor: Colors.green.shade600, icon: Icons.check_circle);
       Navigator.pushReplacementNamed(context, '/home');
-    } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(response.message)));
+    } else if (authState is AuthError) {
+      _showSnackBar(authState.message, backgroundColor: Colors.red);
+      ref.read(authProvider.notifier).reset();
+    } else if (authState is AuthSuccess) {
+      _showSnackBar(authState.message,
+          backgroundColor: Colors.green.shade600, icon: Icons.check_circle);
+      Navigator.pushReplacementNamed(context, '/home');
     }
   }
 
+  // ── Build ────────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
+    // Watch auth state to drive loading indicator
+    final authState = ref.watch(authProvider);
+    final isLoading = authState is AuthLoading;
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SingleChildScrollView(
@@ -135,13 +180,13 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 28),
 
-                  // Username/Email field
+                  // Phone Number field
                   InputField(
-                    controller: _identifierController,
-                    label: 'Username/Email',
-                    hintText: 'Enter your username',
-                    prefixIcon: Icons.email_outlined,
-                    keyboardType: TextInputType.emailAddress,
+                    controller: _phoneController,
+                    label: 'Phone Number',
+                    hintText: 'Enter your phone number',
+                    prefixIcon: Icons.phone_outlined,
+                    keyboardType: TextInputType.phone,
                   ),
                   const SizedBox(height: 20),
 
@@ -167,9 +212,7 @@ class _LoginPageState extends State<LoginPage> {
                             Navigator.pushNamed(context, '/forgot-password'),
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
+                              horizontal: 12, vertical: 8),
                           decoration: BoxDecoration(
                             color: Colors.grey.shade100,
                             borderRadius: BorderRadius.circular(20),
@@ -199,16 +242,12 @@ class _LoginPageState extends State<LoginPage> {
                           value: _agreeToTerms,
                           onChanged: (v) =>
                               setState(() => _agreeToTerms = v ?? false),
-                          activeColor: const Color(
-                            0xFF0EA5E9,
-                          ), // Light blue matching image
+                          activeColor: const Color(0xFF0EA5E9),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(4),
                           ),
                           side: BorderSide(
-                            color: Colors.grey.shade400,
-                            width: 1.5,
-                          ),
+                              color: Colors.grey.shade400, width: 1.5),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -217,28 +256,22 @@ class _LoginPageState extends State<LoginPage> {
                           text: const TextSpan(
                             text: 'I agree to the ',
                             style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey,
-                              height: 1.5,
-                            ),
+                                fontSize: 14, color: Colors.grey, height: 1.5),
                             children: [
                               TextSpan(
                                 text: 'Terms & Conditions',
                                 style: TextStyle(
-                                  color: Color(0xFF0EA5E9),
-                                  fontWeight: FontWeight.bold,
-                                ),
+                                    color: Color(0xFF0EA5E9),
+                                    fontWeight: FontWeight.bold),
                               ),
                               TextSpan(
-                                text: ' and ',
-                                style: TextStyle(color: Colors.grey),
-                              ),
+                                  text: ' and ',
+                                  style: TextStyle(color: Colors.grey)),
                               TextSpan(
                                 text: 'Privacy Policy',
                                 style: TextStyle(
-                                  color: Color(0xFF0EA5E9),
-                                  fontWeight: FontWeight.bold,
-                                ),
+                                    color: Color(0xFF0EA5E9),
+                                    fontWeight: FontWeight.bold),
                               ),
                             ],
                           ),
@@ -249,9 +282,11 @@ class _LoginPageState extends State<LoginPage> {
                   const SizedBox(height: 28),
 
                   // Login button
-                  _isLoading
-                      ? const Center(child: CircularProgressIndicator())
-                      : CommonButton(text: 'Login', onPressed: _login),
+                  CommonButton(
+                    text: 'Login',
+                    onPressed: _login,
+                    isLoading: isLoading,
+                  ),
                   const SizedBox(height: 28),
 
                   // Sign up link
@@ -267,9 +302,8 @@ class _LoginPageState extends State<LoginPage> {
                             TextSpan(
                               text: 'Sign up',
                               style: TextStyle(
-                                color: Colors.black,
-                                fontWeight: FontWeight.bold,
-                              ),
+                                  color: Colors.black,
+                                  fontWeight: FontWeight.bold),
                             ),
                           ],
                         ),

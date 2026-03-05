@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'bounce_widget.dart';
 
 class CommonCard extends StatelessWidget {
   final String title;
@@ -38,8 +40,8 @@ class CommonCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
+    return BounceWidget(
+      onTap: onTap ?? () {},
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -84,8 +86,9 @@ class CommonCard extends StatelessWidget {
                     const SizedBox.shrink(),
 
                   // Favorite Icon
-                  GestureDetector(
-                    onTap: onFavoriteTap,
+                  BounceWidget(
+                    onTap: onFavoriteTap ?? () {},
+                    scaleFactor: 0.8,
                     child: Icon(
                       isFavorite ? Icons.favorite : Icons.favorite_border,
                       color: isFavorite ? const Color(0xFFF44336) : Colors.grey,
@@ -159,9 +162,9 @@ class CommonCard extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
                         Expanded(
-                          child: GestureDetector(
-                            onTap: onDecrement,
-                            behavior: HitTestBehavior.opaque,
+                          child: BounceWidget(
+                            onTap: onDecrement ?? () {},
+                            scaleFactor: 0.8,
                             child: const Center(
                               child: Icon(
                                 Icons.remove,
@@ -179,9 +182,9 @@ class CommonCard extends StatelessWidget {
                           ),
                         ),
                         Expanded(
-                          child: GestureDetector(
-                            onTap: onIncrement,
-                            behavior: HitTestBehavior.opaque,
+                          child: BounceWidget(
+                            onTap: onIncrement ?? () {},
+                            scaleFactor: 0.8,
                             child: const Center(
                               child: Icon(
                                 Icons.add,
@@ -194,9 +197,8 @@ class CommonCard extends StatelessWidget {
                       ],
                     ),
                   )
-                : GestureDetector(
-                    onTap: onAddToCart,
-                    behavior: HitTestBehavior.opaque,
+                : BounceWidget(
+                    onTap: onAddToCart ?? () {},
                     child: SizedBox(
                       height: 44,
                       child: Row(
@@ -223,6 +225,6 @@ class CommonCard extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.1, duration: 400.ms, curve: Curves.easeOut);
   }
 }
