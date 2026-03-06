@@ -41,7 +41,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
       return;
     }
 
-    await ref.read(authProvider.notifier).forgotPassword(phoneNumber: phone);
+    await ref.read(authProvider.notifier).forgotPassword(email: phone);
 
     if (!mounted) return;
 
@@ -94,7 +94,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                         colors: [
-                          Colors.black.withOpacity(0.3),
+                          Colors.black.withValues(alpha:  0.3),
                           Colors.transparent,
                         ],
                       ),
@@ -111,7 +111,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
                       width: 38,
                       height: 38,
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.3),
+                        color: Colors.black.withValues(alpha:  0.3),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
@@ -320,3 +320,5 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
     );
   }
 }
+
+

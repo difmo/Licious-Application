@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../../data/services/db_service.dart';
-import '../../../data/models/product_model.dart';
 import '../widgets/home_header.dart';
 import '../widgets/category_circles.dart';
 import '../widgets/filter_bar.dart';
 import '../widgets/home_banner.dart';
-import '../widgets/product_card.dart';
+import '../widgets/restaurant_list_section.dart';
 import '../../categories/view/category_items_page.dart';
-import '../../subscription/subscription_page.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -18,7 +16,7 @@ class HomePage extends StatelessWidget {
     final categories = cart.foodCategories;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF7F8FA),
       body: SafeArea(
         child: CustomScrollView(
           slivers: [
@@ -32,22 +30,13 @@ class HomePage extends StatelessWidget {
                 child: CategoryCircles(
                   categories: categories,
                   onCategorySelected: (name) {
-                    if (name == 'Subscription') {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const SubscriptionPage(),
-                        ),
-                      );
-                    } else {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              CategoryItemsPage(categoryName: name),
-                        ),
-                      );
-                    }
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            CategoryItemsPage(categoryName: name),
+                      ),
+                    );
                   },
                 ),
               ),
@@ -56,65 +45,27 @@ class HomePage extends StatelessWidget {
             // Filters
             const SliverToBoxAdapter(child: FilterBar()),
 
-            const SliverToBoxAdapter(child: SizedBox(height: 15)),
+            // Divider
+            const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                child: Divider(height: 1, color: Color(0xFFEEEEEE)),
+              ),
+            ),
 
             // Banner (Horizontal Scrolling Carousel)
             const SliverToBoxAdapter(child: HomeBanner()),
 
-            // Recommended Section Header
-            const SliverPadding(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              sliver: SliverToBoxAdapter(
-                child: Text(
-                  'RECOMMENDED FOR YOU',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.2,
-                    color: Colors.grey,
-                  ),
-                ),
-              ),
-            ),
+            const SliverToBoxAdapter(child: SizedBox(height: 8)),
 
-            // Product Grid (Recommended)
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              sliver: SliverGrid(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  childAspectRatio: 0.75, // Adjusted for new card height
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 16,
-                ),
-                delegate: SliverChildBuilderDelegate((context, index) {
-                  final products = cart.recommendedProducts;
-                  final product = products[index % products.length];
+            // ── Restaurants Section ─────────────────────────────────────
+            const SliverToBoxAdapter(child: RestaurantListSection()),
 
-                  return ProductCard(
-                    product: product,
-                    onAdd: () {
-                      cart.addToCart(CartItem.fromProduct(product));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('${product.name} added to cart!'),
-                          duration: const Duration(seconds: 1),
-                        ),
-                      );
-                    },
-                    onFavorite: () {
-                      cart.toggleFavorite(product.id);
-                    },
-                  );
-                }, childCount: 14), // Showing 14 items now
-              ),
-            ),
-
-            // Animated Footer
+            // Footer
             const SliverToBoxAdapter(child: AnimatedFooterText()),
 
             // Bottom Spacing for Navigation Bar
-            const SliverPadding(padding: EdgeInsets.only(bottom: 15)),
+            const SliverPadding(padding: EdgeInsets.only(bottom: 100)),
           ],
         ),
       ),

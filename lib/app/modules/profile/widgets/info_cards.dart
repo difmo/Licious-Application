@@ -64,7 +64,7 @@ class InfoCards extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.3),
+              color: Colors.black.withValues(alpha:  0.3),
               blurRadius: 15,
               spreadRadius: 0,
               offset: const Offset(0, 8),
@@ -111,3 +111,5 @@ class InfoCards extends StatelessWidget {
     );
   }
 }
+
+

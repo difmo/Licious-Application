@@ -116,7 +116,7 @@ class WelcomePage extends StatelessWidget {
                         begin: Alignment.topCenter,
                         end: Alignment.center,
                         colors: [
-                          Colors.black.withValues(alpha: 0.45),
+                          Colors.black.withValues(alpha:  0.45),
                           Colors.transparent,
                         ],
                       ),
@@ -141,7 +141,7 @@ class WelcomePage extends StatelessWidget {
                               width: 36,
                               height: 36,
                               decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.2),
+                                color: Colors.white.withValues(alpha:  0.2),
                                 shape: BoxShape.circle,
                               ),
                               child: const Icon(
@@ -319,3 +319,5 @@ class _GoogleLogo extends StatelessWidget {
     );
   }
 }
+
+

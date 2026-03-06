@@ -75,21 +75,13 @@ class _MainPageState extends State<MainPage> {
         decoration: BoxDecoration(
           color: const Color(0xFF1A1A1A), // Dark premium bar
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.3),
-              blurRadius: 15,
-              spreadRadius: 0,
-              offset: const Offset(0, 8),
-            ),
-          ],
         ),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: const Color(0xFF68B92E).withValues(alpha: 0.2),
+                color: const Color(0xFF68B92E).withValues(alpha:  0.2),
                 shape: BoxShape.circle,
               ),
               child: const Icon(
@@ -159,14 +151,7 @@ class _MainPageState extends State<MainPage> {
             decoration: BoxDecoration(
               color: const Color(0xFFEBFFD7),
               borderRadius: BorderRadius.circular(35),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.3),
-                  blurRadius: 15,
-                  spreadRadius: 0,
-                  offset: const Offset(0, 8),
-                ),
-              ],
+              border: Border.all(color: const Color(0xFF68B92E).withValues(alpha:  0.1)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -190,18 +175,10 @@ class _MainPageState extends State<MainPage> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.3),
-                      blurRadius: 15,
-                      spreadRadius: 0,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
                   border: Border.all(
                     color: isCartSelected
                         ? const Color(0xFF68B92E)
-                        : const Color(0xFF68B92E).withValues(alpha: 0.2),
+                        : const Color(0xFF68B92E).withValues(alpha:  0.2),
                     width: 2,
                   ),
                 ),
@@ -234,3 +211,5 @@ class _MainPageState extends State<MainPage> {
     );
   }
 }
+
+

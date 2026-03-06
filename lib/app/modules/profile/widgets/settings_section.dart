@@ -28,7 +28,7 @@ class SettingsSection extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
+            color: Colors.black.withValues(alpha:  0.3),
             blurRadius: 15,
             spreadRadius: 0,
             offset: const Offset(0, 8),
@@ -78,7 +78,7 @@ class SettingsSection extends StatelessWidget {
                     child: Divider(
                       height: 1,
                       thickness: 0.5,
-                      color: Colors.grey.withValues(alpha: 0.15),
+                      color: Colors.grey.withValues(alpha:  0.15),
                     ),
                   ),
               ],
@@ -89,3 +89,5 @@ class SettingsSection extends StatelessWidget {
     );
   }
 }
+
+

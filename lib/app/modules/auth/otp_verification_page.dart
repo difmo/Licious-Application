@@ -23,12 +23,13 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
 
   bool _isSendingOtp = false;
   bool _isVerifying = false;
-  String? _autoOtp;
 
   @override
   void initState() {
     super.initState();
-    _sendOtp();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _sendOtp();
+    });
   }
 
   @override
@@ -47,13 +48,11 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
   Future<void> _sendOtp() async {
     setState(() {
       _isSendingOtp = true;
-      _autoOtp = null;
       for (var c in _controllers) {
         c.clear();
       }
     });
 
-    // Use Riverpod notifier to send OTP
     await ref
         .read(authProvider.notifier)
         .sendOtp(phoneNumber: widget.phoneNumber);
@@ -65,26 +64,24 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
 
     if (authState is AuthSuccess) {
       final otp = authState.otp;
-      if (otp != null && otp.isNotEmpty) {
-        setState(() => _autoOtp = otp);
-        _autofillOtp(otp);
-      }
+
+      // ── LOG OTP TO TERMINAL ──────────────────────────────────────────────
+      debugPrint('');
+      debugPrint('╔══════════════════════════════════════╗');
+      debugPrint('║           OTP RECEIVED                ║');
+      debugPrint('║  Phone : ${widget.phoneNumber.padRight(26)}║');
+      debugPrint('║  OTP   : ${(otp ?? 'N/A').padRight(26)}║');
+      debugPrint('╚══════════════════════════════════════╝');
+      debugPrint('');
+      // ─────────────────────────────────────────────────────────────────────
+
       _showSnackBar(authState.message, backgroundColor: Colors.green);
       ref.read(authProvider.notifier).reset();
     } else if (authState is AuthError) {
+      debugPrint('[OTP ERROR] ${authState.message}');
       _showSnackBar(authState.message, backgroundColor: Colors.red);
       ref.read(authProvider.notifier).reset();
     }
-  }
-
-  // ── Autofill helper ───────────────────────────────────────────────────────
-
-  void _autofillOtp(String otp) {
-    for (int i = 0; i < _otpLength && i < otp.length; i++) {
-      _controllers[i].text = otp[i];
-    }
-    final lastIndex = (otp.length - 1).clamp(0, _otpLength - 1);
-    _focusNodes[lastIndex].requestFocus();
   }
 
   // ── Verify OTP ────────────────────────────────────────────────────────────
@@ -95,6 +92,8 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
       _showSnackBar('Please enter the complete $_otpLength-digit OTP');
       return;
     }
+
+    debugPrint('[OTP] User submitting OTP: $otp for ${widget.phoneNumber}');
 
     setState(() => _isVerifying = true);
 
@@ -109,6 +108,7 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
     final authState = ref.read(authProvider);
 
     if (authState is AuthSuccess) {
+      debugPrint('[OTP] Verification successful!');
       ref.read(authProvider.notifier).reset();
       Navigator.pushReplacementNamed(
         context,
@@ -116,6 +116,7 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
         arguments: {'verified': true},
       );
     } else if (authState is AuthError) {
+      debugPrint('[OTP] Verification failed: ${authState.message}');
       _showSnackBar(authState.message, backgroundColor: Colors.red);
       ref.read(authProvider.notifier).reset();
     }
@@ -175,7 +176,33 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
                 style: const TextStyle(
                     fontSize: 14, color: Colors.black54, height: 1.5),
               ),
-              const SizedBox(height: 36),
+              const SizedBox(height: 8),
+              // ── Debug hint ───────────────────────────────────────────────
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF8E1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFFFD54F)),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.terminal, size: 14, color: Color(0xFFF57F17)),
+                    SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'OTP is logged to the terminal — check your run console.',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFFF57F17),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 28),
 
               // ── 6 OTP boxes ─────────────────────────────────────────────
               if (_isSendingOtp)
@@ -206,7 +233,6 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
                           fontWeight: FontWeight.bold,
                           color: Colors.black87,
                         ),
-                        autofillHints: const [AutofillHints.oneTimeCode],
                         decoration: InputDecoration(
                           counterText: '',
                           contentPadding: EdgeInsets.zero,
@@ -241,39 +267,7 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
                   }),
                 ),
 
-              const SizedBox(height: 20),
-
-              // ── Autofilled OTP hint banner ──────────────────────────────
-              if (_autoOtp != null)
-                Center(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.green.shade50,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.green.shade200),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.auto_fix_high,
-                            size: 14, color: Colors.green.shade700),
-                        const SizedBox(width: 6),
-                        Text(
-                          'OTP autofilled: $_autoOtp',
-                          style: TextStyle(
-                            color: Colors.green.shade800,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-              const SizedBox(height: 16),
+              const SizedBox(height: 36),
 
               // ── Resend ───────────────────────────────────────────────────
               Row(

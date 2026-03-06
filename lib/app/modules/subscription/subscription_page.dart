@@ -33,7 +33,7 @@ class SubscriptionPage extends ConsumerWidget {
           Positioned.fill(
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-              child: Container(color: Colors.black.withValues(alpha: 0.3)),
+              child: Container(color: Colors.black.withValues(alpha:  0.3)),
             ),
           ),
 
@@ -139,12 +139,12 @@ class _PlanCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.85),
+        color: Colors.white.withValues(alpha:  0.85),
         borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 1.5),
+        border: Border.all(color: Colors.white.withValues(alpha:  0.5), width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
+            color: Colors.black.withValues(alpha:  0.1),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -286,7 +286,7 @@ class _GradientButton extends StatelessWidget {
           boxShadow: [
             BoxShadow(
               color: (isGold ? const Color(0xFFFF7E1A) : const Color(0xFF2E8EFF))
-                  .withValues(alpha: 0.3),
+                  .withValues(alpha:  0.3),
               blurRadius: 12,
               offset: const Offset(0, 6),
             ),
@@ -306,3 +306,5 @@ class _GradientButton extends StatelessWidget {
     );
   }
 }
+
+

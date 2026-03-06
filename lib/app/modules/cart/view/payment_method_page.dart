@@ -279,14 +279,6 @@ class _CreditCardWidget extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
-            blurRadius: 15,
-            spreadRadius: 0,
-            offset: const Offset(0, 8),
-          ),
-        ],
       ),
       child: Stack(
         children: [
@@ -295,7 +287,7 @@ class _CreditCardWidget extends StatelessWidget {
             top: -20,
             child: _Circle(
               size: 140,
-              color: Colors.white.withValues(alpha: 0.07),
+              color: Colors.white.withValues(alpha:  0.07),
             ),
           ),
           Positioned(
@@ -303,7 +295,7 @@ class _CreditCardWidget extends StatelessWidget {
             top: 10,
             child: _Circle(
               size: 90,
-              color: Colors.white.withValues(alpha: 0.07),
+              color: Colors.white.withValues(alpha:  0.07),
             ),
           ),
           Positioned(
@@ -311,7 +303,7 @@ class _CreditCardWidget extends StatelessWidget {
             bottom: -30,
             child: _Circle(
               size: 80,
-              color: Colors.white.withValues(alpha: 0.07),
+              color: Colors.white.withValues(alpha:  0.07),
             ),
           ),
           Positioned(
@@ -324,7 +316,7 @@ class _CreditCardWidget extends StatelessWidget {
                   offset: const Offset(-12, 0),
                   child: _Circle(
                     size: 36,
-                    color: const Color(0xFFEBAA02).withValues(alpha: 0.9),
+                    color: const Color(0xFFEBAA02).withValues(alpha:  0.9),
                   ),
                 ),
               ],
@@ -356,7 +348,7 @@ class _CreditCardWidget extends StatelessWidget {
               child: Container(
                 width: 14,
                 height: 14,
-                color: const Color(0xFFE84393).withValues(alpha: 0.8),
+                color: const Color(0xFFE84393).withValues(alpha:  0.8),
               ),
             ),
           ),
@@ -369,7 +361,7 @@ class _CreditCardWidget extends StatelessWidget {
                 Text(
                   'CARD HOLDER',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.7),
+                    color: Colors.white.withValues(alpha:  0.7),
                     fontSize: 9,
                     letterSpacing: 1,
                   ),
@@ -396,7 +388,7 @@ class _CreditCardWidget extends StatelessWidget {
                 Text(
                   'EXPIRES',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.7),
+                    color: Colors.white.withValues(alpha:  0.7),
                     fontSize: 9,
                     letterSpacing: 1,
                   ),
@@ -409,7 +401,7 @@ class _CreditCardWidget extends StatelessWidget {
                       child: Container(
                         width: 10,
                         height: 10,
-                        color: const Color(0xFFE8B934).withValues(alpha: 0.9),
+                        color: const Color(0xFFE8B934).withValues(alpha:  0.9),
                       ),
                     ),
                     const SizedBox(width: 4),
@@ -635,3 +627,5 @@ class _MonthYearFormatter extends TextInputFormatter {
     );
   }
 }
+
+

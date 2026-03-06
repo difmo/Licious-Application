@@ -102,16 +102,14 @@ class AuthService {
     }
   }
 
-  // ── Forgot / Reset Password ───────────────────────────────────────────────
+  // ── Forgot / Change Password ───────────────────────────────────────────────
   Future<AuthResponseModel> forgotPassword({
-    required String phoneNumber,
+    required String email,
   }) async {
     try {
-      // NOTE: UI currently uses email, but service uses phoneNumber.
-      // Unified to phoneNumber to match backend expectations from previous integrations.
       final data = await _client.post(
         '${ApiClient.baseUrl}/forgot-password',
-        data: {'phoneNumber': phoneNumber},
+        data: {'email': email},
       );
       return AuthResponseModel.fromJson(data);
     } on ApiException catch (e) {
@@ -122,19 +120,18 @@ class AuthService {
     }
   }
 
-  Future<AuthResponseModel> resetPassword({
-    required String phoneNumber,
-    required String otp,
+  Future<AuthResponseModel> changePassword({
+    required String oldPassword,
     required String newPassword,
   }) async {
     try {
-      final data = await _client.post(
-        '${ApiClient.baseUrl}/reset-password',
+      final data = await _client.put(
+        '${ApiClient.baseUrl}/change-password',
         data: {
-          'phoneNumber': phoneNumber,
-          'otp': otp,
-          'password': newPassword,
+          'oldPassword': oldPassword,
+          'newPassword': newPassword,
         },
+        requiresAuth: true,
       );
       return AuthResponseModel.fromJson(data);
     } on ApiException catch (e) {
@@ -150,6 +147,28 @@ class AuthService {
     try {
       final data = await _client.get(
         '${ApiClient.baseUrl}/profile',
+        requiresAuth: true,
+      );
+      return AuthResponseModel.fromJson(data);
+    } on ApiException catch (e) {
+      return AuthResponseModel(success: false, message: e.message);
+    } catch (e) {
+      return AuthResponseModel(
+          success: false, message: 'Unexpected error: ${e.toString()}');
+    }
+  }
+
+  Future<AuthResponseModel> updateProfile({
+    required String fullName,
+    required String email,
+  }) async {
+    try {
+      final data = await _client.put(
+        '${ApiClient.baseUrl}/profile',
+        data: {
+          'fullName': fullName,
+          'email': email,
+        },
         requiresAuth: true,
       );
       return AuthResponseModel.fromJson(data);

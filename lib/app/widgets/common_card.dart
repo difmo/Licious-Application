@@ -48,7 +48,7 @@ class CommonCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(0),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.3),
+              color: Colors.black.withValues(alpha:  0.3),
               blurRadius: 15,
               spreadRadius: 0,
               offset: const Offset(0, 8),
@@ -228,3 +228,5 @@ class CommonCard extends StatelessWidget {
     ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.1, duration: 400.ms, curve: Curves.easeOut);
   }
 }
+
+

@@ -31,12 +31,6 @@ class CartProvider extends ChangeNotifier {
       image: 'assets/images/shrimp_cooked_duo.png',
       colorValue: 0xFFF3E5F5, // Light Purple
     ),
-    FoodCategory(
-      id: '5',
-      name: 'Subscription',
-      image: 'assets/images/subscription_badge.png',
-      colorValue: 0xFFE3F2FD, // Light Blue
-    ),
   ];
 
   final List<Restaurant> _restaurants = const [
@@ -95,8 +89,8 @@ class CartProvider extends ChangeNotifier {
     const UserAddress(
       id: 'ADDR001',
       title: 'Home',
-      street: 'Vibhav Khand - 4',
-      details: 'Gomti Nagar, Lucknow, UP 226010',
+      street: '123 MG Road',
+      details: 'Lucknow, Uttar Pradesh 226001',
       isDefault: true,
     ),
     const UserAddress(
@@ -447,6 +441,46 @@ class CartProvider extends ChangeNotifier {
 
   void updateUserProfile(UserProfile newProfile) {
     _userProfile = newProfile;
+    notifyListeners();
+  }
+
+  void addAddress(UserAddress address) {
+    if (address.isDefault) {
+      for (int i = 0; i < _addresses.length; i++) {
+        _addresses[i] = UserAddress(
+          id: _addresses[i].id,
+          title: _addresses[i].title,
+          street: _addresses[i].street,
+          details: _addresses[i].details,
+          isDefault: false,
+        );
+      }
+    }
+    _addresses.add(address);
+    notifyListeners();
+  }
+
+  void updateAddress(UserAddress address) {
+    final index = _addresses.indexWhere((a) => a.id == address.id);
+    if (index != -1) {
+      if (address.isDefault) {
+        for (int i = 0; i < _addresses.length; i++) {
+          _addresses[i] = UserAddress(
+            id: _addresses[i].id,
+            title: _addresses[i].title,
+            street: _addresses[i].street,
+            details: _addresses[i].details,
+            isDefault: false,
+          );
+        }
+      }
+      _addresses[index] = address;
+      notifyListeners();
+    }
+  }
+
+  void removeAddress(String id) {
+    _addresses.removeWhere((a) => a.id == id);
     notifyListeners();
   }
 

@@ -162,10 +162,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  // ── Forgot / Reset Password ───────────────────────────────────────────────
-  Future<void> forgotPassword({required String phoneNumber}) async {
+  // ── Forgot / Change Password ───────────────────────────────────────────────
+  Future<void> forgotPassword({required String email}) async {
     state = const AuthLoading();
-    final response = await _service.forgotPassword(phoneNumber: phoneNumber);
+    final response = await _service.forgotPassword(email: email);
     if (response.success) {
       state = AuthSuccess(message: response.message);
     } else {
@@ -173,18 +173,41 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  Future<void> resetPassword({
-    required String phoneNumber,
-    required String otp,
+  Future<void> changePassword({
+    required String oldPassword,
     required String newPassword,
   }) async {
     state = const AuthLoading();
-    final response = await _service.resetPassword(
-      phoneNumber: phoneNumber,
-      otp: otp,
+    final response = await _service.changePassword(
+      oldPassword: oldPassword,
       newPassword: newPassword,
     );
     if (response.success) {
+      state = AuthSuccess(message: response.message);
+    } else {
+      state = AuthError(response.message);
+    }
+  }
+
+  // ── Profile ───────────────────────────────────────────────────────────────
+  Future<void> updateProfile({
+    required String fullName,
+    required String email,
+  }) async {
+    state = const AuthLoading();
+    final response = await _service.updateProfile(
+      fullName: fullName,
+      email: email,
+    );
+    if (response.success && response.data != null) {
+      // Update local state if token is present
+      final currentToken = await ApiClient.getToken();
+      if (currentToken != null) {
+        state = AuthAuthenticated(user: response.data!, token: currentToken);
+      } else {
+        state = AuthSuccess(message: response.message);
+      }
+    } else if (response.success) {
       state = AuthSuccess(message: response.message);
     } else {
       state = AuthError(response.message);

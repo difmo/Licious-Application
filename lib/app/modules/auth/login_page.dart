@@ -28,9 +28,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       final args = ModalRoute.of(context)?.settings.arguments;
       if (args is Map && args['verified'] == true) {
         _showSnackBar(
-          '✅ User verified! Please log in.',
+          'User register successful please login',
           backgroundColor: Colors.green.shade600,
-          icon: Icons.verified,
+          icon: Icons.check_circle,
         );
       }
     });

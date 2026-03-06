@@ -14,10 +14,12 @@ class ProductService {
   ProductService({required ApiClient client}) : _client = client;
 
   /// Fetch all product categories.
+  /// Response shape: { "success": true, "categories": [...] }
   Future<List<FoodCategory>> getCategories() async {
     try {
       final json = await _client.get('${ApiClient.baseUrl}/categories');
-      final data = json['data'] as List<dynamic>? ?? [];
+      // Backend returns "categories" key (not "data")
+      final data = (json['categories'] ?? json['data']) as List<dynamic>? ?? [];
       return data
           .map((e) => FoodCategory.fromJson(e as Map<String, dynamic>))
           .toList();
@@ -29,6 +31,8 @@ class ProductService {
   }
 
   /// Fetch products, optionally filtered by category.
+  /// Returns an empty list if the endpoint is not yet available (404),
+  /// so the UI can fall back to local data silently.
   Future<List<Product>> getProducts({String? category}) async {
     try {
       final queryParams = category != null ? {'category': category} : null;
@@ -36,11 +40,15 @@ class ProductService {
         '${ApiClient.baseUrl}/products',
         queryParameters: queryParams,
       );
-      final data = json['data'] as List<dynamic>? ?? [];
+      // Support both "products" and "data" response keys
+      final data =
+          (json['products'] ?? json['data']) as List<dynamic>? ?? [];
       return data
           .map((e) => Product.fromJson(e as Map<String, dynamic>))
           .toList();
-    } on ApiException {
+    } on ApiException catch (e) {
+      // 404 means endpoint not yet available — return empty so UI falls back
+      if (e.statusCode == 404) return [];
       rethrow;
     } catch (e) {
       throw ApiException(message: 'Unexpected error: ${e.toString()}');

@@ -99,18 +99,9 @@ class _FilterBarState extends State<FilterBar> {
           border: Border.all(
             color: isSelected
                 ? const Color(0xFF68B92E)
-                : Colors.grey.withValues(alpha: 0.2),
+                : Colors.grey.withValues(alpha:  0.2),
             width: 1,
           ),
-          boxShadow: [
-            if (isSelected)
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.3),
-                blurRadius: 15,
-                spreadRadius: 0,
-                offset: const Offset(0, 8),
-              ),
-          ],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -141,3 +132,5 @@ class _FilterBarState extends State<FilterBar> {
     ).animate(delay: (index * 100).ms).fadeIn(duration: 400.ms).slideX(begin: 0.2, duration: 400.ms, curve: Curves.easeOutCubic);
   }
 }
+
+

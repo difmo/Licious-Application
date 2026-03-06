@@ -137,7 +137,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                       width: 36,
                       height: 36,
                       decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.3),
+                        color: Colors.black.withValues(alpha:  0.3),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(Icons.arrow_back,
@@ -261,3 +261,5 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     );
   }
 }
+
+

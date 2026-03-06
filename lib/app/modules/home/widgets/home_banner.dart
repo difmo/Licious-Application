@@ -100,8 +100,8 @@ class _HomeBannerState extends State<HomeBanner> {
                                 end: Alignment.bottomCenter,
                                 colors: [
                                   Colors.transparent,
-                                  Colors.black.withValues(alpha: 0.1),
-                                  Colors.black.withValues(alpha: 0.4),
+                                  Colors.black.withValues(alpha:  0.1),
+                                  Colors.black.withValues(alpha:  0.4),
                                 ],
                               ),
                             ),
@@ -129,7 +129,7 @@ class _HomeBannerState extends State<HomeBanner> {
               decoration: BoxDecoration(
                 color: _currentPage == index
                     ? const Color(0xFF68B92E)
-                    : Colors.grey.withValues(alpha: 0.3),
+                    : Colors.grey.withValues(alpha:  0.3),
                 borderRadius: BorderRadius.circular(3),
               ),
             ),
@@ -139,3 +139,5 @@ class _HomeBannerState extends State<HomeBanner> {
     ).animate().fadeIn(duration: 500.ms, curve: Curves.easeIn);
   }
 }
+
+

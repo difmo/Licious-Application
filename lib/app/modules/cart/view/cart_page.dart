@@ -3,7 +3,7 @@ import '../../../data/services/db_service.dart';
 import '../../../data/models/food_models.dart';
 import '../../home/view/product_details_page.dart';
 import '../../home/controller/main_controller.dart';
-import 'payment_page.dart';
+import 'shipping_address_page.dart';
 
 class CartPage extends StatelessWidget {
   const CartPage({super.key});
@@ -148,7 +148,7 @@ class CartPage extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.3),
+              color: Colors.black.withValues(alpha:  0.3),
               blurRadius: 15,
               spreadRadius: 0,
               offset: const Offset(0, 8),
@@ -270,7 +270,7 @@ class CartPage extends StatelessWidget {
         borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
+            color: Colors.black.withValues(alpha:  0.3),
             blurRadius: 15,
             spreadRadius: 0,
             offset: const Offset(0, -8),
@@ -320,7 +320,7 @@ class CartPage extends StatelessWidget {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const PaymentPage()),
+                  MaterialPageRoute(builder: (_) => const ShippingAddressPage()),
                 );
               },
               style: ElevatedButton.styleFrom(
@@ -384,3 +384,5 @@ class CartPage extends StatelessWidget {
     );
   }
 }
+
+

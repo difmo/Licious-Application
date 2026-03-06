@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,7 +11,12 @@ class ApiException implements Exception {
   const ApiException({required this.message, this.statusCode});
 
   @override
-  String toString() => 'ApiException($statusCode): $message';
+  String toString() {
+    if (statusCode != null) {
+      return 'ApiException($statusCode): $message';
+    }
+    return 'ApiException: $message';
+  }
 }
 
 /// Provider for ApiClient
@@ -37,19 +43,39 @@ class ApiClient {
     );
     _dio = Dio(options);
     
-    // Add interceptor to automatically add auth token
+    // ── Request / Response Logger ─────────────────────────────────────────────
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
+        debugPrint('');
+        debugPrint('┌─── API REQUEST ────────────────────────────');
+        debugPrint('│ ${options.method} ${options.uri}');
+        if (options.data != null) debugPrint('│ Body: ${options.data}');
+        debugPrint('└────────────────────────────────────────────');
+
         if (options.extra['requiresAuth'] == true) {
           final token = await getToken();
           if (token != null) {
-            options.headers['Authorization'] = 'Bearer $token'; // Adjust token format based on your backend
+            options.headers['Authorization'] = 'Bearer $token';
           }
         }
         return handler.next(options);
       },
+      onResponse: (response, handler) {
+        debugPrint('');
+        debugPrint('┌─── API RESPONSE ───────────────────────────');
+        debugPrint('│ Status : ${response.statusCode}');
+        debugPrint('│ URL    : ${response.requestOptions.uri}');
+        debugPrint('│ Body   : ${response.data}');
+        debugPrint('└────────────────────────────────────────────');
+        return handler.next(response);
+      },
       onError: (DioException e, handler) {
-        // You can handle global errors here
+        debugPrint('');
+        debugPrint('┌─── API ERROR ──────────────────────────────');
+        debugPrint('│ Status : ${e.response?.statusCode}');
+        debugPrint('│ URL    : ${e.requestOptions.uri}');
+        debugPrint('│ Body   : ${e.response?.data}');
+        debugPrint('└────────────────────────────────────────────');
         return handler.next(e);
       },
     ));

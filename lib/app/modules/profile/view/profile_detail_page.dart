@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../data/services/db_service.dart';
 import '../../../data/services/subscription_service.dart';
 import '../../../data/models/subscription_model.dart';
+import 'address_form_page.dart';
 
 class ProfileDetailPage extends StatefulWidget {
   final String title;
@@ -14,7 +15,6 @@ class ProfileDetailPage extends StatefulWidget {
 
 class _ProfileDetailPageState extends State<ProfileDetailPage> {
   int? _expandedOrderIndex = 0; // Default first one expanded as in Image 3
-  bool _makeDefaultAddress = true;
   bool _makeDefaultCard = true;
 
   // ── Subscriptions state ───────────────────────────────────────────────────
@@ -45,7 +45,7 @@ class _ProfileDetailPageState extends State<ProfileDetailPage> {
       });
     } catch (e) {
       setState(() {
-        _subscriptionsError = e.toString().replaceFirst('ApiException(null): ', '');
+        _subscriptionsError = e.toString().replaceFirst('ApiException: ', '').replaceFirst('ApiException(null): ', '');
         _subscriptionsLoading = false;
       });
     }
@@ -74,7 +74,7 @@ class _ProfileDetailPageState extends State<ProfileDetailPage> {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
-          if (widget.title == 'My Address' || widget.title == 'Credit Cards')
+          if (widget.title == 'Credit Cards')
             IconButton(
               icon: const Icon(
                 Icons.add_circle_outline,
@@ -123,131 +123,183 @@ class _ProfileDetailPageState extends State<ProfileDetailPage> {
     }
   }
 
-  // --- MY ADDRESS DESIGN (Image 2) ---
+  // --- MY ADDRESS DESIGN (Enhanced) ---
   Widget _buildAddressDetail(CartProvider provider) {
+    final addresses = provider.addresses;
+    final profile = provider.userProfile;
+
     return Column(
       children: [
-        // Saved Address Card
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.3),
-                blurRadius: 15,
-                spreadRadius: 0,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEBFFD7),
-                  borderRadius: BorderRadius.circular(4),
+        ...addresses.map((addr) {
+          return Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha:  0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
                 ),
-                child: const Text(
-                  'DEFAULT',
-                  style: TextStyle(
-                    color: Color(0xFF68B92E),
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  CircleAvatar(
-                    radius: 30,
-                    backgroundColor: const Color(0xFFEBFFD7),
-                    child: Icon(
-                      Icons.location_on,
-                      color: const Color(0xFF68B92E),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (addr.isDefault)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEBFFD7),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const Text(
+                      'DEFAULT',
+                      style: TextStyle(
+                        color: Color(0xFF68B92E),
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Russell Austin',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          '2811 Crescent Day, LA Port, California, United States 77571',
-                          style: TextStyle(color: Colors.grey, fontSize: 12),
-                        ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          '+1 202 555 0142',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CircleAvatar(
+                      radius: 24,
+                      backgroundColor: const Color(0xFFEBFFD7),
+                      child: Icon(
+                        addr.title == 'Home'
+                            ? Icons.home_rounded
+                            : addr.title == 'Work'
+                                ? Icons.work_rounded
+                                : Icons.location_on_rounded,
+                        color: const Color(0xFF68B92E),
+                        size: 20,
+                      ),
                     ),
-                  ),
-                  const Icon(Icons.expand_less, color: Color(0xFF68B92E)),
-                ],
-              ),
-            ],
-          ),
-        ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                addr.title,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 16,
+                                  color: Color(0xFF1A1A1A),
+                                ),
+                              ),
+                              Row(
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.edit_outlined,
+                                        size: 18, color: Colors.grey),
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) =>
+                                              AddressFormPage(address: addr),
+                                        ),
+                                      );
+                                    },
+                                    constraints: const BoxConstraints(),
+                                    padding: EdgeInsets.zero,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete_outline,
+                                        size: 18, color: Colors.redAccent),
+                                    onPressed: () {
+                                      provider.removeAddress(addr.id);
+                                    },
+                                    constraints: const BoxConstraints(),
+                                    padding: EdgeInsets.zero,
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            profile.name,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              color: Color(0xFF4B5563),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${addr.street}\n${addr.details}',
+                            style: const TextStyle(
+                                color: Colors.grey, fontSize: 13, height: 1.4),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            profile.phone,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                              color: Color(0xFF1A1A1A),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        }),
         const SizedBox(height: 24),
-        // Adding Form Fields (The input boxes in design)
-        _buildIconTextField(Icons.person_outline, 'Name'),
-        const SizedBox(height: 12),
-        _buildIconTextField(Icons.location_on_outlined, 'Address'),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(child: _buildIconTextField(Icons.map_outlined, 'City')),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildIconTextField(Icons.mail_outline, 'Zip code'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        _buildIconTextField(
-          Icons.public,
-          'Country',
-          trailingIcon: Icons.keyboard_arrow_down,
-        ),
-        const SizedBox(height: 12),
-        _buildIconTextField(Icons.phone_outlined, 'Phone number'),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Switch(
-              value: _makeDefaultAddress,
-              onChanged: (v) => setState(() => _makeDefaultAddress = v),
-              activeThumbColor: const Color(0xFF68B92E),
-              activeTrackColor: const Color(0xFFEBFFD7),
-            ),
-            const Text(
-              'Make default',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1A1A1A),
+        // Add New Address Button
+        Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: const Color(0xFFF1F4F8),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.grey.shade300, style: BorderStyle.solid),
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AddressFormPage()),
+                );
+              },
+              borderRadius: BorderRadius.circular(16),
+              child: const Padding(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.add_circle_outline, color: Color(0xFF439462)),
+                    SizedBox(width: 8),
+                    Text(
+                      'Add New Address',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF439462),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ],
+          ),
         ),
-        const SizedBox(height: 32),
-        _buildSaveButton('Save address'),
       ],
     );
   }
@@ -427,7 +479,7 @@ class _ProfileDetailPageState extends State<ProfileDetailPage> {
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.3),
+                color: Colors.black.withValues(alpha:  0.3),
                 blurRadius: 15,
                 spreadRadius: 0,
                 offset: const Offset(0, 8),
@@ -805,7 +857,7 @@ class _ProfileDetailPageState extends State<ProfileDetailPage> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
+            color: Colors.black.withValues(alpha:  0.3),
             blurRadius: 15,
             spreadRadius: 0,
             offset: const Offset(0, 8),
@@ -961,10 +1013,10 @@ class _ProfileDetailPageState extends State<ProfileDetailPage> {
         children: [
           CircleAvatar(
             backgroundColor: isFailed
-                ? Colors.red.withValues(alpha: 0.1)
+                ? Colors.red.withValues(alpha:  0.1)
                 : (isNegative
-                      ? Colors.orange.withValues(alpha: 0.1)
-                      : Colors.green.withValues(alpha: 0.1)),
+                      ? Colors.orange.withValues(alpha:  0.1)
+                      : Colors.green.withValues(alpha:  0.1)),
             child: Icon(
               isFailed
                   ? Icons.error_outline
@@ -1139,7 +1191,7 @@ class _ProfileDetailPageState extends State<ProfileDetailPage> {
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF439462).withValues(alpha: 0.32),
+                color: const Color(0xFF439462).withValues(alpha:  0.32),
                 blurRadius: 18,
                 offset: const Offset(0, 8),
               ),
@@ -1150,7 +1202,7 @@ class _ProfileDetailPageState extends State<ProfileDetailPage> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.15),
+                  color: Colors.white.withValues(alpha:  0.15),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -1222,7 +1274,7 @@ class _ProfileDetailPageState extends State<ProfileDetailPage> {
         ),
         boxShadow: [
           BoxShadow(
-            color: planColor.withValues(alpha: isSelected ? 0.22 : 0.10),
+            color: planColor.withValues(alpha:  isSelected ? 0.22 : 0.10),
             blurRadius: 18,
             spreadRadius: 0,
             offset: const Offset(0, 8),
@@ -1359,7 +1411,7 @@ class _ProfileDetailPageState extends State<ProfileDetailPage> {
                           width: 20,
                           height: 20,
                           decoration: BoxDecoration(
-                            color: planColor.withValues(alpha: 0.12),
+                            color: planColor.withValues(alpha:  0.12),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
@@ -1394,7 +1446,7 @@ class _ProfileDetailPageState extends State<ProfileDetailPage> {
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor:
-                          isSelected ? planColor : planColor.withValues(alpha: 0.12),
+                          isSelected ? planColor : planColor.withValues(alpha:  0.12),
                       foregroundColor:
                           isSelected ? Colors.white : planColor,
                       elevation: 0,
@@ -1428,7 +1480,7 @@ class _ProfileDetailPageState extends State<ProfileDetailPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.10),
+        color: color.withValues(alpha:  0.10),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
@@ -1449,3 +1501,5 @@ class _ProfileDetailPageState extends State<ProfileDetailPage> {
     );
   }
 }
+
+
