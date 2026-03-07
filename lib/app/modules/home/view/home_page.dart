@@ -160,12 +160,12 @@ class _AnimatedFooterTextState extends State<AnimatedFooterText>
         );
       },
       child: const Padding(
-        padding: EdgeInsets.symmetric(vertical: 15),
+        padding: EdgeInsets.symmetric(vertical: 25, horizontal: 20),
         child: Text(
-          'With love,\nfrom Shrimp.',
-          textAlign: TextAlign.center,
+          'With Love,\nFrom ShrimpBite.',
+          textAlign: TextAlign.left,
           style: TextStyle(
-            fontSize: 48,
+            fontSize: 60,
             fontWeight: FontWeight.w900,
             color: Color(0xFFB4B4B4), // light grey matching the image
             height: 1.1,

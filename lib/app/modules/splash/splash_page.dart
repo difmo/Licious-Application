@@ -35,7 +35,7 @@ class _SplashPageState extends State<SplashPage>
     // Navigate after 3 seconds
     Timer(const Duration(seconds: 3), () {
       if (mounted) {
-        Navigator.pushReplacementNamed(context, AppRoutes.home);
+        Navigator.pushReplacementNamed(context, AppRoutes.welcome);
       }
     });
   }

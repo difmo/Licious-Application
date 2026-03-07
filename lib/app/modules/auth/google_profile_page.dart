@@ -240,7 +240,7 @@ class _GoogleProfilePageState extends State<GoogleProfilePage> {
   }
 
   Future<void> _signOut(BuildContext context) async {
-    await GoogleSignIn().signOut();
+    // Dummy logout: just navigate to root
     if (context.mounted) {
       Navigator.pushNamedAndRemoveUntil(context, '/', (r) => false);
     }
