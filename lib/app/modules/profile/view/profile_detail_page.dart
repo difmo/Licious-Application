@@ -95,6 +95,14 @@ class _ProfileDetailPageState extends State<ProfileDetailPage> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 15,
+                spreadRadius: 0,
+                offset: const Offset(0, 8),
+              ),
+            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -379,6 +387,14 @@ class _ProfileDetailPageState extends State<ProfileDetailPage> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.01),
+                blurRadius: 15,
+                spreadRadius: 0,
+                offset: const Offset(0, 1),
+              ),
+            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -751,9 +767,10 @@ class _ProfileDetailPageState extends State<ProfileDetailPage> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 15,
+            spreadRadius: 0,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -906,10 +923,10 @@ class _ProfileDetailPageState extends State<ProfileDetailPage> {
         children: [
           CircleAvatar(
             backgroundColor: isFailed
-                ? Colors.red.withValues(alpha: 0.1)
+                ? Colors.red.withValues(alpha: 0.04)
                 : (isNegative
-                      ? Colors.orange.withValues(alpha: 0.1)
-                      : Colors.green.withValues(alpha: 0.1)),
+                      ? Colors.orange.withValues(alpha: 0.04)
+                      : Colors.green.withValues(alpha: 0.04)),
             child: Icon(
               isFailed
                   ? Icons.error_outline

@@ -46,13 +46,7 @@ class ProductCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          border: Border.all(color: Colors.grey.shade200, width: 1.5),
         ),
         child: Stack(
           children: [
@@ -68,12 +62,12 @@ class ProductCard extends StatelessWidget {
                     ),
                     child: Image.asset(
                       product.image,
-                      height: 120,
+                      height: 110,
                       width: double.infinity,
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) {
                         return Container(
-                          height: 120,
+                          height: 110,
                           color: Colors.grey.shade200,
                           child: const Center(
                             child: Icon(Icons.broken_image, color: Colors.grey),
@@ -84,7 +78,7 @@ class ProductCard extends StatelessWidget {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(10),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -108,7 +102,7 @@ class ProductCard extends StatelessWidget {
                           color: Colors.grey,
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 8),
                       // Price & Add Area
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -223,15 +217,26 @@ class ProductCard extends StatelessWidget {
               child: GestureDetector(
                 onTap: onFavorite,
                 child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.9),
+                  padding: const EdgeInsets.all(6),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
                     shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 4,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
                   ),
                   child: Icon(
-                    product.isFavorite ? Icons.favorite : Icons.favorite_border,
-                    color: product.isFavorite ? Colors.red : Colors.grey,
-                    size: 16,
+                    cart.isFavorite(product.id)
+                        ? Icons.favorite
+                        : Icons.favorite_border,
+                    color: cart.isFavorite(product.id)
+                        ? Colors.red
+                        : Colors.grey,
+                    size: 18,
                   ),
                 ),
               ),

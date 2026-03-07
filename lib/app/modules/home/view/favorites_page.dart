@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../../data/services/db_service.dart';
-import '../../../data/models/food_models.dart';
+import '../../../data/models/product_model.dart';
 import '../controller/main_controller.dart';
+import '../widgets/product_card.dart';
 
 class FavoritesPage extends StatelessWidget {
   const FavoritesPage({super.key});
@@ -10,7 +11,9 @@ class FavoritesPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = CartProviderScope.of(context);
-    final favorites = provider.favRestaurants;
+    final favorites = provider.recommendedProducts
+        .where((p) => provider.isFavorite(p.id))
+        .toList();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
@@ -29,11 +32,33 @@ class FavoritesPage extends StatelessWidget {
       ),
       body: favorites.isEmpty
           ? _buildEmptyState(context)
-          : ListView.builder(
-              padding: const EdgeInsets.all(20),
+          : GridView.builder(
+              padding: const EdgeInsets.all(16),
+              physics: const BouncingScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                childAspectRatio: 0.75,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 16,
+              ),
               itemCount: favorites.length,
               itemBuilder: (context, index) {
-                return _buildFavoriteItem(context, provider, favorites[index]);
+                final product = favorites[index];
+                return ProductCard(
+                  product: product,
+                  onAdd: () {
+                    provider.addToCart(CartItem.fromProduct(product));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('${product.name} added to cart!'),
+                        duration: const Duration(seconds: 1),
+                      ),
+                    );
+                  },
+                  onFavorite: () {
+                    provider.toggleFavorite(product.id);
+                  },
+                );
               },
             ),
     );
@@ -91,145 +116,6 @@ class FavoritesPage extends StatelessWidget {
                 'Go Shopping',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFavoriteItem(
-    BuildContext context,
-    CartProvider provider,
-    Restaurant restaurant,
-  ) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Stack(
-            children: [
-              ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(20),
-                ),
-                child: Image.asset(
-                  restaurant.image,
-                  height: 160,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                ),
-              ),
-              Positioned(
-                top: 12,
-                right: 12,
-                child: GestureDetector(
-                  onTap: () => provider.toggleFavorite(restaurant.id),
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.favorite,
-                      color: Color(0xFF68B92E),
-                      size: 20,
-                    ),
-                  ),
-                ),
-              ),
-              Positioned(
-                bottom: 12,
-                left: 12,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.star, color: Colors.amber, size: 16),
-                      const SizedBox(width: 4),
-                      Text(
-                        restaurant.rating.toString(),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      restaurant.name,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    Text(
-                      restaurant.deliveryTime,
-                      style: const TextStyle(
-                        color: Colors.grey,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  restaurant.categories.join(', '),
-                  style: const TextStyle(color: Colors.grey, fontSize: 12),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.local_offer_outlined,
-                      color: Color(0xFF68B92E),
-                      size: 14,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      restaurant.discount,
-                      style: const TextStyle(
-                        color: Color(0xFF68B92E),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
             ),
           ),
         ],

@@ -78,7 +78,7 @@ class CategoriesPage extends StatelessWidget {
             crossAxisCount: 3,
             childAspectRatio: 0.85,
             crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
+            mainAxisSpacing: 24,
           ),
           itemCount: categories.length,
           itemBuilder: (context, index) {
@@ -99,9 +99,10 @@ class CategoriesPage extends StatelessWidget {
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.03),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 15,
+                      spreadRadius: 0,
+                      offset: const Offset(0, 8),
                     ),
                   ],
                 ),
