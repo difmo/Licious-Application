@@ -1,16 +1,22 @@
 import 'package:flutter/material.dart';
 import '../models/product_model.dart';
 import '../models/food_models.dart';
+import 'cart_service.dart';
 
 class CartProvider extends ChangeNotifier {
+  final CartService? _service;
   final List<CartItem> _items = [];
 
+  CartProvider({CartService? service}) : _service = service;
+
   UserProfile _userProfile = const UserProfile(
-    name: 'Raja',
-    email: 'rajaji343937@gmail.com',
-    phone: '+91 9876543210',
-    profileImage: 'assets/images/image copy 2.png', // Default profile image
+    name: 'Guest User',
+    email: '',
+    phone: '',
+    profileImage: 'assets/images/image copy 2.png',
   );
+
+  bool get isLoggedIn => _userProfile.email.isNotEmpty;
 
   final List<FoodCategory> _foodCategories = const [
     FoodCategory(
@@ -69,19 +75,19 @@ class CartProvider extends ChangeNotifier {
   final List<UserOrder> _orders = [
     UserOrder(
       id: 'ORD001',
-      restaurantName: 'New Pizza King',
+      restaurantName: 'Red Shrimp',
       date: '24 Feb, 7:12 PM',
       total: 349.00,
       status: 'Delivered',
-      items: ['1x Farmhouse Pizza', '1x Coke 500ml'],
+      items: ['1x Freshwater Prawn', '1x Fresh and Raw'],
     ),
     UserOrder(
       id: 'ORD002',
-      restaurantName: 'Burger Palace',
+      restaurantName: 'Tiger Shrimp',
       date: '22 Feb, 1:45 PM',
       total: 199.00,
       status: 'Delivered',
-      items: ['2x Classic Veg Burger', '1x French Fries'],
+      items: ['1x Frozen Vannamei Shrimp'],
     ),
   ];
 
@@ -116,7 +122,7 @@ class CartProvider extends ChangeNotifier {
     ),
   ];
 
-  final Set<String> _favoriteIds = {'1', '3'}; // Default favorites for demo
+
 
   final List<Product> _recommendedProducts = const [
     Product(
@@ -425,8 +431,54 @@ class CartProvider extends ChangeNotifier {
   List<UserPaymentMethod> get payments => _payments;
   UserProfile get userProfile => _userProfile;
 
-  List<Restaurant> get favRestaurants =>
-      _restaurants.where((r) => _favoriteIds.contains(r.id)).toList();
+  void updateUserProfile(UserProfile profile) {
+    _userProfile = profile;
+    notifyListeners();
+  }
+
+  void clearSession() {
+    _userProfile = const UserProfile(
+      name: 'Guest User',
+      email: '',
+      phone: '',
+      profileImage: 'assets/images/image copy 2.png',
+    );
+    _items.clear();
+    _favoriteIds.clear();
+    notifyListeners();
+  }
+
+  // ── API Integration ───────────────────────────────────────────────────────
+  
+  /// Syncs the local cart with the backend.
+  Future<void> loadCartFromApi() async {
+    if (_service == null) return;
+    try {
+      final remoteItems = await _service!.getCart();
+      if (remoteItems.isNotEmpty) {
+        _items.clear();
+        _items.addAll(remoteItems);
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error loading cart from API: $e');
+    }
+  }
+
+  final List<String> _favoriteIds = ['1', '3']; // Default favorites for demo
+
+  List<Restaurant> get favRestaurants {
+    final List<Restaurant> favs = [];
+    for (var id in _favoriteIds) {
+      final r = _restaurants.firstWhere((res) => res.id == id, orElse: () => _restaurants.first);
+      if (!_favoriteIds.contains(r.id)) continue; // Double check but it should be fine
+      if (!favs.contains(r)) favs.add(r);
+    }
+    // Correct way: map ids to restaurants in order
+    return _favoriteIds
+        .map((id) => _restaurants.firstWhere((r) => r.id == id, orElse: () => _restaurants.first))
+        .toList();
+  }
 
   bool isFavorite(String id) => _favoriteIds.contains(id);
 
@@ -439,10 +491,15 @@ class CartProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void updateUserProfile(UserProfile newProfile) {
-    _userProfile = newProfile;
+  void reorderFavorites(int oldIndex, int newIndex) {
+    if (newIndex > oldIndex) {
+      newIndex -= 1;
+    }
+    final String item = _favoriteIds.removeAt(oldIndex);
+    _favoriteIds.insert(newIndex, item);
     notifyListeners();
   }
+
 
   void addAddress(UserAddress address) {
     if (address.isDefault) {
@@ -500,8 +557,14 @@ class CartProvider extends ChangeNotifier {
     final idx = _items.indexWhere((item) => item.title == cartItem.title);
     if (idx >= 0) {
       _items[idx].quantity += cartItem.quantity;
+      if (_service != null) {
+        _service!.updateQuantity(_items[idx].id, _items[idx].quantity);
+      }
     } else {
       _items.add(cartItem);
+      if (_service != null) {
+        _service!.addToCart(cartItem.id, cartItem.quantity);
+      }
     }
     notifyListeners();
   }
@@ -510,6 +573,9 @@ class CartProvider extends ChangeNotifier {
     final idx = _items.indexWhere((item) => item.title == title);
     if (idx >= 0) {
       _items[idx].quantity++;
+      if (_service != null) {
+        _service!.updateQuantity(_items[idx].id, _items[idx].quantity);
+      }
       notifyListeners();
     }
   }
@@ -517,10 +583,17 @@ class CartProvider extends ChangeNotifier {
   void decrement(String title) {
     final idx = _items.indexWhere((item) => item.title == title);
     if (idx >= 0) {
+      final itemId = _items[idx].id;
       if (_items[idx].quantity > 1) {
         _items[idx].quantity--;
+        if (_service != null) {
+          _service!.updateQuantity(itemId, _items[idx].quantity);
+        }
       } else {
         _items.removeAt(idx);
+        if (_service != null) {
+          _service!.removeFromCart(itemId);
+        }
       }
       notifyListeners();
     }
@@ -533,6 +606,9 @@ class CartProvider extends ChangeNotifier {
 
   void clearCart() {
     _items.clear();
+    if (_service != null) {
+      _service!.clearCart();
+    }
     notifyListeners();
   }
 }

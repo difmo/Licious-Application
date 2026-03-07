@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app/routes/app_routes.dart';
 import 'app/routes/app_pages.dart';
 import 'app/data/services/db_service.dart';
+import 'app/data/services/cart_service.dart';
 import 'app/core/theme/app_theme.dart';
 
 void main() {
@@ -15,13 +16,15 @@ void main() {
   );
 }
 
-class ShrimpbiteApp extends StatelessWidget {
+class ShrimpbiteApp extends ConsumerWidget {
   const ShrimpbiteApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cartService = ref.watch(cartServiceProvider);
+
     return CartProviderScope(
-      provider: CartProvider(),
+      provider: CartProvider(service: cartService),
       child: MaterialApp(
         title: 'Shrimpbite',
         debugShowCheckedModeBanner: false,

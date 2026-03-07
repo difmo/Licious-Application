@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../data/services/db_service.dart';
-import '../../cart/view/cart_page.dart';
 import '../controller/main_controller.dart';
 import '../../../widgets/bounce_widget.dart';
 
@@ -57,56 +56,16 @@ class _HomeHeaderState extends State<HomeHeader> {
               // Header Buttons
               const SizedBox(width: 8),
 
-              // Cart Icon with Badge
+              // Cart Icon removed from here
               BounceWidget(
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const CartPage()),
-                  );
+                  MainControllerScope.of(context).changePage(4);
                 },
-                child: Stack(
-                  children: [
-                    if (cart.itemCount > 0)
-                      Positioned(
-                        top: 0,
-                        right: 0,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: const BoxDecoration(
-                            color: Colors.red,
-                            shape: BoxShape.circle,
-                          ),
-                          constraints: const BoxConstraints(
-                            minWidth: 16,
-                            minHeight: 16,
-                          ),
-                          child: Text(
-                            '${cart.itemCount}',
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 9,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              BounceWidget(
-                onTap: () {
-                  final mainController = MainControllerScope.of(context);
-                  mainController.changePage(4);
-                },
-                child: const CircleAvatar(
-                  radius: 16,
-                  backgroundColor: Color.fromARGB(255, 199, 250, 104),
-                  child: Text(
-                    'R',
-                    style: TextStyle(color: Colors.black, fontSize: 14),
+                child: Hero(
+                  tag: 'profile_pic',
+                  child: CircleAvatar(
+                    radius: 18,
+                    backgroundImage: AssetImage(cart.userProfile.profileImage),
                   ),
                 ),
               ),
