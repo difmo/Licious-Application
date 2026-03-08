@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'home_page.dart';
-import 'favorites_page.dart';
 import '../../cart/view/cart_page.dart';
 import '../../profile/view/profile_page.dart';
-import '../../orders/view/orders_page.dart';
 import '../../subscription/subscription_page.dart';
 import '../../wallet/view/wallet_page.dart';
 import '../controller/main_controller.dart';

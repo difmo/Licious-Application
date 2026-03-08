@@ -2,12 +2,22 @@ import 'package:flutter/material.dart';
 import '../models/product_model.dart';
 import '../models/food_models.dart';
 import 'cart_service.dart';
+import 'wallet_service.dart';
+import 'address_service.dart';
 
 class CartProvider extends ChangeNotifier {
   final CartService? _service;
+  final WalletService? _walletService;
+  final AddressService? _addressService;
   final List<CartItem> _items = [];
 
-  CartProvider({CartService? service}) : _service = service;
+  CartProvider({
+    CartService? service,
+    WalletService? walletService,
+    AddressService? addressService,
+  })  : _service = service,
+        _walletService = walletService,
+        _addressService = addressService;
 
   UserProfile _userProfile = const UserProfile(
     name: 'Guest User',
@@ -87,7 +97,24 @@ class CartProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  final List<UserAddress> _addresses = [
+  double _walletBalance = 0.0;
+  List<dynamic> _transactions = [];
+
+  double get walletBalance => _walletBalance;
+  List<dynamic> get transactions => _transactions;
+
+  Future<void> syncWallet() async {
+    if (_walletService == null) return;
+    final result = await _walletService!.getBalance();
+    if (result['success']) {
+      _walletBalance = (result['balance'] as num).toDouble();
+      notifyListeners();
+    }
+    _transactions = await _walletService!.getTransactionHistory();
+    notifyListeners();
+  }
+
+  List<UserAddress> _addresses = [
     const UserAddress(
       id: 'ADDR001',
       title: 'Home',
@@ -497,20 +524,60 @@ class CartProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void addAddress(UserAddress address) {
-    if (address.isDefault) {
-      for (int i = 0; i < _addresses.length; i++) {
-        _addresses[i] = UserAddress(
-          id: _addresses[i].id,
-          title: _addresses[i].title,
-          street: _addresses[i].street,
-          details: _addresses[i].details,
-          isDefault: false,
-        );
+  void addAddress(UserAddress address) async {
+    if (_addressService != null) {
+      final result = await _addressService!.saveAddress(
+        label: address.title,
+        fullAddress: address.street,
+        city: address.details.split(',').first.trim(),
+        state: address.details.contains(',')
+            ? address.details.split(',')[1].trim()
+            : '',
+        pincode: address.details.split(' ').last,
+        isDefault: address.isDefault,
+      );
+      if (result['success']) {
+        loadAddresses();
       }
+    } else {
+      // Fallback for local testing
+      if (address.isDefault) {
+        for (int i = 0; i < _addresses.length; i++) {
+          _addresses[i] = UserAddress(
+            id: _addresses[i].id,
+            title: _addresses[i].title,
+            street: _addresses[i].street,
+            details: _addresses[i].details,
+            isDefault: false,
+          );
+        }
+      }
+      _addresses.add(address);
+      notifyListeners();
     }
-    _addresses.add(address);
-    notifyListeners();
+  }
+
+  Future<void> loadAddresses() async {
+    if (_addressService == null) return;
+    try {
+      final result = await _addressService!.getAddresses();
+      if (result['success']) {
+        final List<dynamic> data = result['data'] ?? [];
+        _addresses = data
+            .map((json) => UserAddress(
+                  id: json['_id'] ?? '',
+                  title: json['label'] ?? 'Address',
+                  street: json['fullAddress'] ?? '',
+                  details:
+                      '${json['city'] ?? ''}, ${json['state'] ?? ''} ${json['pincode'] ?? ''}',
+                  isDefault: json['isDefault'] ?? false,
+                ))
+            .toList();
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error loading addresses: $e');
+    }
   }
 
   void updateAddress(UserAddress address) {

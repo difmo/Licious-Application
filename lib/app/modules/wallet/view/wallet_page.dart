@@ -1,14 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../routes/app_routes.dart';
+import '../../../data/services/db_service.dart';
 
-class WalletPage extends StatelessWidget {
+class WalletPage extends ConsumerWidget {
   const WalletPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cartProvider = CartProviderScope.of(context);
+    final balance = cartProvider.walletBalance;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
-        title: const Text('My Wallet', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text('My Wallet',
+            style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: Colors.white,
         elevation: 0,
         foregroundColor: Colors.black,
@@ -17,9 +24,9 @@ class WalletPage extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            _buildBalanceCard(),
+            _buildBalanceCard(balance),
             const SizedBox(height: 30),
-            _buildActionButtons(),
+            _buildActionButtons(context),
             const SizedBox(height: 30),
             _buildTransactionHistory(),
           ],
@@ -28,7 +35,7 @@ class WalletPage extends StatelessWidget {
     );
   }
 
-  Widget _buildBalanceCard() {
+  Widget _buildBalanceCard(double balance) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(30),
@@ -41,23 +48,23 @@ class WalletPage extends StatelessWidget {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF68B92E).withValues(alpha:  0.3),
+            color: const Color(0xFF68B92E).withOpacity(0.3),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
         ],
       ),
-      child: const Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
+          const Text(
             'Current Balance',
             style: TextStyle(color: Colors.white70, fontSize: 16),
           ),
-          SizedBox(height: 10),
+          const SizedBox(height: 10),
           Text(
-            '₹2,450.00',
-            style: TextStyle(
+            '₹${balance.toStringAsFixed(2)}',
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 36,
               fontWeight: FontWeight.w900,
@@ -68,49 +75,66 @@ class WalletPage extends StatelessWidget {
     );
   }
 
-  Widget _buildActionButtons() {
+  Widget _buildActionButtons(BuildContext context) {
     return Row(
       children: [
         Expanded(
-          child: _buildActionButton(Icons.add_circle_outline, 'Add Money', Colors.blue),
+          child: _buildActionButton(
+            context,
+            Icons.add_circle_outline,
+            'Add Money',
+            Colors.blue,
+            () => Navigator.pushNamed(context, AppRoutes.topUp),
+          ),
         ),
         const SizedBox(width: 20),
         Expanded(
-          child: _buildActionButton(Icons.history, 'Statement', Colors.orange),
+          child: _buildActionButton(
+            context,
+            Icons.history,
+            'Statement',
+            Colors.orange,
+            () {}, // TODO: Implement Statement
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildActionButton(IconData icon, String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha:  0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: color, size: 30),
-          const SizedBox(height: 10),
-          Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
-        ],
+  Widget _buildActionButton(BuildContext context, IconData icon, String label,
+      Color color, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 30),
+            const SizedBox(height: 10),
+            Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildTransactionHistory() {
-    return Column(
+    return const Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Row(
+        Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
@@ -120,15 +144,25 @@ class WalletPage extends StatelessWidget {
             Text('View All', style: TextStyle(color: Color(0xFF68B92E))),
           ],
         ),
-        const SizedBox(height: 20),
-        _buildTransactionItem('Subscription Delivery', 'Yesterday', '-₹80.00', false),
-        _buildTransactionItem('Wallet Top-up', '2 days ago', '+₹500.00', true),
-        _buildTransactionItem('Subscription Delivery', '3 days ago', '-₹80.00', false),
+        SizedBox(height: 20),
+        _TransactionItem(
+            'Subscription Delivery', 'Yesterday', '-₹80.00', false),
+        _TransactionItem('Wallet Top-up', '2 days ago', '+₹500.00', true),
       ],
     );
   }
+}
 
-  Widget _buildTransactionItem(String title, String date, String amount, bool isCredit) {
+class _TransactionItem extends StatelessWidget {
+  final String title;
+  final String date;
+  final String amount;
+  final bool isCredit;
+
+  const _TransactionItem(this.title, this.date, this.amount, this.isCredit);
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
       padding: const EdgeInsets.all(16),
@@ -141,7 +175,7 @@ class WalletPage extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: (isCredit ? Colors.green : Colors.red).withValues(alpha:  0.1),
+              color: (isCredit ? Colors.green : Colors.red).withOpacity(0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -155,8 +189,10 @@ class WalletPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-                Text(date, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+                Text(title,
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text(date,
+                    style: TextStyle(color: Colors.grey[600], fontSize: 12)),
               ],
             ),
           ),

@@ -10,6 +10,7 @@ import './saved_cards_page.dart';
 import '../../auth/provider/auth_provider.dart';
 import '../../home/controller/main_controller.dart';
 import '../../../data/models/food_models.dart';
+import '../../subscriptions/view/subscription_dashboard_page.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -135,6 +136,12 @@ class _ActiveOrdersAndSubscriptions extends StatelessWidget {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const MyOrdersPage()),
+      );
+    } else if (title == 'Subscriptions') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+            builder: (context) => const SubscriptionDashboardPage()),
       );
     } else {
       Navigator.push(
@@ -270,58 +277,67 @@ class _WalletSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF0F4EC),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          const BoxShadow(
-            color: Colors.white,
-            blurRadius: 10,
-            spreadRadius: 1,
-            offset: Offset(-4, -4),
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            spreadRadius: 1,
-            offset: const Offset(4, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.account_balance_wallet_outlined,
-              color: Color(0xFF114F3B), size: 24),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    final provider = CartProviderScope.of(context);
+    final balance = provider.walletBalance;
+
+    return GestureDetector(
+      onTap: () {
+        MainControllerScope.of(context)
+            .changePage(3); // Index 3 is Wallet in MainPage
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF0F4EC),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            const BoxShadow(
+              color: Colors.white,
+              blurRadius: 10,
+              spreadRadius: 1,
+              offset: Offset(-4, -4),
+            ),
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              spreadRadius: 1,
+              offset: const Offset(4, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.account_balance_wallet_outlined,
+                color: Color(0xFF114F3B), size: 24),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('My Wallet',
+                      style: TextStyle(
+                          color: Color(0xFF114F3B),
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold)),
+                  Text('Credit Cards | Transactions',
+                      style: TextStyle(color: Colors.black54, fontSize: 12)),
+                ],
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text('My Wallet',
-                    style: TextStyle(
+                const Text('Balance:',
+                    style: TextStyle(color: Colors.black54, fontSize: 12)),
+                Text('₹${balance.toStringAsFixed(2)}',
+                    style: const TextStyle(
                         color: Color(0xFF114F3B),
                         fontSize: 16,
                         fontWeight: FontWeight.bold)),
-                Text('Credit Cards | Transactions',
-                    style: TextStyle(color: Colors.black54, fontSize: 12)),
               ],
             ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              const Text('Balance:',
-                  style: TextStyle(color: Colors.black54, fontSize: 12)),
-              const Text('\$15.50',
-                  style: TextStyle(
-                      color: Color(0xFF114F3B),
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold)),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

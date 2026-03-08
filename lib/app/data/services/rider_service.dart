@@ -31,23 +31,40 @@ class RiderService {
         },
         requiresAuth: true,
       );
-
-      if (res['success'] == true) {
-        return {
-          'success': true,
-          'message': res['message'],
-        };
-      } else {
-        return {
-          'success': false,
-          'message': res['message'] ?? 'Failed to respond to order',
-        };
-      }
+      return res;
     } catch (e) {
-      return {
-        'success': false,
-        'message': e.toString(),
-      };
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  Future<Map<String, dynamic>> updateLocation({
+    required double lat,
+    required double lng,
+  }) async {
+    try {
+      final res = await _apiClient.patch(
+        '${ApiClient.riderBaseUrl}/location',
+        data: {'lat': lat, 'lng': lng},
+        requiresAuth: true,
+      );
+      return res;
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  Future<Map<String, dynamic>> completeOrder({
+    required String orderId,
+  }) async {
+    try {
+      final res = await _apiClient.patch(
+        '${ApiClient.riderBaseUrl}/complete',
+        data: {'orderId': orderId},
+        requiresAuth: true,
+      );
+      return res;
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
     }
   }
 }

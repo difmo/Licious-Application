@@ -50,3 +50,54 @@ class SubscriptionPlan {
     );
   }
 }
+
+class UserSubscription {
+  final String id;
+  final String productId;
+  final String productName;
+  final String productImage;
+  final String frequency;
+  final int quantity;
+  final List<String> customDays;
+  final String status;
+  final DateTime startDate;
+  final DateTime? endDate;
+  final List<DateTime> vacationDates;
+
+  UserSubscription({
+    required this.id,
+    required this.productId,
+    required this.productName,
+    required this.productImage,
+    required this.frequency,
+    required this.quantity,
+    required this.customDays,
+    required this.status,
+    required this.startDate,
+    this.endDate,
+    this.vacationDates = const [],
+  });
+
+  factory UserSubscription.fromJson(Map<String, dynamic> json) {
+    return UserSubscription(
+      id: json['_id']?.toString() ?? '',
+      productId: json['product']?['_id']?.toString() ?? '',
+      productName: json['product']?['name']?.toString() ?? 'Product',
+      productImage: json['product']?['image']?.toString() ?? '',
+      frequency: json['frequency']?.toString() ?? 'Daily',
+      quantity: (json['quantity'] as num?)?.toInt() ?? 1,
+      customDays: (json['customDays'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [],
+      status: json['status']?.toString() ?? 'Active',
+      startDate:
+          DateTime.parse(json['startDate'] ?? DateTime.now().toIso8601String()),
+      endDate: json['endDate'] != null ? DateTime.parse(json['endDate']) : null,
+      vacationDates: (json['vacationDates'] as List<dynamic>?)
+              ?.map((e) => DateTime.parse(e.toString()))
+              .toList() ??
+          [],
+    );
+  }
+}

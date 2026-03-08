@@ -17,23 +17,26 @@ import '../modules/subscription/subscription_page.dart';
 import '../modules/wallet/view/wallet_page.dart';
 import '../modules/rider/view/rider_home_page.dart';
 
+import '../modules/wallet/view/top_up_page.dart';
+
 class AppPages {
   static Map<String, WidgetBuilder> get routes => {
-    AppRoutes.splash: (context) => const SplashPage(),
-    AppRoutes.initialRoute: (context) => const OnboardingPage(),
-    AppRoutes.deals: (context) => const DealsPage(),
-    AppRoutes.welcome: (context) => const WelcomePage(),
-    AppRoutes.login: (context) => const LoginPage(),
-    AppRoutes.signup: (context) => const RegisterPage(),
-    AppRoutes.forgotPassword: (context) => const ForgotPasswordPage(),
-    AppRoutes.home: (context) => const MainPage(),
-    AppRoutes.subscriptions: (context) => const SubscriptionPage(),
-    AppRoutes.wallet: (context) => const WalletPage(),
-    AppRoutes.categories: (context) => const CategoriesPage(),
-    AppRoutes.vegetables: (context) => const VegetablesPage(),
-    AppRoutes.cart: (context) => const CartPage(),
-    AppRoutes.shippingAddress: (context) => const ShippingAddressPage(),
-    AppRoutes.paymentMethod: (context) => const PaymentMethodPage(),
-    AppRoutes.riderHome: (context) => const RiderHomePage(),
-  };
+        AppRoutes.splash: (context) => const SplashPage(),
+        AppRoutes.initialRoute: (context) => const OnboardingPage(),
+        AppRoutes.deals: (context) => const DealsPage(),
+        AppRoutes.welcome: (context) => const WelcomePage(),
+        AppRoutes.login: (context) => const LoginPage(),
+        AppRoutes.signup: (context) => const RegisterPage(),
+        AppRoutes.forgotPassword: (context) => const ForgotPasswordPage(),
+        AppRoutes.home: (context) => const MainPage(),
+        AppRoutes.subscriptions: (context) => const SubscriptionPage(),
+        AppRoutes.wallet: (context) => const WalletPage(),
+        AppRoutes.categories: (context) => const CategoriesPage(),
+        AppRoutes.vegetables: (context) => const VegetablesPage(),
+        AppRoutes.cart: (context) => const CartPage(),
+        AppRoutes.shippingAddress: (context) => const ShippingAddressPage(),
+        AppRoutes.paymentMethod: (context) => const PaymentMethodPage(),
+        AppRoutes.riderHome: (context) => const RiderHomePage(),
+        AppRoutes.topUp: (context) => const TopUpPage(),
+      };
 }
