@@ -1,4 +1,9 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:licius_application/app/data/models/food_models.dart';
+import 'package:licius_application/app/data/services/db_service.dart';
 import '../../../data/services/order_service.dart';
 import 'order_success_page.dart';
 
@@ -192,56 +197,66 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
               width: double.infinity,
               height: 56,
               child: ElevatedButton(
-                onPressed: _isLoading ? null : () async {
-                  setState(() => _isLoading = true);
-                  
-                  try {
-                    final cartProvider = CartProviderScope.of(context);
-                    final orderService = ref.read(orderServiceProvider);
+                onPressed: _isLoading
+                    ? null
+                    : () async {
+                        setState(() => _isLoading = true);
 
-                    // Get default address or first address
-                    final defaultAddr = cartProvider.addresses.firstWhere(
-                      (a) => a.isDefault,
-                      orElse: () => cartProvider.addresses.isNotEmpty 
-                        ? cartProvider.addresses.first 
-                        : const UserAddress(id: '0', title: 'Default', street: 'Default Street', details: 'Default City'),
-                    );
+                        try {
+                          final cartProvider = CartProviderScope.of(context);
+                          final orderService = ref.read(orderServiceProvider);
 
-                    final response = await orderService.placeOrder(
-                      deliveryAddress: {
-                        'address': defaultAddr.street,
-                        'city': defaultAddr.details, // Mock simplified
-                        'state': 'Unknown',
-                        'pincode': '000000',
+                          // Get default address or first address
+                          final defaultAddr = cartProvider.addresses.firstWhere(
+                            (a) => a.isDefault,
+                            orElse: () => cartProvider.addresses.isNotEmpty
+                                ? cartProvider.addresses.first
+                                : const UserAddress(
+                                    id: '0',
+                                    title: 'Default',
+                                    street: 'Default Street',
+                                    details: 'Default City'),
+                          );
+
+                          final response = await orderService.placeOrder(
+                            deliveryAddress: {
+                              'address': defaultAddr.street,
+                              'city': defaultAddr.details, // Mock simplified
+                              'state': 'Unknown',
+                              'pincode': '000000',
+                            },
+                            paymentMethod:
+                                _selectedMethod == 1 ? 'Credit Card' : 'PayPal',
+                          );
+
+                          if (response['success'] == true) {
+                            // Clear local cart
+                            cartProvider.clearCart();
+
+                            if (!mounted) return;
+                            Navigator.pushAndRemoveUntil(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) => const OrderSuccessPage()),
+                              (route) => route.isFirst,
+                            );
+                          } else {
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                  content: Text(response['message'] ??
+                                      'Failed to place order')),
+                            );
+                          }
+                        } catch (e) {
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Error: $e')),
+                          );
+                        } finally {
+                          if (mounted) setState(() => _isLoading = false);
+                        }
                       },
-                      paymentMethod: _selectedMethod == 1 ? 'Credit Card' : 'PayPal',
-                    );
-
-                    if (response['success'] == true) {
-                      // Clear local cart
-                      cartProvider.clearCart();
-                      
-                      if (!mounted) return;
-                      Navigator.pushAndRemoveUntil(
-                        context,
-                        MaterialPageRoute(builder: (_) => const OrderSuccessPage()),
-                        (route) => route.isFirst,
-                      );
-                    } else {
-                      if (!mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(response['message'] ?? 'Failed to place order')),
-                      );
-                    }
-                  } catch (e) {
-                    if (!mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Error: $e')),
-                    );
-                  } finally {
-                    if (mounted) setState(() => _isLoading = false);
-                  }
-                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF439462),
                   foregroundColor: Colors.white,
@@ -250,16 +265,17 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
                     borderRadius: BorderRadius.circular(14),
                   ),
                 ),
-                child: _isLoading 
-                  ? const SizedBox(
-                      height: 20, 
-                      width: 20, 
-                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
-                    )
-                  : const Text(
-                      'Make a payment',
-                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
-                    ),
+                child: _isLoading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                            color: Colors.white, strokeWidth: 2))
+                    : const Text(
+                        'Make a payment',
+                        style: TextStyle(
+                            fontSize: 17, fontWeight: FontWeight.bold),
+                      ),
               ),
             ),
           ),
@@ -337,7 +353,7 @@ class _CreditCardWidget extends StatelessWidget {
             top: -20,
             child: _Circle(
               size: 140,
-              color: Colors.white.withValues(alpha:  0.07),
+              color: Colors.white.withValues(alpha: 0.07),
             ),
           ),
           Positioned(
@@ -345,7 +361,7 @@ class _CreditCardWidget extends StatelessWidget {
             top: 10,
             child: _Circle(
               size: 90,
-              color: Colors.white.withValues(alpha:  0.07),
+              color: Colors.white.withValues(alpha: 0.07),
             ),
           ),
           Positioned(
@@ -353,7 +369,7 @@ class _CreditCardWidget extends StatelessWidget {
             bottom: -30,
             child: _Circle(
               size: 80,
-              color: Colors.white.withValues(alpha:  0.07),
+              color: Colors.white.withValues(alpha: 0.07),
             ),
           ),
           Positioned(
@@ -366,7 +382,7 @@ class _CreditCardWidget extends StatelessWidget {
                   offset: const Offset(-12, 0),
                   child: _Circle(
                     size: 36,
-                    color: const Color(0xFFEBAA02).withValues(alpha:  0.9),
+                    color: const Color(0xFFEBAA02).withValues(alpha: 0.9),
                   ),
                 ),
               ],
@@ -398,7 +414,7 @@ class _CreditCardWidget extends StatelessWidget {
               child: Container(
                 width: 14,
                 height: 14,
-                color: const Color(0xFFE84393).withValues(alpha:  0.8),
+                color: const Color(0xFFE84393).withValues(alpha: 0.8),
               ),
             ),
           ),
@@ -411,7 +427,7 @@ class _CreditCardWidget extends StatelessWidget {
                 Text(
                   'CARD HOLDER',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha:  0.7),
+                    color: Colors.white.withValues(alpha: 0.7),
                     fontSize: 9,
                     letterSpacing: 1,
                   ),
@@ -438,7 +454,7 @@ class _CreditCardWidget extends StatelessWidget {
                 Text(
                   'EXPIRES',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha:  0.7),
+                    color: Colors.white.withValues(alpha: 0.7),
                     fontSize: 9,
                     letterSpacing: 1,
                   ),
@@ -451,7 +467,7 @@ class _CreditCardWidget extends StatelessWidget {
                       child: Container(
                         width: 10,
                         height: 10,
-                        color: const Color(0xFFE8B934).withValues(alpha:  0.9),
+                        color: const Color(0xFFE8B934).withValues(alpha: 0.9),
                       ),
                     ),
                     const SizedBox(width: 4),
@@ -480,10 +496,10 @@ class _Circle extends StatelessWidget {
   const _Circle({required this.size, required this.color});
   @override
   Widget build(BuildContext context) => Container(
-    width: size,
-    height: size,
-    decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-  );
+        width: size,
+        height: size,
+        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      );
 }
 
 class _PaymentMethodTile extends StatelessWidget {
@@ -521,9 +537,8 @@ class _PaymentMethodTile extends StatelessWidget {
                 label,
                 style: TextStyle(
                   fontSize: 12,
-                  color: selected
-                      ? const Color(0xFF38B24D)
-                      : Colors.grey.shade600,
+                  color:
+                      selected ? const Color(0xFF38B24D) : Colors.grey.shade600,
                   fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
                 ),
               ),
@@ -538,19 +553,19 @@ class _PaymentMethodTile extends StatelessWidget {
 class _PaypalIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) => const SizedBox(
-    width: 28,
-    height: 28,
-    child: Center(
-      child: Text(
-        'P',
-        style: TextStyle(
-          fontSize: 22,
-          fontWeight: FontWeight.bold,
-          color: Color(0xFF003087),
+        width: 28,
+        height: 28,
+        child: Center(
+          child: Text(
+            'P',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF003087),
+            ),
+          ),
         ),
-      ),
-    ),
-  );
+      );
 }
 
 class _CheckoutStepper extends StatelessWidget {
@@ -587,9 +602,8 @@ class _StepDot extends StatelessWidget {
     final bool done = currentStep > stepIndex;
     final bool active = currentStep == stepIndex;
     final Color bg = (done || active) ? const Color(0xFF68B92E) : Colors.white;
-    final Color border = (done || active)
-        ? const Color(0xFF68B92E)
-        : Colors.grey.shade300;
+    final Color border =
+        (done || active) ? const Color(0xFF68B92E) : Colors.grey.shade300;
     return Column(
       children: [
         Container(
@@ -634,12 +648,12 @@ class _StepLine extends StatelessWidget {
   const _StepLine({required this.active});
   @override
   Widget build(BuildContext context) => Expanded(
-    child: Container(
-      height: 2,
-      margin: const EdgeInsets.only(bottom: 20),
-      color: active ? const Color(0xFF38B24D) : Colors.grey.shade300,
-    ),
-  );
+        child: Container(
+          height: 2,
+          margin: const EdgeInsets.only(bottom: 20),
+          color: active ? const Color(0xFF38B24D) : Colors.grey.shade300,
+        ),
+      );
 }
 
 class _CardNumberFormatter extends TextInputFormatter {
@@ -677,5 +691,3 @@ class _MonthYearFormatter extends TextInputFormatter {
     );
   }
 }
-
-

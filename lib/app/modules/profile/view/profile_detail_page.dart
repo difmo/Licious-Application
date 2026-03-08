@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/services/order_service.dart';
 import '../../../data/services/db_service.dart';
@@ -69,7 +71,10 @@ class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
       });
     } catch (e) {
       setState(() {
-        _subscriptionsError = e.toString().replaceFirst('ApiException: ', '').replaceFirst('ApiException(null): ', '');
+        _subscriptionsError = e
+            .toString()
+            .replaceFirst('ApiException: ', '')
+            .replaceFirst('ApiException(null): ', '');
         _subscriptionsLoading = false;
       });
     }
@@ -163,7 +168,7 @@ class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha:  0.05),
+                  color: Colors.black.withValues(alpha: 0.05),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -175,7 +180,8 @@ class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
                 if (addr.isDefault)
                   Container(
                     margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
                       color: const Color(0xFFEBFFD7),
                       borderRadius: BorderRadius.circular(4),
@@ -292,7 +298,8 @@ class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
           decoration: BoxDecoration(
             color: const Color(0xFFF1F4F8),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.grey.shade300, style: BorderStyle.solid),
+            border: Border.all(
+                color: Colors.grey.shade300, style: BorderStyle.solid),
           ),
           child: Material(
             color: Colors.transparent,
@@ -332,10 +339,11 @@ class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
     if (provider.isOrdersLoading) {
       return const Padding(
         padding: EdgeInsets.only(top: 40),
-        child: Center(child: CircularProgressIndicator(color: Color(0xFF68B92E))),
+        child:
+            Center(child: CircularProgressIndicator(color: Color(0xFF68B92E))),
       );
     }
-    
+
     final orders = provider.orders;
     if (orders.isEmpty) {
       return const Padding(
@@ -469,22 +477,28 @@ class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
                             context: context,
                             builder: (context) => ReviewDialog(
                               orderId: order.id,
-                              productName: order.items.isNotEmpty 
-                                ? order.items[0].split('x ').last 
-                                : 'Shrimp Product',
-                              retailerId: '65e9f8f8f8f8f8f8f8f8f8f8', // Mock retailer ID
-                              productId: '65e9f8f8f8f8f8f8f8f8f8f9',  // Mock product ID
+                              productName: order.items.isNotEmpty
+                                  ? order.items[0].split('x ').last
+                                  : 'Shrimp Product',
+                              retailerId:
+                                  '65e9f8f8f8f8f8f8f8f8f8f8', // Mock retailer ID
+                              productId:
+                                  '65e9f8f8f8f8f8f8f8f8f8f9', // Mock product ID
                             ),
                           );
                         },
-                        icon: const Icon(Icons.star_outline, color: Color(0xFF68B92E)),
+                        icon: const Icon(Icons.star_outline,
+                            color: Color(0xFF68B92E)),
                         label: const Text(
                           'Rate & Review',
-                          style: TextStyle(color: Color(0xFF68B92E), fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                              color: Color(0xFF68B92E),
+                              fontWeight: FontWeight.bold),
                         ),
                         style: OutlinedButton.styleFrom(
                           side: const BorderSide(color: Color(0xFF68B92E)),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
                           padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
                       ),
@@ -540,7 +554,7 @@ class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha:  0.3),
+                color: Colors.black.withValues(alpha: 0.3),
                 blurRadius: 15,
                 spreadRadius: 0,
                 offset: const Offset(0, 8),
@@ -918,7 +932,7 @@ class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha:  0.3),
+            color: Colors.black.withValues(alpha: 0.3),
             blurRadius: 15,
             spreadRadius: 0,
             offset: const Offset(0, 8),
@@ -1074,16 +1088,16 @@ class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
         children: [
           CircleAvatar(
             backgroundColor: isFailed
-                ? Colors.red.withValues(alpha:  0.1)
+                ? Colors.red.withValues(alpha: 0.1)
                 : (isNegative
-                      ? Colors.orange.withValues(alpha:  0.1)
-                      : Colors.green.withValues(alpha:  0.1)),
+                    ? Colors.orange.withValues(alpha: 0.1)
+                    : Colors.green.withValues(alpha: 0.1)),
             child: Icon(
               isFailed
                   ? Icons.error_outline
                   : (isNegative
-                        ? Icons.shopping_bag_outlined
-                        : Icons.account_balance_wallet_outlined),
+                      ? Icons.shopping_bag_outlined
+                      : Icons.account_balance_wallet_outlined),
               color: isFailed
                   ? Colors.red
                   : (isNegative ? Colors.orange : Colors.green),
@@ -1200,7 +1214,8 @@ class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.error_outline, color: Colors.redAccent, size: 48),
+              const Icon(Icons.error_outline,
+                  color: Colors.redAccent, size: 48),
               const SizedBox(height: 12),
               Text(
                 _subscriptionsError!,
@@ -1252,7 +1267,7 @@ class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF439462).withValues(alpha:  0.32),
+                color: const Color(0xFF439462).withValues(alpha: 0.32),
                 blurRadius: 18,
                 offset: const Offset(0, 8),
               ),
@@ -1263,7 +1278,7 @@ class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha:  0.15),
+                  color: Colors.white.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -1311,7 +1326,8 @@ class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
   Widget _buildSubscriptionCard(SubscriptionPlan plan) {
     final isSelected = _selectedPlanId == plan.id;
     final isSilver = plan.name.toLowerCase().contains('silver');
-    final planColor = isSilver ? const Color(0xFF2979FF) : const Color(0xFFFF6D00);
+    final planColor =
+        isSilver ? const Color(0xFF2979FF) : const Color(0xFFFF6D00);
     final planGradient = isSilver
         ? const LinearGradient(
             colors: [Color(0xFF1565C0), Color(0xFF42A5F5)],
@@ -1335,7 +1351,7 @@ class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
         ),
         boxShadow: [
           BoxShadow(
-            color: planColor.withValues(alpha:  isSelected ? 0.22 : 0.10),
+            color: planColor.withValues(alpha: isSelected ? 0.22 : 0.10),
             blurRadius: 18,
             spreadRadius: 0,
             offset: const Offset(0, 8),
@@ -1400,8 +1416,8 @@ class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
                 ),
                 if (plan.badge != null && plan.badge!.isNotEmpty)
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 5),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(20),
@@ -1449,15 +1465,14 @@ class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
                       'Up to ${plan.maxOrderQuantity}kg',
                       planColor,
                     ),
-                    if (plan.priorityDelivery) ...
-                      [
-                        const SizedBox(width: 8),
-                        _buildHighlightChip(
-                          Icons.bolt,
-                          'Priority',
-                          planColor,
-                        ),
-                      ],
+                    if (plan.priorityDelivery) ...[
+                      const SizedBox(width: 8),
+                      _buildHighlightChip(
+                        Icons.bolt,
+                        'Priority',
+                        planColor,
+                      ),
+                    ],
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -1472,7 +1487,7 @@ class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
                           width: 20,
                           height: 20,
                           decoration: BoxDecoration(
-                            color: planColor.withValues(alpha:  0.12),
+                            color: planColor.withValues(alpha: 0.12),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
@@ -1506,10 +1521,10 @@ class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
                       setState(() => _selectedPlanId = plan.id);
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor:
-                          isSelected ? planColor : planColor.withValues(alpha:  0.12),
-                      foregroundColor:
-                          isSelected ? Colors.white : planColor,
+                      backgroundColor: isSelected
+                          ? planColor
+                          : planColor.withValues(alpha: 0.12),
+                      foregroundColor: isSelected ? Colors.white : planColor,
                       elevation: 0,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -1520,7 +1535,9 @@ class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
                       ),
                     ),
                     child: Text(
-                      isSelected ? 'Selected ✓' : 'Select ${plan.name.split(' ').first} Plan',
+                      isSelected
+                          ? 'Selected ✓'
+                          : 'Select ${plan.name.split(' ').first} Plan',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 15,
@@ -1541,7 +1558,7 @@ class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: color.withValues(alpha:  0.10),
+        color: color.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
@@ -1562,5 +1579,3 @@ class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
     );
   }
 }
-
-
