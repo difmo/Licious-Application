@@ -33,6 +33,11 @@ class _MainPageState extends State<MainPage> {
     _controller.addListener(() {
       if (mounted) setState(() {});
     });
+    
+    // Initial cart sync from API
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      CartProviderScope.of(context).loadCartFromApi();
+    });
   }
 
   @override
@@ -54,7 +59,7 @@ class _MainPageState extends State<MainPage> {
         extendBody: true,
         body: Stack(
           children: [
-            _pages[_controller.currentIndex],
+            Positioned.fill(child: _pages[_controller.currentIndex]),
             if (showSummary)
               Positioned(
                 bottom: 110, // Just above the custom bottom bar (height ~100)
@@ -158,11 +163,19 @@ class _MainPageState extends State<MainPage> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
+<<<<<<< HEAD
                 _buildNavItem(0, Icons.home_filled),
                 _buildNavItem(1, Icons.calendar_month_rounded),
                 const SizedBox(width: 60), // Space for FAB
                 _buildNavItem(3, Icons.wallet_rounded),
                 _buildNavItem(4, Icons.person_rounded),
+=======
+                _buildNavItem(0, Icons.home_filled, 'Home'),
+                _buildNavItem(1, Icons.favorite_rounded, 'My Favorite'),
+                const SizedBox(width: 68), // Space for FAB
+                _buildNavItem(3, Icons.receipt_long_rounded, 'Orders'),
+                _buildNavItem(4, Icons.person_rounded, 'Profile'),
+>>>>>>> 0d6934473b23ad73b413e0ace1dfe03bdbcf2572
               ],
             ),
           ),
@@ -201,14 +214,28 @@ class _MainPageState extends State<MainPage> {
     );
   }
 
-  Widget _buildNavItem(int index, IconData icon) {
+  Widget _buildNavItem(int index, IconData icon, String label) {
     bool isSelected = _controller.currentIndex == index;
     return GestureDetector(
       onTap: () => _controller.changePage(index),
-      child: Icon(
-        icon,
-        color: isSelected ? const Color(0xFF68B92E) : const Color(0xFF4A4A4A),
-        size: 28,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            color: isSelected ? const Color(0xFF68B92E) : const Color(0xFF4A4A4A),
+            size: 24,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: isSelected ? const Color(0xFF68B92E) : const Color(0xFF4A4A4A),
+              fontSize: 10,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+        ],
       ),
     );
   }

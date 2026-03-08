@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../data/services/db_service.dart';
 import '../../../data/models/food_models.dart';
 import '../controller/main_controller.dart';
+import 'restaurant_menu_page.dart'; // I think this is the right path for menu page
+import '../../../data/models/shop_product_model.dart';
 
 class FavoritesPage extends StatelessWidget {
   const FavoritesPage({super.key});
@@ -29,11 +31,14 @@ class FavoritesPage extends StatelessWidget {
       ),
       body: favorites.isEmpty
           ? _buildEmptyState(context)
-          : ListView.builder(
-              padding: const EdgeInsets.all(20),
+          : ReorderableListView.builder(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
               itemCount: favorites.length,
               itemBuilder: (context, index) {
-                return _buildFavoriteItem(context, provider, favorites[index]);
+                return _buildFavoriteItem(context, provider, favorites[index], index);
+              },
+              onReorder: (oldIndex, newIndex) {
+                provider.reorderFavorites(oldIndex, newIndex);
               },
             ),
     );
@@ -102,141 +107,114 @@ class FavoritesPage extends StatelessWidget {
     BuildContext context,
     CartProvider provider,
     Restaurant restaurant,
+    int index,
   ) {
     return Container(
+      key: ValueKey('fav_${restaurant.id}'),
       margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha:  0.3),
-            blurRadius: 15,
-            spreadRadius: 0,
-            offset: const Offset(0, 8),
+      child: Dismissible(
+        key: Key(restaurant.id),
+        direction: DismissDirection.endToStart,
+        background: Container(
+          decoration: BoxDecoration(
+            color: Colors.red.shade400,
+            borderRadius: BorderRadius.circular(20),
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Stack(
-            children: [
-              ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(20),
-                ),
-                child: Image.asset(
-                  restaurant.image,
-                  height: 160,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                ),
+          alignment: Alignment.centerRight,
+          padding: const EdgeInsets.only(right: 24),
+          child: const Icon(
+            Icons.delete_sweep_rounded,
+            color: Colors.white,
+            size: 32,
+          ),
+        ),
+        onDismissed: (direction) {
+          provider.toggleFavorite(restaurant.id);
+        },
+        child: GestureDetector(
+          onTap: () {
+            // Convert Restaurant to ShopModel if they are different, or pass as is if compatible
+            // For now, navigating to menu page
+             final shop = ShopModel(
+              id: restaurant.id,
+              name: restaurant.name,
+              image: restaurant.image,
+              businessName: restaurant.name,
+              rating: restaurant.rating,
+              deliveryTime: restaurant.deliveryTime,
+            );
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => RestaurantMenuPage(shop: shop),
               ),
-              Positioned(
-                top: 12,
-                right: 12,
-                child: GestureDetector(
-                  onTap: () => provider.toggleFavorite(restaurant.id),
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.favorite,
-                      color: Color(0xFF68B92E),
-                      size: 20,
-                    ),
-                  ),
+            );
+          },
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
                 ),
-              ),
-              Positioned(
-                bottom: 12,
-                left: 12,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.star, color: Colors.amber, size: 16),
-                      const SizedBox(width: 4),
-                      Text(
-                        restaurant.rating.toString(),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                      child: Image.asset(
+                        restaurant.image,
+                        height: 140,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    Positioned(
+                      top: 12,
+                      right: 12,
+                      child: GestureDetector(
+                        onTap: () => provider.toggleFavorite(restaurant.id),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.favorite, color: Color(0xFF68B92E), size: 18),
                         ),
+                      ),
+                    ),
+                  ],
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        restaurant.name,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        restaurant.categories.join(', '),
+                        style: const TextStyle(color: Colors.grey, fontSize: 12),
                       ),
                     ],
                   ),
                 ),
-              ),
-            ],
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      restaurant.name,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    Text(
-                      restaurant.deliveryTime,
-                      style: const TextStyle(
-                        color: Colors.grey,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  restaurant.categories.join(', '),
-                  style: const TextStyle(color: Colors.grey, fontSize: 12),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.local_offer_outlined,
-                      color: Color(0xFF68B92E),
-                      size: 14,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      restaurant.discount,
-                      style: const TextStyle(
-                        color: Color(0xFF68B92E),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
               ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
 }
-
-

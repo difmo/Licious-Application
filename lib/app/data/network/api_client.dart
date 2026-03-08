@@ -27,6 +27,7 @@ final apiClientProvider = Provider<ApiClient>((ref) {
 class ApiClient {
   // ── Base URLs ──────────────────────────────────────────────────────────────
   static const String baseUrl = 'https://shrimpbite-backend.vercel.app/api/app';
+  static const String riderBaseUrl = 'https://shrimpbite-backend.vercel.app/api/rider';
   static const String otpBaseUrl =
       'https://shrimpbite-backend.vercel.app/api/otp';
 

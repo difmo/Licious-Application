@@ -1,11 +1,6 @@
-Analyzing lib...
+Analyzing Shrimpbite...                                         
 
-  error - app\modules\auth\provider\auth_provider.dart:168:37 - The named parameter 'email' is required, but there's no corresponding argument. Try adding the required argument. - missing_required_argument
-  error - app\modules\auth\provider\auth_provider.dart:168:52 - The named parameter 'phoneNumber' isn't defined. Try correcting the name to an existing named parameter's name, or defining a named parameter with the name 'phoneNumber'. - undefined_named_parameter
-  error - app\modules\auth\provider\auth_provider.dart:182:37 - The method 'resetPassword' isn't defined for the type 'AuthService'. Try correcting the name to the name of an existing method, or defining a method named 'resetPassword'. - undefined_method
-  error - app\modules\categories\view\categories_page.dart:109:17 - The method 'CategoryItemsPage' isn't defined for the type '_CategoryCard'. Try correcting the name to the name of an existing method, or defining a method named 'CategoryItemsPage'. - undefined_method
-  error - app\modules\home\view\home_page.dart:38:29 - The method 'CategoryItemsPage' isn't defined for the type 'HomePage'. Try correcting the name to the name of an existing method, or defining a method named 'CategoryItemsPage'. - undefined_method
-warning - app\modules\categories\view\categories_page.dart:6:8 - Unused import: 'category_items_page.dart'. Try removing the import directive. - unused_import
-warning - app\modules\home\view\home_page.dart:9:8 - Unused import: '../../categories/view/category_items_page.dart'. Try removing the import directive. - unused_import
+warning - Unused import: './saved_cards_page.dart' - lib\app\modules\profile\view\profile_page.dart:7:8 - unused_import
+warning - Unused import: './transactions_page.dart' - lib\app\modules\profile\view\profile_page.dart:8:8 - unused_import
+warning - Unused import: '../../home/view/favorites_page.dart' - lib\app\modules\profile\view\profile_page.dart:11:8 - unused_import
 
-7 issues found.

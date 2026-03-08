@@ -47,123 +47,123 @@ class _FilterPageState extends State<FilterPage> {
           ),
         ],
       ),
-      body: Stack(
+      body: ListView(
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.all(20),
         children: [
-          SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          _buildSectionCard(
+            title: 'Price Range',
+            child: Row(
               children: [
-                _buildSectionCard(
-                  title: 'Price Range',
-                  child: Row(
-                    children: [
-                      Expanded(child: _buildPriceInput('Min.')),
-                      const SizedBox(width: 16),
-                      Expanded(child: _buildPriceInput('Max.')),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-                _buildSectionCard(
-                  title: 'Star Rating',
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF1F4F8),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        Row(
-                          children: List.generate(5, (index) {
-                            return GestureDetector(
-                              onTap: () =>
-                                  setState(() => _selectedRating = index + 1),
-                              child: Icon(
-                                index < _selectedRating
-                                    ? Icons.star
-                                    : Icons.star_border,
-                                color: index < _selectedRating
-                                    ? Colors.amber
-                                    : Colors.grey,
-                                size: 24,
-                              ),
-                            );
-                          }),
-                        ),
-                        const Spacer(),
-                        Text(
-                          '$_selectedRating stars',
-                          style: const TextStyle(
-                            color: Colors.grey,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                _buildSectionCard(
-                  title: 'Others',
-                  child: Column(
-                    children: [
-                      _buildFilterRow(
-                        Icons.local_offer_outlined,
-                        'Discount',
-                        _discount,
-                        (v) => setState(() => _discount = v),
-                      ),
-                      const Divider(height: 24),
-                      _buildFilterRow(
-                        Icons.local_shipping_outlined,
-                        'Free shipping',
-                        _freeShipping,
-                        (v) => setState(() => _freeShipping = v),
-                      ),
-                      const Divider(height: 24),
-                      _buildFilterRow(
-                        Icons.access_time_outlined,
-                        'Same day delivery',
-                        _sameDayDelivery,
-                        (v) => setState(() => _sameDayDelivery = v),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 100), // Space for bottom button
+                Expanded(child: _buildPriceInput('Min.')),
+                const SizedBox(width: 16),
+                Expanded(child: _buildPriceInput('Max.')),
               ],
             ),
           ),
-          Positioned(
-            bottom: 20,
-            left: 20,
-            right: 20,
-            child: SizedBox(
-              height: 52,
-              child: ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF439462),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+          const SizedBox(height: 24),
+          _buildSectionCard(
+            title: 'Star Rating',
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F4F8),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Row(
+                    children: List.generate(5, (index) {
+                      return GestureDetector(
+                        onTap: () =>
+                            setState(() => _selectedRating = index + 1),
+                        child: Icon(
+                          index < _selectedRating
+                              ? Icons.star
+                              : Icons.star_border,
+                          color: index < _selectedRating
+                              ? Colors.amber
+                              : Colors.grey,
+                          size: 24,
+                        ),
+                      );
+                    }),
                   ),
-                  elevation: 0,
-                ),
-                child: const Text(
-                  'Apply filter',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
+                  const Spacer(),
+                  Text(
+                    '$_selectedRating stars',
+                    style: const TextStyle(
+                      color: Colors.grey,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
+          const SizedBox(height: 24),
+          _buildSectionCard(
+            title: 'Others',
+            child: Column(
+              children: [
+                _buildFilterRow(
+                  Icons.local_offer_outlined,
+                  'Discount',
+                  _discount,
+                  (v) => setState(() => _discount = v),
+                ),
+                const Divider(height: 24),
+                _buildFilterRow(
+                  Icons.local_shipping_outlined,
+                  'Free shipping',
+                  _freeShipping,
+                  (v) => setState(() => _freeShipping = v),
+                ),
+                const Divider(height: 24),
+                _buildFilterRow(
+                  Icons.access_time_outlined,
+                  'Same day delivery',
+                  _sameDayDelivery,
+                  (v) => setState(() => _sameDayDelivery = v),
+                ),
+              ],
+            ),
+          ),
         ],
+      ),
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.fromLTRB(20, 10, 20, 30),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 10,
+              offset: Offset(0, -2),
+            ),
+          ],
+        ),
+        child: SizedBox(
+          height: 52,
+          child: ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF439462),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 0,
+            ),
+            child: const Text(
+              'Apply filter',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -177,10 +177,9 @@ class _FilterPageState extends State<FilterPage> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha:  0.3),
-            blurRadius: 15,
-            spreadRadius: 0,
-            offset: const Offset(0, 8),
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -246,7 +245,7 @@ class _FilterPageState extends State<FilterPage> {
               border: Border.all(
                 color: value
                     ? const Color(0xFF68B92E)
-                    : Colors.grey.withValues(alpha:  0.3),
+                    : Colors.grey.withValues(alpha: 0.3),
               ),
             ),
             child: Icon(
@@ -260,5 +259,3 @@ class _FilterPageState extends State<FilterPage> {
     );
   }
 }
-
-
