@@ -83,6 +83,7 @@ class ShopModel {
   final String name;
   final String businessName;
   final String image;
+  final String location;
   final double rating;
   final String deliveryTime;
   final bool isShopActive;

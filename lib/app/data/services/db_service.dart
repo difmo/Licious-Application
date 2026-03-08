@@ -72,10 +72,9 @@ class CartProvider extends ChangeNotifier {
     ),
   ];
 
-<<<<<<< HEAD
   List<UserOrder> _orders = [];
   bool _isOrdersLoading = false;
-  
+
   bool get isOrdersLoading => _isOrdersLoading;
 
   void setOrders(List<UserOrder> newOrders) {
@@ -87,26 +86,6 @@ class CartProvider extends ChangeNotifier {
     _isOrdersLoading = loading;
     notifyListeners();
   }
-=======
-  final List<UserOrder> _orders = [
-    UserOrder(
-      id: 'ORD001',
-      restaurantName: 'Red Shrimp',
-      date: '24 Feb, 7:12 PM',
-      total: 349.00,
-      status: 'Delivered',
-      items: ['1x Freshwater Prawn', '1x Fresh and Raw'],
-    ),
-    UserOrder(
-      id: 'ORD002',
-      restaurantName: 'Tiger Shrimp',
-      date: '22 Feb, 1:45 PM',
-      total: 199.00,
-      status: 'Delivered',
-      items: ['1x Frozen Vannamei Shrimp'],
-    ),
-  ];
->>>>>>> 0d6934473b23ad73b413e0ace1dfe03bdbcf2572
 
   final List<UserAddress> _addresses = [
     const UserAddress(
@@ -138,8 +117,6 @@ class CartProvider extends ChangeNotifier {
       expiry: '-',
     ),
   ];
-
-
 
   final List<Product> _recommendedProducts = const [
     Product(
@@ -466,7 +443,7 @@ class CartProvider extends ChangeNotifier {
   }
 
   // ── API Integration ───────────────────────────────────────────────────────
-  
+
   /// Syncs the local cart with the backend.
   Future<void> loadCartFromApi() async {
     if (_service == null) return;
@@ -487,13 +464,16 @@ class CartProvider extends ChangeNotifier {
   List<Restaurant> get favRestaurants {
     final List<Restaurant> favs = [];
     for (var id in _favoriteIds) {
-      final r = _restaurants.firstWhere((res) => res.id == id, orElse: () => _restaurants.first);
-      if (!_favoriteIds.contains(r.id)) continue; // Double check but it should be fine
+      final r = _restaurants.firstWhere((res) => res.id == id,
+          orElse: () => _restaurants.first);
+      if (!_favoriteIds.contains(r.id))
+        continue; // Double check but it should be fine
       if (!favs.contains(r)) favs.add(r);
     }
     // Correct way: map ids to restaurants in order
     return _favoriteIds
-        .map((id) => _restaurants.firstWhere((r) => r.id == id, orElse: () => _restaurants.first))
+        .map((id) => _restaurants.firstWhere((r) => r.id == id,
+            orElse: () => _restaurants.first))
         .toList();
   }
 
@@ -516,7 +496,6 @@ class CartProvider extends ChangeNotifier {
     _favoriteIds.insert(newIndex, item);
     notifyListeners();
   }
-
 
   void addAddress(UserAddress address) {
     if (address.isDefault) {

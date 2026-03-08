@@ -1,3 +1,8 @@
+class UserModel {
+  final String id;
+  final String fullName;
+  final String email;
+  final String phoneNumber;
   final String role;
 
   UserModel({

@@ -226,241 +226,234 @@ class _ShopCard extends StatelessWidget {
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Hero Banner ─────────────────────────────────────────────────
-            Stack(
-              children: [
-                ClipRRect(
-                  borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(16)),
-                  child: _buildHeroImage(),
-                ),
-                // Closed/Offline Overlay
-                if (!shop.isShopActive)
-                  Positioned.fill(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha:  0.4),
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                      ),
-                      child: const Center(
-                        child: Text(
-                          'NOT ACCEPTING ORDERS',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 1.5,
-                          ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          // ── Hero Banner ─────────────────────────────────────────────────
+          Stack(
+            children: [
+              ClipRRect(
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(16)),
+                child: _buildHeroImage(),
+              ),
+              // Closed/Offline Overlay
+              if (!shop.isShopActive)
+                Positioned.fill(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.4),
+                      borderRadius:
+                          const BorderRadius.vertical(top: Radius.circular(16)),
+                    ),
+                    child: const Center(
+                      child: Text(
+                        'NOT ACCEPTING ORDERS',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.5,
                         ),
                       ),
                     ),
                   ),
-                // Top dish label overlay
+                ),
+              // Top dish label overlay
+              Positioned(
+                top: 12,
+                left: 12,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.65),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    shop.businessName.isNotEmpty
+                        ? shop.businessName
+                        : 'Fresh Shrimp · ₹499+',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+              // Bookmark
+              Positioned(
+                top: 10,
+                right: 12,
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.bookmark_border,
+                      size: 16, color: Colors.black54),
+                ),
+              ),
+              // Featured badge
+              if (_isFeatured)
                 Positioned(
-                  top: 12,
+                  bottom: 10,
                   left: 12,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.65),
-                      borderRadius: BorderRadius.circular(6),
+                      color: const Color(0xFFFFF3CD),
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(color: const Color(0xFFFFD600)),
                     ),
-                    child: Text(
-                      shop.businessName.isNotEmpty
-                          ? shop.businessName
-                          : 'Fresh Shrimp · ₹499+',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
+                    child: const Text(
+                      '⭐ Featured',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF5D4037),
                       ),
                     ),
                   ),
                 ),
-                // Bookmark
-                Positioned(
-                  top: 10,
-                  right: 12,
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.9),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.bookmark_border,
-                        size: 16, color: Colors.black54),
-                  ),
-                ),
-                // Featured badge
-                if (_isFeatured)
-                  Positioned(
-                    bottom: 10,
-                    left: 12,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFF3CD),
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: const Color(0xFFFFD600)),
-                      ),
-                      child: const Text(
-                        '⭐ Featured',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF5D4037),
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
+            ],
+          ),
 
-            // ── Info Row ─────────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          shop.name,
-                          style: const TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF1A1A1A),
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          _cuisine,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Rating badge
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF68B92E),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.star, size: 12, color: Colors.white),
-                        const SizedBox(width: 3),
-                        Text(
-                          shop.rating > 0 ? shop.rating.toStringAsFixed(1) : _rating.toStringAsFixed(1),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    _formatReviews(_reviews),
-                    style: const TextStyle(fontSize: 11, color: Colors.grey),
-                  ),
-                ],
-              ),
-            ),
-
-            // ── Delivery Meta ────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 6, 14, 0),
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 4,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
+          // ── Info Row ─────────────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.bolt,
-                          size: 14, color: Color(0xFF68B92E)),
+                      Text(
+                        shop.name,
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF1A1A1A),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _cuisine,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Rating badge
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF68B92E),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.star, size: 12, color: Colors.white),
                       const SizedBox(width: 3),
                       Text(
-                        shop.deliveryTime.isNotEmpty ? shop.deliveryTime : _deliveryTime,
+                        shop.rating > 0
+                            ? shop.rating.toStringAsFixed(1)
+                            : _rating.toStringAsFixed(1),
                         style: const TextStyle(
-                            fontSize: 12, color: Colors.black87),
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ],
                   ),
-                  Text('·',
-                      style: TextStyle(color: Colors.grey.shade400)),
-                  Text(
-                    '${_distance.toStringAsFixed(1)} km',
-                    style: const TextStyle(
-                        fontSize: 12, color: Colors.black87),
-                  ),
-                  Text('·',
-                      style: TextStyle(color: Colors.grey.shade400)),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.delivery_dining_outlined,
-                          size: 14, color: Colors.grey),
-                      const SizedBox(width: 3),
-                      const Text(
-                        'Free',
-                        style: TextStyle(
-                            fontSize: 12, color: Colors.black87),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            // ── Offer Strip ──────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 8, 14, 14),
-              child: Row(
-                children: [
-                  Icon(Icons.local_offer_outlined,
-                      size: 14, color: _offerColor),
-                  const SizedBox(width: 5),
-                  Expanded(
-                    child: Text(
-                      _offerText(index),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: _offerColor,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  _formatReviews(_reviews),
+                  style: const TextStyle(fontSize: 11, color: Colors.grey),
+                ),
+              ],
             ),
           ),
-        ),
+
+          // ── Delivery Meta ────────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 6, 14, 0),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.bolt, size: 14, color: Color(0xFF68B92E)),
+                    const SizedBox(width: 3),
+                    Text(
+                      shop.deliveryTime.isNotEmpty
+                          ? shop.deliveryTime
+                          : _deliveryTime,
+                      style:
+                          const TextStyle(fontSize: 12, color: Colors.black87),
+                    ),
+                  ],
+                ),
+                Text('·', style: TextStyle(color: Colors.grey.shade400)),
+                Text(
+                  '${_distance.toStringAsFixed(1)} km',
+                  style: const TextStyle(fontSize: 12, color: Colors.black87),
+                ),
+                Text('·', style: TextStyle(color: Colors.grey.shade400)),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.delivery_dining_outlined,
+                        size: 14, color: Colors.grey),
+                    const SizedBox(width: 3),
+                    const Text(
+                      'Free',
+                      style: TextStyle(fontSize: 12, color: Colors.black87),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          // ── Offer Strip ──────────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 8, 14, 14),
+            child: Row(
+              children: [
+                Icon(Icons.local_offer_outlined, size: 14, color: _offerColor),
+                const SizedBox(width: 5),
+                Expanded(
+                  child: Text(
+                    _offerText(index),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: _offerColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ]),
       ),
-    )
-        .animate(delay: (80 * index).ms)
-        .fadeIn(duration: 350.ms)
-        .slideY(begin: 0.05, end: 0, duration: 350.ms, curve: Curves.easeOut);
+    );
   }
 
   Widget _buildHeroImage() {
@@ -547,8 +540,8 @@ class _ShopShimmerCardState extends State<_ShopShimmerCard>
     _ctrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 1200))
       ..repeat(reverse: true);
-    _anim = Tween<double>(begin: 0.4, end: 0.8).animate(
-        CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+    _anim = Tween<double>(begin: 0.4, end: 0.8)
+        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
   }
 
   @override
@@ -647,8 +640,7 @@ class _ShopsErrorState extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               'Please check connection and try again.',
-              style:
-                  TextStyle(fontSize: 13, color: Colors.grey.shade600),
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 20),
@@ -659,8 +651,8 @@ class _ShopsErrorState extends StatelessWidget {
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 24, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               ),
               icon: const Icon(Icons.refresh, size: 18),
               label: const Text('Retry',
@@ -698,8 +690,7 @@ class _ShopsEmptyState extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               'Check back later for nearby restaurants.',
-              style:
-                  TextStyle(fontSize: 13, color: Colors.grey.shade600),
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 20),
@@ -710,8 +701,8 @@ class _ShopsEmptyState extends StatelessWidget {
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 24, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               ),
               icon: const Icon(Icons.refresh, size: 18),
               label: const Text('Refresh',

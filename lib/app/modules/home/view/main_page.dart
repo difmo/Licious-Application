@@ -33,7 +33,7 @@ class _MainPageState extends State<MainPage> {
     _controller.addListener(() {
       if (mounted) setState(() {});
     });
-    
+
     // Initial cart sync from API
     WidgetsBinding.instance.addPostFrameCallback((_) {
       CartProviderScope.of(context).loadCartFromApi();
@@ -88,7 +88,7 @@ class _MainPageState extends State<MainPage> {
             Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: const Color(0xFF68B92E).withValues(alpha:  0.2),
+                color: const Color(0xFF68B92E).withValues(alpha: 0.2),
                 shape: BoxShape.circle,
               ),
               child: const Icon(
@@ -158,24 +158,17 @@ class _MainPageState extends State<MainPage> {
             decoration: BoxDecoration(
               color: const Color(0xFFEBFFD7),
               borderRadius: BorderRadius.circular(35),
-              border: Border.all(color: const Color(0xFF68B92E).withValues(alpha:  0.1)),
+              border: Border.all(
+                  color: const Color(0xFF68B92E).withValues(alpha: 0.1)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-<<<<<<< HEAD
-                _buildNavItem(0, Icons.home_filled),
-                _buildNavItem(1, Icons.calendar_month_rounded),
-                const SizedBox(width: 60), // Space for FAB
-                _buildNavItem(3, Icons.wallet_rounded),
-                _buildNavItem(4, Icons.person_rounded),
-=======
                 _buildNavItem(0, Icons.home_filled, 'Home'),
                 _buildNavItem(1, Icons.favorite_rounded, 'My Favorite'),
                 const SizedBox(width: 68), // Space for FAB
                 _buildNavItem(3, Icons.receipt_long_rounded, 'Orders'),
                 _buildNavItem(4, Icons.person_rounded, 'Profile'),
->>>>>>> 0d6934473b23ad73b413e0ace1dfe03bdbcf2572
               ],
             ),
           ),
@@ -193,7 +186,7 @@ class _MainPageState extends State<MainPage> {
                   border: Border.all(
                     color: isCartSelected
                         ? const Color(0xFF68B92E)
-                        : const Color(0xFF68B92E).withValues(alpha:  0.2),
+                        : const Color(0xFF68B92E).withValues(alpha: 0.2),
                     width: 2,
                   ),
                 ),
@@ -223,14 +216,17 @@ class _MainPageState extends State<MainPage> {
         children: [
           Icon(
             icon,
-            color: isSelected ? const Color(0xFF68B92E) : const Color(0xFF4A4A4A),
+            color:
+                isSelected ? const Color(0xFF68B92E) : const Color(0xFF4A4A4A),
             size: 24,
           ),
           const SizedBox(height: 4),
           Text(
             label,
             style: TextStyle(
-              color: isSelected ? const Color(0xFF68B92E) : const Color(0xFF4A4A4A),
+              color: isSelected
+                  ? const Color(0xFF68B92E)
+                  : const Color(0xFF4A4A4A),
               fontSize: 10,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
             ),
@@ -240,5 +236,3 @@ class _MainPageState extends State<MainPage> {
     );
   }
 }
-
-
