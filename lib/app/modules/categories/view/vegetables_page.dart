@@ -9,7 +9,7 @@ class VegetablesPage extends StatelessWidget {
     final List<Map<String, dynamic>> products = [
       {
         'title': 'Fresh Shrimps',
-        'price': '\$8.00',
+        'price': '₹8.00',
         'subtitle': 'dozen',
         'image': 'assets/images/image copy 2.png',
         'hasCounter': false,
@@ -18,7 +18,7 @@ class VegetablesPage extends StatelessWidget {
       },
       {
         'title': 'Avacoda',
-        'price': '\$7.00',
+        'price': '₹7.00',
         'subtitle': '2.0 lbs',
         'image': 'assets/images/image copy 3.png',
         'hasCounter': true,
@@ -29,7 +29,7 @@ class VegetablesPage extends StatelessWidget {
       },
       {
         'title': 'Pineapple',
-        'price': '\$9.90',
+        'price': '₹9.90',
         'subtitle': '1.50 lbs',
         'image': 'assets/images/image copy 4.png',
         'hasCounter': false,
@@ -38,7 +38,7 @@ class VegetablesPage extends StatelessWidget {
       },
       {
         'title': 'Black Grapes',
-        'price': '\$7.05',
+        'price': '₹7.05',
         'subtitle': '5.0 lbs',
         'image': 'assets/images/image copy 5.png',
         'hasCounter': false,
@@ -49,7 +49,7 @@ class VegetablesPage extends StatelessWidget {
       },
       {
         'title': 'Pomegranate',
-        'price': '\$2.09',
+        'price': '₹2.09',
         'subtitle': '1.50 lbs',
         'image': 'assets/images/image copy 6.png',
         'hasCounter': true,
@@ -60,7 +60,7 @@ class VegetablesPage extends StatelessWidget {
       },
       {
         'title': 'Fresh B roccoli',
-        'price': '\$3.00',
+        'price': '₹3.00',
         'subtitle': '1 kg',
         'image': 'assets/images/image copy 7.png',
         'hasCounter': false,

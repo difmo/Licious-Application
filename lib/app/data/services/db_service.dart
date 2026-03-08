@@ -66,24 +66,20 @@ class CartProvider extends ChangeNotifier {
     ),
   ];
 
-  final List<UserOrder> _orders = [
-    UserOrder(
-      id: 'ORD001',
-      restaurantName: 'New Pizza King',
-      date: '24 Feb, 7:12 PM',
-      total: 349.00,
-      status: 'Delivered',
-      items: ['1x Farmhouse Pizza', '1x Coke 500ml'],
-    ),
-    UserOrder(
-      id: 'ORD002',
-      restaurantName: 'Burger Palace',
-      date: '22 Feb, 1:45 PM',
-      total: 199.00,
-      status: 'Delivered',
-      items: ['2x Classic Veg Burger', '1x French Fries'],
-    ),
-  ];
+  List<UserOrder> _orders = [];
+  bool _isOrdersLoading = false;
+  
+  bool get isOrdersLoading => _isOrdersLoading;
+
+  void setOrders(List<UserOrder> newOrders) {
+    _orders = newOrders;
+    notifyListeners();
+  }
+
+  void setLoadingOrders(bool loading) {
+    _isOrdersLoading = loading;
+    notifyListeners();
+  }
 
   final List<UserAddress> _addresses = [
     const UserAddress(

@@ -115,14 +115,21 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       );
       _showSnackBar('Welcome back!',
           backgroundColor: Colors.green.shade600, icon: Icons.check_circle);
-      Navigator.pushReplacementNamed(context, '/home');
+
+      if (authState.user.role == 'rider') {
+        Navigator.pushReplacementNamed(context, AppRoutes.riderHome);
+      } else {
+        Navigator.pushReplacementNamed(context, AppRoutes.home);
+      }
     } else if (authState is AuthError) {
       _showSnackBar(authState.message, backgroundColor: Colors.red);
       ref.read(authProvider.notifier).reset();
     } else if (authState is AuthSuccess) {
       _showSnackBar(authState.message,
           backgroundColor: Colors.green.shade600, icon: Icons.check_circle);
-      Navigator.pushReplacementNamed(context, '/home');
+      // AuthSuccess might not have user object directly in some versions of provider
+      // but usually redirects to home. We'll stick to home as fallback.
+      Navigator.pushReplacementNamed(context, AppRoutes.home);
     }
   }
 

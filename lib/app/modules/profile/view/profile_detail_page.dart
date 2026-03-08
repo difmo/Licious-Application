@@ -1,19 +1,22 @@
-import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../data/services/order_service.dart';
 import '../../../data/services/db_service.dart';
 import '../../../data/services/subscription_service.dart';
 import '../../../data/models/subscription_model.dart';
+import '../../../data/models/food_models.dart';
 import 'address_form_page.dart';
+import '../widgets/review_dialog.dart';
 
-class ProfileDetailPage extends StatefulWidget {
+class ProfileDetailPage extends ConsumerStatefulWidget {
   final String title;
 
   const ProfileDetailPage({super.key, required this.title});
 
   @override
-  State<ProfileDetailPage> createState() => _ProfileDetailPageState();
+  ConsumerState<ProfileDetailPage> createState() => _ProfileDetailPageState();
 }
 
-class _ProfileDetailPageState extends State<ProfileDetailPage> {
+class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
   int? _expandedOrderIndex = 0; // Default first one expanded as in Image 3
   bool _makeDefaultCard = true;
 
@@ -29,6 +32,27 @@ class _ProfileDetailPageState extends State<ProfileDetailPage> {
     super.initState();
     if (widget.title == 'Subscriptions') {
       _loadSubscriptions();
+    }
+    if (widget.title == 'My Orders') {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loadOrders();
+      });
+    }
+  }
+
+  Future<void> _loadOrders() async {
+    final cartProvider = CartProviderScope.of(context);
+    cartProvider.setLoadingOrders(true);
+    try {
+      final ordersJson = await ref.read(orderServiceProvider).getMyOrders();
+      final List<UserOrder> orders = ordersJson
+          .map((json) => UserOrder.fromJson(json as Map<String, dynamic>))
+          .toList();
+      cartProvider.setOrders(orders);
+    } catch (e) {
+      debugPrint('Error loading orders: $e');
+    } finally {
+      cartProvider.setLoadingOrders(false);
     }
   }
 
@@ -304,17 +328,30 @@ class _ProfileDetailPageState extends State<ProfileDetailPage> {
     );
   }
 
-  // --- MY ORDERS / TRACKING DESIGN (Image 3) ---
   Widget _buildOrdersDetail(CartProvider provider) {
+    if (provider.isOrdersLoading) {
+      return const Padding(
+        padding: EdgeInsets.only(top: 40),
+        child: Center(child: CircularProgressIndicator(color: Color(0xFF68B92E))),
+      );
+    }
+    
+    final orders = provider.orders;
+    if (orders.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.only(top: 40),
+        child: Center(child: Text('No orders yet.')),
+      );
+    }
     return Column(
-      children: List.generate(4, (index) {
+      children: List.generate(orders.length, (index) {
         final isExpanded = _expandedOrderIndex == index;
-        return _buildOrderCard(index, isExpanded);
+        return _buildOrderCard(index, isExpanded, orders[index]);
       }),
     );
   }
 
-  Widget _buildOrderCard(int index, bool isExpanded) {
+  Widget _buildOrderCard(int index, bool isExpanded, UserOrder order) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
@@ -333,16 +370,16 @@ class _ProfileDetailPageState extends State<ProfileDetailPage> {
                 color: Color(0xFF68B92E),
               ),
             ),
-            title: const Text(
-              'Order #90897',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            title: Text(
+              'Order #${order.id}',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Placed on October 19 2021',
-                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                Text(
+                  'Placed on ${order.date}',
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
                 ),
                 const SizedBox(height: 4),
                 Row(
@@ -351,9 +388,9 @@ class _ProfileDetailPageState extends State<ProfileDetailPage> {
                       'Items:',
                       style: TextStyle(color: Colors.grey, fontSize: 12),
                     ),
-                    const Text(
-                      ' 10',
-                      style: TextStyle(
+                    Text(
+                      ' ${order.items.length}',
+                      style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 12,
                       ),
@@ -363,9 +400,9 @@ class _ProfileDetailPageState extends State<ProfileDetailPage> {
                       'Total:',
                       style: TextStyle(color: Colors.grey, fontSize: 12),
                     ),
-                    const Text(
-                      ' \$16.90',
-                      style: TextStyle(
+                    Text(
+                      ' ₹${order.total.toStringAsFixed(2)}',
+                      style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 12,
                       ),
@@ -395,40 +432,64 @@ class _ProfileDetailPageState extends State<ProfileDetailPage> {
                   const SizedBox(height: 16),
                   _buildTimelineItem(
                     'Order Placed',
-                    'October 21 2021',
+                    order.date,
                     Icons.inventory_2_outlined,
                     true,
                     true,
                   ),
                   _buildTimelineItem(
                     'Order Confirmed',
-                    'October 21 2021',
+                    order.date,
                     Icons.check_circle_outline,
                     true,
                     true,
                   ),
                   _buildTimelineItem(
                     'Order Shipped',
-                    'October 21 2021',
+                    'Processing',
                     Icons.edit_road_outlined,
                     true,
                     true,
                   ),
                   _buildTimelineItem(
-                    'Out for Delivery',
-                    'Pending',
-                    Icons.local_shipping_outlined,
-                    false,
-                    false,
-                  ),
-                  _buildTimelineItem(
                     'Order Delivered',
-                    'Pending',
+                    order.status == 'Delivered' ? order.date : 'Pending',
                     Icons.shopping_basket_outlined,
-                    false,
-                    false,
+                    order.status == 'Delivered',
+                    order.status == 'Delivered',
                     isLast: true,
                   ),
+                  if (order.status == 'Delivered') ...[
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          showDialog(
+                            context: context,
+                            builder: (context) => ReviewDialog(
+                              orderId: order.id,
+                              productName: order.items.isNotEmpty 
+                                ? order.items[0].split('x ').last 
+                                : 'Shrimp Product',
+                              retailerId: '65e9f8f8f8f8f8f8f8f8f8f8', // Mock retailer ID
+                              productId: '65e9f8f8f8f8f8f8f8f8f8f9',  // Mock product ID
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.star_outline, color: Color(0xFF68B92E)),
+                        label: const Text(
+                          'Rate & Review',
+                          style: TextStyle(color: Color(0xFF68B92E), fontWeight: FontWeight.bold),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Color(0xFF68B92E)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -892,7 +953,7 @@ class _ProfileDetailPageState extends State<ProfileDetailPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '\$$price x $count',
+                    '₹$price x $count',
                     style: const TextStyle(
                       color: Color(0xFF68B92E),
                       fontSize: 12,
@@ -957,35 +1018,35 @@ class _ProfileDetailPageState extends State<ProfileDetailPage> {
         _buildTransactionItem(
           'Order Payment',
           'Oct 24, 2021',
-          '-\$34.50',
+          '-₹34.50',
           'Completed',
           isNegative: true,
         ),
         _buildTransactionItem(
           'Wallet Top-up',
           'Oct 22, 2021',
-          '+\$50.00',
+          '+₹50.00',
           'Completed',
           isNegative: false,
         ),
         _buildTransactionItem(
           'Refund received',
           'Oct 20, 2021',
-          '+\$12.00',
+          '+₹12.00',
           'Completed',
           isNegative: false,
         ),
         _buildTransactionItem(
           'Order Payment',
           'Oct 19, 2021',
-          '-\$16.90',
+          '-₹16.90',
           'Completed',
           isNegative: true,
         ),
         _buildTransactionItem(
           'Order Payment',
           'Oct 18, 2021',
-          '-\$22.10',
+          '-₹22.10',
           'Failed',
           isNegative: true,
           isFailed: true,

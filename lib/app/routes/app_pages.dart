@@ -13,6 +13,9 @@ import '../modules/categories/view/vegetables_page.dart';
 import '../modules/cart/view/cart_page.dart';
 import '../modules/cart/view/shipping_address_page.dart';
 import '../modules/cart/view/payment_method_page.dart';
+import '../modules/subscription/subscription_page.dart';
+import '../modules/wallet/view/wallet_page.dart';
+import '../modules/rider/view/rider_home_page.dart';
 
 class AppPages {
   static Map<String, WidgetBuilder> get routes => {
@@ -24,10 +27,13 @@ class AppPages {
     AppRoutes.signup: (context) => const RegisterPage(),
     AppRoutes.forgotPassword: (context) => const ForgotPasswordPage(),
     AppRoutes.home: (context) => const MainPage(),
+    AppRoutes.subscriptions: (context) => const SubscriptionPage(),
+    AppRoutes.wallet: (context) => const WalletPage(),
     AppRoutes.categories: (context) => const CategoriesPage(),
     AppRoutes.vegetables: (context) => const VegetablesPage(),
     AppRoutes.cart: (context) => const CartPage(),
     AppRoutes.shippingAddress: (context) => const ShippingAddressPage(),
     AppRoutes.paymentMethod: (context) => const PaymentMethodPage(),
+    AppRoutes.riderHome: (context) => const RiderHomePage(),
   };
 }

@@ -237,6 +237,27 @@ class _ShopCard extends StatelessWidget {
                       const BorderRadius.vertical(top: Radius.circular(16)),
                   child: _buildHeroImage(),
                 ),
+                // Closed/Offline Overlay
+                if (!shop.isShopActive)
+                  Positioned.fill(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha:  0.4),
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                      ),
+                      child: const Center(
+                        child: Text(
+                          'NOT ACCEPTING ORDERS',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 // Top dish label overlay
                 Positioned(
                   top: 12,
@@ -433,7 +454,7 @@ class _ShopCard extends StatelessWidget {
                 ],
               ),
             ),
-          ],
+          ),
         ),
       ),
     )

@@ -1,16 +1,17 @@
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../data/services/order_service.dart';
 import 'order_success_page.dart';
 
-class PaymentMethodPage extends StatefulWidget {
+class PaymentMethodPage extends ConsumerStatefulWidget {
   const PaymentMethodPage({super.key});
 
   @override
-  State<PaymentMethodPage> createState() => _PaymentMethodPageState();
+  ConsumerState<PaymentMethodPage> createState() => _PaymentMethodPageState();
 }
 
-class _PaymentMethodPageState extends State<PaymentMethodPage> {
+class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
   int _selectedMethod = 1;
+  bool _isLoading = false;
   bool _saveCard = true;
 
   final _nameCtrl = TextEditingController();
@@ -191,12 +192,55 @@ class _PaymentMethodPageState extends State<PaymentMethodPage> {
               width: double.infinity,
               height: 56,
               child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pushAndRemoveUntil(
-                    context,
-                    MaterialPageRoute(builder: (_) => const OrderSuccessPage()),
-                    (route) => route.isFirst,
-                  );
+                onPressed: _isLoading ? null : () async {
+                  setState(() => _isLoading = true);
+                  
+                  try {
+                    final cartProvider = CartProviderScope.of(context);
+                    final orderService = ref.read(orderServiceProvider);
+
+                    // Get default address or first address
+                    final defaultAddr = cartProvider.addresses.firstWhere(
+                      (a) => a.isDefault,
+                      orElse: () => cartProvider.addresses.isNotEmpty 
+                        ? cartProvider.addresses.first 
+                        : const UserAddress(id: '0', title: 'Default', street: 'Default Street', details: 'Default City'),
+                    );
+
+                    final response = await orderService.placeOrder(
+                      deliveryAddress: {
+                        'address': defaultAddr.street,
+                        'city': defaultAddr.details, // Mock simplified
+                        'state': 'Unknown',
+                        'pincode': '000000',
+                      },
+                      paymentMethod: _selectedMethod == 1 ? 'Credit Card' : 'PayPal',
+                    );
+
+                    if (response['success'] == true) {
+                      // Clear local cart
+                      cartProvider.clearCart();
+                      
+                      if (!mounted) return;
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(builder: (_) => const OrderSuccessPage()),
+                        (route) => route.isFirst,
+                      );
+                    } else {
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(response['message'] ?? 'Failed to place order')),
+                      );
+                    }
+                  } catch (e) {
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error: $e')),
+                    );
+                  } finally {
+                    if (mounted) setState(() => _isLoading = false);
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF439462),
@@ -206,10 +250,16 @@ class _PaymentMethodPageState extends State<PaymentMethodPage> {
                     borderRadius: BorderRadius.circular(14),
                   ),
                 ),
-                child: const Text(
-                  'Make a  payment',
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
-                ),
+                child: _isLoading 
+                  ? const SizedBox(
+                      height: 20, 
+                      width: 20, 
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
+                    )
+                  : const Text(
+                      'Make a payment',
+                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                    ),
               ),
             ),
           ),

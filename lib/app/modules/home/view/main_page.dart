@@ -4,6 +4,8 @@ import 'favorites_page.dart';
 import '../../cart/view/cart_page.dart';
 import '../../profile/view/profile_page.dart';
 import '../../orders/view/orders_page.dart';
+import '../../subscription/subscription_page.dart';
+import '../../wallet/view/wallet_page.dart';
 import '../controller/main_controller.dart';
 import '../../../data/services/db_service.dart';
 
@@ -19,9 +21,9 @@ class _MainPageState extends State<MainPage> {
 
   final List<Widget> _pages = [
     const HomePage(),
-    const FavoritesPage(),
-    const CartPage(),
-    const OrdersPage(),
+    const SubscriptionPage(),
+    const CartPage(), // Central FAB
+    const WalletPage(),
     const ProfilePage(),
   ];
 
@@ -157,9 +159,9 @@ class _MainPageState extends State<MainPage> {
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _buildNavItem(0, Icons.home_filled),
-                _buildNavItem(1, Icons.favorite_rounded),
+                _buildNavItem(1, Icons.calendar_month_rounded),
                 const SizedBox(width: 60), // Space for FAB
-                _buildNavItem(3, Icons.receipt_long_rounded),
+                _buildNavItem(3, Icons.wallet_rounded),
                 _buildNavItem(4, Icons.person_rounded),
               ],
             ),

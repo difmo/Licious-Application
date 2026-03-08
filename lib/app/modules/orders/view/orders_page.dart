@@ -142,6 +142,69 @@ class OrdersPage extends StatelessWidget {
             child: Divider(height: 1),
           ),
 
+          // Recurring Badge and Delivery Info
+          if (order.isSubscription) 
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF68B92E).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.autorenew_rounded, size: 14, color: Color(0xFF68B92E)),
+                        SizedBox(width: 4),
+                        Text(
+                          'RECURRING',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF68B92E),
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (order.deliveryDate != null) ...[
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.calendar_today_rounded, size: 12, color: Colors.blue.shade700),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                'Next: ${order.deliveryDate}',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blue.shade700,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+
           // Items List
           ...order.items.map(
             (item) => Padding(
@@ -169,19 +232,28 @@ class OrdersPage extends StatelessWidget {
           // Total and Reorder Button
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Total Bill',
+                    'Subtotal: ₹240.00', // Mock breakdown
+                    style: TextStyle(fontSize: 10, color: Colors.grey),
+                  ),
+                  const Text(
+                    'Wallet Applied: -₹240.00',
+                    style: TextStyle(fontSize: 10, color: Color(0xFF68B92E)),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Final Bill',
                     style: TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                   Text(
                     '₹${order.total.toStringAsFixed(2)}',
                     style: const TextStyle(
-                      fontSize: 16,
+                      fontSize: 18,
                       fontWeight: FontWeight.w900,
                       color: Color(0xFF1A1A1A),
                     ),
@@ -195,8 +267,8 @@ class OrdersPage extends StatelessWidget {
                   foregroundColor: Colors.white,
                   elevation: 0,
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 0,
+                    horizontal: 24,
+                    vertical: 12,
                   ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
