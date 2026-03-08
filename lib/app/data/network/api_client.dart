@@ -26,13 +26,22 @@ final apiClientProvider = Provider<ApiClient>((ref) {
 
 class ApiClient {
   // ── Base URLs ──────────────────────────────────────────────────────────────
-  static const String baseUrl = 'https://shrimpbite-backend.vercel.app/api/app';
-  static const String riderBaseUrl = 'https://shrimpbite-backend.vercel.app/api/rider';
-  static const String otpBaseUrl =
-      'https://shrimpbite-backend.vercel.app/api/otp';
+  // static const String baseUrl = 'https://shrimpbite-backend.vercel.app/api/app';
+  // static const String riderBaseUrl = 'https://shrimpbite-backend.vercel.app/api/rider';
+  // static const String otpBaseUrl =
+  //     'https://shrimpbite-backend.vercel.app/api/otp';
+
+  static const String baseUrl = 'http://localhost:5000/api/app';
+  static const String riderBaseUrl = 'http://localhost:5000/api/rider';
+  static const String otpBaseUrl = 'http://localhost:5000/api/otp';
+  static const String walletBaseUrl = 'http://localhost:5000/api/wallet';
+  static const String paymentBaseUrl = 'http://localhost:5000/api/payment';
+  static const String subscriptionBaseUrl =
+      'http://localhost:5000/api/subscription';
+  static const String reviewBaseUrl = 'http://localhost:5000/api/reviews';
 
   late Dio _dio;
-  
+
   // ── Token key ──────────────────────────────────────────────────────────────
   static const String _tokenKey = 'auth_token';
 
@@ -43,7 +52,7 @@ class ApiClient {
       contentType: Headers.jsonContentType,
     );
     _dio = Dio(options);
-    
+
     // ── Request / Response Logger ─────────────────────────────────────────────
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
@@ -105,13 +114,14 @@ class ApiClient {
   // ── Error handler ──────────────────────────────────────────────────────────
   ApiException _handleError(dynamic error) {
     if (error is DioException) {
-      if (error.type == DioExceptionType.connectionTimeout || 
-          error.type == DioExceptionType.receiveTimeout || 
+      if (error.type == DioExceptionType.connectionTimeout ||
+          error.type == DioExceptionType.receiveTimeout ||
           error.type == DioExceptionType.sendTimeout) {
         return const ApiException(message: 'Connection timeout');
       } else if (error.type == DioExceptionType.badResponse) {
         final data = error.response?.data;
-        String message = 'Request failed with status ${error.response?.statusCode}';
+        String message =
+            'Request failed with status ${error.response?.statusCode}';
         if (data is Map<String, dynamic> && data['message'] != null) {
           message = data['message'].toString();
         }
@@ -138,7 +148,9 @@ class ApiClient {
         queryParameters: queryParameters,
         options: Options(extra: {'requiresAuth': requiresAuth}),
       );
-      return response.data is Map<String, dynamic> ? response.data : {'data': response.data};
+      return response.data is Map<String, dynamic>
+          ? response.data
+          : {'data': response.data};
     } catch (e) {
       throw _handleError(e);
     }
@@ -156,7 +168,9 @@ class ApiClient {
         data: data,
         options: Options(extra: {'requiresAuth': requiresAuth}),
       );
-      return response.data is Map<String, dynamic> ? response.data : {'data': response.data};
+      return response.data is Map<String, dynamic>
+          ? response.data
+          : {'data': response.data};
     } catch (e) {
       throw _handleError(e);
     }
@@ -174,7 +188,9 @@ class ApiClient {
         data: data,
         options: Options(extra: {'requiresAuth': requiresAuth}),
       );
-      return response.data is Map<String, dynamic> ? response.data : {'data': response.data};
+      return response.data is Map<String, dynamic>
+          ? response.data
+          : {'data': response.data};
     } catch (e) {
       throw _handleError(e);
     }
@@ -192,7 +208,9 @@ class ApiClient {
         data: data,
         options: Options(extra: {'requiresAuth': requiresAuth}),
       );
-      return response.data is Map<String, dynamic> ? response.data : {'data': response.data};
+      return response.data is Map<String, dynamic>
+          ? response.data
+          : {'data': response.data};
     } catch (e) {
       throw _handleError(e);
     }
@@ -210,7 +228,9 @@ class ApiClient {
         queryParameters: queryParameters,
         options: Options(extra: {'requiresAuth': requiresAuth}),
       );
-      return response.data is Map<String, dynamic> ? response.data : {'data': response.data};
+      return response.data is Map<String, dynamic>
+          ? response.data
+          : {'data': response.data};
     } catch (e) {
       throw _handleError(e);
     }

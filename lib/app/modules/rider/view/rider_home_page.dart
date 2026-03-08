@@ -6,6 +6,7 @@ import '../../auth/provider/auth_provider.dart';
 import '../../../data/services/rider_service.dart';
 import '../../../data/services/location_tracking_service.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../routes/app_routes.dart';
 
 final riderOrdersProvider =
     FutureProvider.autoDispose<List<dynamic>>((ref) async {
@@ -97,107 +98,149 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
     final ordersAsync = ref.watch(riderOrdersProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: const Color(0xFFF7F8FA),
       appBar: AppBar(
-        title: const Text('Rider Core',
-            style: TextStyle(fontWeight: FontWeight.w800, color: Colors.white)),
-        backgroundColor: AppColors.primaryDark,
+        title: const Text(
+          'Rider Dashboard',
+          style: TextStyle(
+            color: Color(0xFF1A1A1A),
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+        ),
+        backgroundColor: Colors.white,
         elevation: 0,
-        centerTitle: false,
+        centerTitle: true,
+        iconTheme: const IconThemeData(color: Color(0xFF1A1A1A)),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.white),
+            icon: const Icon(Icons.refresh_rounded),
             onPressed: () => ref.invalidate(riderOrdersProvider),
           ),
           IconButton(
-            icon: const Icon(Icons.logout, color: Colors.white),
-            onPressed: () {
-              ref.read(authProvider.notifier).logout();
-              Navigator.pushReplacementNamed(context, '/login');
+            icon: const Icon(Icons.logout_rounded),
+            onPressed: () async {
+              await ref.read(authProvider.notifier).logout();
+              if (context.mounted) {
+                Navigator.pushNamedAndRemoveUntil(
+                  context,
+                  AppRoutes.login,
+                  (route) => false,
+                );
+              }
             },
           ),
           const SizedBox(width: 8),
         ],
       ),
       body: RefreshIndicator(
+        color: AppColors.accentGreen,
         onRefresh: () async => ref.invalidate(riderOrdersProvider),
-        color: AppColors.primaryDark,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header Card
+              // ── Rider Profile Card ──────────────────────────────────────────
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.fromLTRB(20, 10, 20, 30),
-                decoration: const BoxDecoration(
-                  color: AppColors.primaryDark,
-                  borderRadius: BorderRadius.only(
-                    bottomLeft: Radius.circular(32),
-                    bottomRight: Radius.circular(32),
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(3),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
-                            shape: BoxShape.circle,
-                          ),
-                          child: CircleAvatar(
-                            radius: 35,
-                            backgroundColor: Colors.white,
-                            child: Icon(Icons.person,
-                                size: 40, color: AppColors.primaryDark),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                user?.fullName ?? 'Rider Name',
-                                style: const TextStyle(
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white),
-                              ),
-                              Text(
-                                user?.phoneNumber ?? 'Phone Number',
-                                style: TextStyle(
-                                    color: Colors.white.withOpacity(0.8),
-                                    fontSize: 14),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Switch(
-                          value: _isOnline,
-                          activeColor: AppColors.accentGreen,
-                          onChanged: _toggleOnline,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        _buildStat('Deliveries', '12', Icons.delivery_dining),
-                        _buildStat('Rating', '4.8', Icons.star),
-                        _buildStat(
-                            'Earnings', '₹1,240', Icons.account_balance_wallet),
-                      ],
+                margin: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 15,
+                      offset: const Offset(0, 5),
                     ),
                   ],
                 ),
+                child: Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 60,
+                            height: 60,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFEBFFD7),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.person_rounded,
+                              size: 32,
+                              color: Color(0xFF68B92E),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  user?.fullName ?? 'Rider Name',
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF1B2D1F),
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  user?.phoneNumber ?? '9876543211',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade600,
+                                    fontSize: 14,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Column(
+                            children: [
+                              Switch.adaptive(
+                                value: _isOnline,
+                                activeTrackColor: AppColors.accentGreen
+                                    .withValues(alpha: 0.5),
+                                activeThumbColor: AppColors.accentGreen,
+                                onChanged: _toggleOnline,
+                              ),
+                              Text(
+                                _isOnline ? 'ONLINE' : 'OFFLINE',
+                                style: TextStyle(
+                                  color: _isOnline
+                                      ? AppColors.accentGreen
+                                      : Colors.grey,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 10,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      if (_isOnline) ...[
+                        const Divider(height: 32),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            _buildStat('Orders', '12', Icons.delivery_dining),
+                            _buildStat('Rating', '4.8', Icons.star_rounded),
+                            _buildStat('Earnings', '₹1,240',
+                                Icons.account_balance_wallet_rounded),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 4),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Row(
@@ -208,18 +251,19 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
                       style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w800,
-                          color: Color(0xFF1E293B)),
+                          color: Color(0xFF1B2D1F)),
                     ),
-                    Text(
-                      'Live Tracking Active',
-                      style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.accentGreen),
-                    )
-                        .animate(onPlay: (controller) => controller.repeat())
-                        .fadeIn(duration: 1.seconds)
-                        .fadeOut(delay: 1.seconds),
+                    if (_isOnline)
+                      Text(
+                        'Live Tracking Active',
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.accentGreen),
+                      )
+                          .animate(onPlay: (controller) => controller.repeat())
+                          .fadeIn(duration: 1.seconds)
+                          .fadeOut(delay: 1.seconds),
                   ],
                 ),
               ),
@@ -245,7 +289,7 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
                   padding: EdgeInsets.all(50),
                   child: Center(
                       child: CircularProgressIndicator(
-                          color: AppColors.primaryDark)),
+                          color: AppColors.accentGreen)),
                 ),
                 error: (err, stack) => Center(child: Text('Error: $err')),
               ),
@@ -260,16 +304,22 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
   Widget _buildStat(String label, String value, IconData icon) {
     return Column(
       children: [
-        Icon(icon, color: Colors.white.withOpacity(0.6), size: 20),
-        const SizedBox(height: 4),
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF1F8EB),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: AppColors.accentGreen, size: 20),
+        ),
+        const SizedBox(height: 8),
         Text(value,
             style: const TextStyle(
-                color: Colors.white,
-                fontSize: 18,
+                color: Color(0xFF1B2D1F),
+                fontSize: 16,
                 fontWeight: FontWeight.bold)),
         Text(label,
-            style:
-                TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12)),
+            style: TextStyle(color: Colors.grey.shade500, fontSize: 11)),
       ],
     );
   }
@@ -280,22 +330,23 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
     final isAccepted = status == 'Accepted';
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
           ),
         ],
+        border: Border.all(color: const Color(0xFFF1F4F8)),
       ),
       child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -304,66 +355,58 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
+                          horizontal: 10, vertical: 5),
                       decoration: BoxDecoration(
-                        color: AppColors.primaryDark.withOpacity(0.1),
+                        color: const Color(0xFFEBFFD7),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        '#${order['orderId'].toString().substring(order['orderId'].toString().length - 6)}',
-                        style: TextStyle(
-                            color: AppColors.primaryDark,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12),
+                        '#${order['orderId'].toString().substring(order['orderId'].toString().length - 6).toUpperCase()}',
+                        style: const TextStyle(
+                          color: Color(0xFF439462),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                          letterSpacing: 0.5,
+                        ),
                       ),
                     ),
-                    Text(
-                      order['status'],
-                      style: TextStyle(
-                        color: order['status'] == 'Out for Delivery'
-                            ? AppColors.accentGreen
-                            : AppColors.primaryDark,
-                        fontWeight: FontWeight.bold,
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFF7E6),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        order['status'].toUpperCase(),
+                        style: const TextStyle(
+                          color: Color(0xFFFFA000),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 10,
+                          letterSpacing: 0.5,
+                        ),
                       ),
                     ),
                   ],
+                ),
+                const SizedBox(height: 20),
+                _buildOrderInfoRow(
+                  Icons.location_on_rounded,
+                  'Delivery Address',
+                  order['deliveryAddress']?['address'] ?? 'No address provided',
                 ),
                 const SizedBox(height: 12),
-                Row(
-                  children: [
-                    const Icon(Icons.location_on, size: 16, color: Colors.grey),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        order['deliveryAddress']?['address'] ??
-                            'No address provided',
-                        style: const TextStyle(
-                            color: Color(0xFF64748B), fontSize: 14),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Icon(Icons.person, size: 16, color: Colors.grey),
-                    const SizedBox(width: 8),
-                    Text(
-                      order['user']?['name'] ?? 'Customer',
-                      style: const TextStyle(
-                          color: Color(0xFF334155),
-                          fontWeight: FontWeight.w600),
-                    ),
-                  ],
+                _buildOrderInfoRow(
+                  Icons.person_rounded,
+                  'Customer',
+                  order['user']?['name'] ?? 'Customer',
                 ),
               ],
             ),
           ),
           if (isPending)
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
               child: Row(
                 children: [
                   Expanded(
@@ -371,7 +414,7 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
                       onPressed: () =>
                           _handleResponse(order['orderId'], 'Accepted'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.accentGreen,
+                        backgroundColor: const Color(0xFF68B92E),
                         foregroundColor: Colors.white,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
@@ -403,21 +446,21 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
           else if (isAccepted)
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.accentGreen.withOpacity(0.05),
-                borderRadius: const BorderRadius.only(
+              padding: const EdgeInsets.all(20),
+              decoration: const BoxDecoration(
+                color: Color(0xFFF7F8FA),
+                borderRadius: BorderRadius.only(
                   bottomLeft: Radius.circular(20),
                   bottomRight: Radius.circular(20),
                 ),
               ),
               child: ElevatedButton.icon(
                 onPressed: () => _completeDelivery(order['orderId']),
-                icon: const Icon(Icons.check_circle_outline),
+                icon: const Icon(Icons.check_circle_outline_rounded),
                 label: const Text('Mark as Delivered',
                     style: TextStyle(fontWeight: FontWeight.bold)),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.accentGreen,
+                  backgroundColor: const Color(0xFF68B92E),
                   foregroundColor: Colors.white,
                   elevation: 0,
                   shape: RoundedRectangleBorder(
@@ -431,24 +474,75 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
     ).animate().fadeIn(duration: 500.ms).slideY(begin: 0.1, end: 0);
   }
 
+  Widget _buildOrderInfoRow(IconData icon, String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(4),
+          decoration: const BoxDecoration(
+            color: Color(0xFFF1F4F8),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, size: 14, color: Colors.grey.shade600),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  color: Colors.grey.shade500,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: const TextStyle(
+                  color: Color(0xFF1B2D1F),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildEmptyState() {
     return Center(
       child: Column(
         children: [
           const SizedBox(height: 60),
-          Icon(Icons.delivery_dining, size: 100, color: Colors.grey.shade200),
-          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(30),
+            decoration: const BoxDecoration(
+              color: Color(0xFFF1F8EB),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.delivery_dining_rounded,
+                size: 80,
+                color: const Color(0xFF68B92E).withValues(alpha: 0.2)),
+          ),
+          const SizedBox(height: 24),
           const Text(
             'All clear! No pending tasks.',
             style: TextStyle(
-                color: Color(0xFF94A3B8),
+                color: Color(0xFF1B2D1F),
                 fontSize: 16,
-                fontWeight: FontWeight.w600),
+                fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Go online to receive new orders',
-            style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 14),
+            style: TextStyle(color: Colors.grey.shade500, fontSize: 14),
           ),
         ],
       ),

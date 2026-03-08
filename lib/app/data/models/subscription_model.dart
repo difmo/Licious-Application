@@ -79,11 +79,22 @@ class UserSubscription {
   });
 
   factory UserSubscription.fromJson(Map<String, dynamic> json) {
+    final product = json['product'];
+    String imageUrl = '';
+    if (product is Map) {
+      // Backend returns 'images' as an array
+      final images = product['images'] as List<dynamic>?;
+      imageUrl = (images != null && images.isNotEmpty)
+          ? images.first.toString()
+          : product['image']?.toString() ?? '';
+    }
+
     return UserSubscription(
       id: json['_id']?.toString() ?? '',
-      productId: json['product']?['_id']?.toString() ?? '',
-      productName: json['product']?['name']?.toString() ?? 'Product',
-      productImage: json['product']?['image']?.toString() ?? '',
+      productId: product is Map ? product['_id']?.toString() ?? '' : '',
+      productName:
+          product is Map ? product['name']?.toString() ?? 'Product' : 'Product',
+      productImage: imageUrl,
       frequency: json['frequency']?.toString() ?? 'Daily',
       quantity: (json['quantity'] as num?)?.toInt() ?? 1,
       customDays: (json['customDays'] as List<dynamic>?)
@@ -91,11 +102,13 @@ class UserSubscription {
               .toList() ??
           [],
       status: json['status']?.toString() ?? 'Active',
-      startDate:
-          DateTime.parse(json['startDate'] ?? DateTime.now().toIso8601String()),
-      endDate: json['endDate'] != null ? DateTime.parse(json['endDate']) : null,
+      startDate: DateTime.tryParse(json['startDate']?.toString() ?? '') ??
+          DateTime.now(),
+      endDate: json['endDate'] != null
+          ? DateTime.tryParse(json['endDate'].toString())
+          : null,
       vacationDates: (json['vacationDates'] as List<dynamic>?)
-              ?.map((e) => DateTime.parse(e.toString()))
+              ?.map((e) => DateTime.tryParse(e.toString()) ?? DateTime.now())
               .toList() ??
           [],
     );

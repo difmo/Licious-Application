@@ -16,15 +16,18 @@ class TopUpPage extends ConsumerStatefulWidget {
 class _TopUpPageState extends ConsumerState<TopUpPage> {
   final TextEditingController _amountController = TextEditingController();
   bool _isLoading = false;
+  // Cache service so we can call dispose() without using ref after unmount
+  late PaymentService _paymentService;
 
   @override
   void initState() {
     super.initState();
-    ref.read(paymentServiceProvider).init(
-          onSuccess: _handlePaymentSuccess,
-          onFailure: _handlePaymentFailure,
-          onExternalWallet: _handleExternalWallet,
-        );
+    _paymentService = ref.read(paymentServiceProvider);
+    _paymentService.init(
+      onSuccess: _handlePaymentSuccess,
+      onFailure: _handlePaymentFailure,
+      onExternalWallet: _handleExternalWallet,
+    );
   }
 
   void _handlePaymentSuccess(PaymentSuccessResponse response) async {
@@ -77,7 +80,7 @@ class _TopUpPageState extends ConsumerState<TopUpPage> {
   @override
   void dispose() {
     _amountController.dispose();
-    ref.read(paymentServiceProvider).dispose();
+    _paymentService.dispose(); // use cached ref — safe after unmount
     super.dispose();
   }
 
@@ -148,14 +151,15 @@ class _TopUpPageState extends ConsumerState<TopUpPage> {
                                 content: Text('Minimum top-up is ₹100')));
                         return;
                       }
+                      final messenger = ScaffoldMessenger.of(context);
                       try {
-                        await ref.read(paymentServiceProvider).openCheckout(
-                              amount: amount,
-                              contact: profile.phone,
-                              email: profile.email,
-                            );
+                        await _paymentService.openCheckout(
+                          amount: amount,
+                          contact: profile.phone,
+                          email: profile.email,
+                        );
                       } catch (e) {
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        messenger.showSnackBar(
                             SnackBar(content: Text(e.toString())));
                       }
                     },

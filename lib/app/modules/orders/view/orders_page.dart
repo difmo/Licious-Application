@@ -1,22 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../../data/services/db_service.dart';
-import '../../../data/models/food_models.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../data/services/order_service.dart';
+
+// Live orders provider for the bottom-nav Orders tab
+final liveOrdersProvider = FutureProvider.autoDispose<List<dynamic>>((ref) {
+  return ref.read(orderServiceProvider).getMyOrders();
+});
 
 class _HeaderDelegate extends SliverPersistentHeaderDelegate {
   final double expandedHeight;
   _HeaderDelegate({required this.expandedHeight});
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    final double opacity = (1 - (shrinkOffset / expandedHeight)).clamp(0.0, 1.0);
-    
+  Widget build(
+      BuildContext context, double shrinkOffset, bool overlapsContent) {
+    final double opacity =
+        (1 - (shrinkOffset / expandedHeight)).clamp(0.0, 1.0);
+
     return OverflowBox(
-      maxWidth: MediaQuery.of(context).size.width + 50, // Massive bleed to bypass any parent constraints
+      maxWidth: MediaQuery.of(context).size.width + 50,
       minWidth: MediaQuery.of(context).size.width + 50,
       alignment: Alignment.center,
       child: Transform.scale(
-        scaleX: 1.1, // Increased scale to push content well beyond the edges
+        scaleX: 1.1,
         child: Stack(
           fit: StackFit.expand,
           alignment: Alignment.center,
@@ -67,36 +74,17 @@ class _HeaderDelegate extends SliverPersistentHeaderDelegate {
   @override
   double get minExtent => kToolbarHeight + 20;
   @override
-  bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) => true;
+  bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) =>
+      true;
 }
 
-class OrdersPage extends StatefulWidget {
+class OrdersPage extends ConsumerWidget {
   const OrdersPage({super.key});
 
   @override
-  State<OrdersPage> createState() => _OrdersPageState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ordersAsync = ref.watch(liveOrdersProvider);
 
-class _OrdersPageState extends State<OrdersPage> {
-  void _reorder(BuildContext context, String restaurantName) {
-    HapticFeedback.mediumImpact();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Reordering from $restaurantName...'),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: const Color(0xFF114F3B),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final cart = CartProviderScope.of(context);
-    final orders = cart.orders;
-
-    // Use MediaQuery.removePadding to ensure NO horizontal padding is injected from parent builds
     return MediaQuery.removePadding(
       context: context,
       removeLeft: true,
@@ -111,33 +99,46 @@ class _OrdersPageState extends State<OrdersPage> {
               pinned: true,
               delegate: _HeaderDelegate(expandedHeight: 200.0),
             ),
-          if (orders.isEmpty)
-            const SliverFillRemaining(
-              child: Center(
-                child: Text(
-                  'No orders yet',
-                  style: TextStyle(color: Colors.grey, fontSize: 16),
-                ),
-              ),
-            )
-          else
-            SliverPadding(
-              padding: const EdgeInsets.all(16),
-              sliver: SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    final order = orders[index];
-                    return _OrderCard(
-                      order: order,
-                      onReorder: () => _reorder(context, order.restaurantName),
-                    );
-                  },
-                  childCount: orders.length,
+            // Refresh action
+            SliverToBoxAdapter(
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 16, top: 8),
+                  child: IconButton(
+                    icon: const Icon(Icons.refresh, color: Color(0xFF114F3B)),
+                    onPressed: () => ref.invalidate(liveOrdersProvider),
+                  ),
                 ),
               ),
             ),
-          // Extra padding for bottom navigation
-          const SliverToBoxAdapter(child: SizedBox(height: 100)),
+            ordersAsync.when(
+              data: (orders) => orders.isEmpty
+                  ? const SliverFillRemaining(
+                      child: Center(
+                        child: Text('No orders yet',
+                            style: TextStyle(color: Colors.grey, fontSize: 16)),
+                      ),
+                    )
+                  : SliverPadding(
+                      padding: const EdgeInsets.all(16),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) =>
+                              _LiveOrderCard(order: orders[index]),
+                          childCount: orders.length,
+                        ),
+                      ),
+                    ),
+              loading: () => const SliverFillRemaining(
+                child: Center(
+                    child: CircularProgressIndicator(color: Color(0xFF114F3B))),
+              ),
+              error: (err, _) => SliverFillRemaining(
+                child: Center(child: Text('Error: $err')),
+              ),
+            ),
+            const SliverToBoxAdapter(child: SizedBox(height: 100)),
           ],
         ),
       ),
@@ -145,20 +146,16 @@ class _OrdersPageState extends State<OrdersPage> {
   }
 }
 
-class _OrderCard extends StatefulWidget {
-  final UserOrder order;
-  final VoidCallback onReorder;
-
-  const _OrderCard({
-    required this.order,
-    required this.onReorder,
-  });
+class _LiveOrderCard extends StatefulWidget {
+  final Map<String, dynamic> order;
+  const _LiveOrderCard({required this.order});
 
   @override
-  State<_OrderCard> createState() => _OrderCardState();
+  State<_LiveOrderCard> createState() => _LiveOrderCardState();
 }
 
-class _OrderCardState extends State<_OrderCard> with SingleTickerProviderStateMixin {
+class _LiveOrderCardState extends State<_LiveOrderCard>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
 
@@ -166,12 +163,9 @@ class _OrderCardState extends State<_OrderCard> with SingleTickerProviderStateMi
   void initState() {
     super.initState();
     _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 150),
-    );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.96).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+        vsync: this, duration: const Duration(milliseconds: 150));
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.96)
+        .animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
@@ -180,21 +174,79 @@ class _OrderCardState extends State<_OrderCard> with SingleTickerProviderStateMi
     super.dispose();
   }
 
-  // Map restaurant names to assets for visual consistency in the demo
-  String _getRestaurantImage(String name) {
-    if (name.contains('Shrimp')) return 'assets/images/shrimp_tiger_trio.png';
-    if (name.contains('Palat') || name.contains('Burger')) return 'assets/images/shrimp_cooked_duo.png';
-    return 'assets/images/shrimp_dish_1.png';
+  String get _title {
+    final items = widget.order['items'] as List<dynamic>? ?? [];
+    if (items.isEmpty) return 'Order';
+    final p = items.first['product'];
+    return p is Map ? p['name']?.toString() ?? 'Order' : 'Order';
+  }
+
+  String get _description {
+    final items = widget.order['items'] as List<dynamic>? ?? [];
+    return items.map((i) {
+      final p = i['product'];
+      final name = p is Map ? p['name']?.toString() ?? 'Item' : 'Item';
+      return '${i['quantity']}x $name';
+    }).join(', ');
+  }
+
+  double get _total {
+    final items = widget.order['items'] as List<dynamic>? ?? [];
+    return items.fold(0.0, (sum, i) {
+      final price = (i['price'] as num?)?.toDouble() ?? 0;
+      final qty = (i['quantity'] as num?)?.toDouble() ?? 1;
+      return sum + price * qty;
+    });
+  }
+
+  String get _status => widget.order['status']?.toString() ?? 'Pending';
+
+  bool get _isDelivered => _status.toLowerCase() == 'delivered';
+
+  Color get _statusColor {
+    switch (_status.toLowerCase()) {
+      case 'delivered':
+        return const Color(0xFF2E7D32);
+      case 'cancelled':
+        return Colors.red;
+      case 'out for delivery':
+        return Colors.blue;
+      default:
+        return const Color(0xFFE67E22);
+    }
+  }
+
+  Color get _statusBg {
+    switch (_status.toLowerCase()) {
+      case 'delivered':
+        return const Color(0xFFE8F5E9);
+      case 'cancelled':
+        return const Color(0xFFFFEBEE);
+      default:
+        return const Color(0xFFFFF4E5);
+    }
+  }
+
+  String get _imageUrl {
+    final items = widget.order['items'] as List<dynamic>? ?? [];
+    if (items.isEmpty) return '';
+    final p = items.first['product'];
+    if (p is Map) {
+      final imgs = p['images'] as List<dynamic>?;
+      return imgs != null && imgs.isNotEmpty ? imgs.first.toString() : '';
+    }
+    return '';
   }
 
   @override
   Widget build(BuildContext context) {
-    final order = widget.order;
-    final isDelivered = order.status.toLowerCase() == 'delivered';
-
     return GestureDetector(
       onDoubleTap: () {
-        widget.onReorder();
+        HapticFeedback.mediumImpact();
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Added to cart for reorder!'),
+          backgroundColor: Color(0xFF114F3B),
+        ));
         _controller.forward().then((_) => _controller.reverse());
       },
       onTapDown: (_) => _controller.forward(),
@@ -202,10 +254,8 @@ class _OrderCardState extends State<_OrderCard> with SingleTickerProviderStateMi
       onTapCancel: () => _controller.reverse(),
       child: AnimatedBuilder(
         animation: _scaleAnimation,
-        builder: (context, child) => Transform.scale(
-          scale: _scaleAnimation.value,
-          child: child,
-        ),
+        builder: (context, child) =>
+            Transform.scale(scale: _scaleAnimation.value, child: child),
         child: Container(
           margin: const EdgeInsets.only(bottom: 20),
           decoration: BoxDecoration(
@@ -223,23 +273,22 @@ class _OrderCardState extends State<_OrderCard> with SingleTickerProviderStateMi
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Image
               ClipRRect(
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(24),
                   bottomLeft: Radius.circular(24),
                 ),
-                child: Image.asset(
-                  _getRestaurantImage(order.restaurantName),
-                  width: 120,
-                  height: 150,
-                  fit: BoxFit.cover,
-                ),
+                child: _imageUrl.isNotEmpty
+                    ? Image.network(_imageUrl,
+                        width: 120,
+                        height: 150,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _placeholder)
+                    : _placeholder,
               ),
-              // Content
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.all(16.0),
+                  padding: const EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -249,44 +298,41 @@ class _OrderCardState extends State<_OrderCard> with SingleTickerProviderStateMi
                         children: [
                           Expanded(
                             child: Text(
-                              order.restaurantName,
+                              _title,
                               style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                color: Color(0xFF2D3436),
-                              ),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                  color: Color(0xFF2D3436)),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: isDelivered ? const Color(0xFFE8F5E9) : const Color(0xFFFFF4E5),
+                              color: _statusBg,
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
-                                color: isDelivered ? const Color(0xFFC8E6C9) : const Color(0xFFFFD8A8),
-                              ),
+                                  color: _statusColor.withValues(alpha: 0.4)),
                             ),
                             child: Text(
-                              order.status,
+                              _status,
                               style: TextStyle(
-                                color: isDelivered ? const Color(0xFF2E7D32) : const Color(0xFFE67E22),
-                                fontSize: 8,
-                                fontWeight: FontWeight.bold,
-                              ),
+                                  color: _statusColor,
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.bold),
                             ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        order.items.join(', '),
+                        _description,
                         style: const TextStyle(
-                          color: Color(0xFF636E72),
-                          fontSize: 12,
-                          height: 1.3,
-                        ),
+                            color: Color(0xFF636E72),
+                            fontSize: 12,
+                            height: 1.3),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -298,43 +344,32 @@ class _OrderCardState extends State<_OrderCard> with SingleTickerProviderStateMi
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
-                                'Total Bill',
-                                style: TextStyle(
-                                  color: Color(0xFF636E72),
-                                  fontSize: 10,
-                                ),
-                              ),
+                              const Text('Total Bill',
+                                  style: TextStyle(
+                                      color: Color(0xFF636E72), fontSize: 10)),
                               Text(
-                                '₹${order.total.toStringAsFixed(2)}',
+                                '₹${_total.toStringAsFixed(2)}',
                                 style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                  color: Color(0xFF2D3436),
-                                ),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                    color: Color(0xFF2D3436)),
                               ),
                             ],
                           ),
-                          GestureDetector(
-                            onTap: () {
-                              widget.onReorder();
-                              _controller.forward().then((_) => _controller.reverse());
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: Colors.transparent,
-                                border: Border.all(color: const Color(0xFFE67E22), width: 1.5),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: const Text(
-                                'Reorder',
-                                style: TextStyle(
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 6),
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                  color: const Color(0xFFE67E22), width: 1.5),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              _isDelivered ? 'Reorder' : 'Track',
+                              style: const TextStyle(
                                   color: Color(0xFF2D3436),
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                ),
-                              ),
+                                  fontSize: 12),
                             ),
                           ),
                         ],
@@ -349,4 +384,11 @@ class _OrderCardState extends State<_OrderCard> with SingleTickerProviderStateMi
       ),
     );
   }
+
+  Widget get _placeholder => Container(
+        width: 120,
+        height: 150,
+        color: const Color(0xFFE8F5E9),
+        child: const Icon(Icons.set_meal, size: 40, color: Color(0xFF114F3B)),
+      );
 }

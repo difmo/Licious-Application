@@ -118,9 +118,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           backgroundColor: Colors.green.shade600, icon: Icons.check_circle);
 
       if (authState.user.role == 'rider') {
-        Navigator.pushReplacementNamed(context, AppRoutes.riderHome);
+        Navigator.pushNamedAndRemoveUntil(
+            context, AppRoutes.riderHome, (route) => false);
       } else {
-        Navigator.pushReplacementNamed(context, AppRoutes.home);
+        Navigator.pushNamedAndRemoveUntil(
+            context, AppRoutes.home, (route) => false);
       }
     } else if (authState is AuthError) {
       _showSnackBar(authState.message, backgroundColor: Colors.red);
@@ -130,7 +132,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           backgroundColor: Colors.green.shade600, icon: Icons.check_circle);
       // AuthSuccess might not have user object directly in some versions of provider
       // but usually redirects to home. We'll stick to home as fallback.
-      Navigator.pushReplacementNamed(context, AppRoutes.home);
+      Navigator.pushNamedAndRemoveUntil(
+          context, AppRoutes.home, (route) => false);
     }
   }
 
@@ -300,8 +303,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   // Sign up link
                   Center(
                     child: GestureDetector(
-                      onTap: () =>
-                          Navigator.pushReplacementNamed(context, '/signup'),
+                      onTap: () => Navigator.pushReplacementNamed(
+                          context, AppRoutes.signup),
                       child: RichText(
                         text: const TextSpan(
                           text: "Don't have an account ? ",

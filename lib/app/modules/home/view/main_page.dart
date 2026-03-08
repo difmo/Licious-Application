@@ -163,9 +163,9 @@ class _MainPageState extends State<MainPage> {
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _buildNavItem(0, Icons.home_filled, 'Home'),
-                _buildNavItem(1, Icons.favorite_rounded, 'My Favorite'),
+                _buildNavItem(1, Icons.shopping_cart_outlined, 'Orders'),
                 const SizedBox(width: 68), // Space for FAB
-                _buildNavItem(3, Icons.receipt_long_rounded, 'Orders'),
+                _buildNavItem(3, Icons.wallet_rounded, 'Wallet'),
                 _buildNavItem(4, Icons.person_rounded, 'Profile'),
               ],
             ),

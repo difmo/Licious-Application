@@ -33,6 +33,11 @@ class AuthAuthenticated extends AuthState {
   const AuthAuthenticated({required this.user, required this.token});
 }
 
+/// Session restoration complete, user is not logged in.
+class AuthUnauthenticated extends AuthState {
+  const AuthUnauthenticated();
+}
+
 /// Operation succeeded but the user is not yet logged in
 /// (e.g. after registration, OTP sent, OTP verified)
 class AuthSuccess extends AuthState {
@@ -65,6 +70,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> _restoreSession() async {
     final token = await ApiClient.getToken();
     if (token != null && token.isNotEmpty) {
+      state = const AuthLoading();
       final response = await _service.getProfile();
       if (response.success && response.data != null) {
         state = AuthAuthenticated(
@@ -75,6 +81,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
         // Token invalid or expired — clear it.
         await logout();
       }
+    } else {
+      state = const AuthUnauthenticated();
     }
   }
 
@@ -217,7 +225,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   // ── Logout ────────────────────────────────────────────────────────────────
   Future<void> logout() async {
     await _service.logout();
-    state = const AuthInitial();
+    state = const AuthUnauthenticated();
   }
 
   // ── Reset to initial (after consuming error/success state) ───────────────

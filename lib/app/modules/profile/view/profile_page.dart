@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import './profile_detail_page.dart';
 import './edit_profile_page.dart';
 import '../../../data/services/db_service.dart';
-import '../../auth/login_page.dart';
 import './my_orders_page.dart';
 import './transactions_page.dart';
 import './saved_cards_page.dart';
@@ -11,6 +10,7 @@ import '../../auth/provider/auth_provider.dart';
 import '../../home/controller/main_controller.dart';
 import '../../../data/models/food_models.dart';
 import '../../subscriptions/view/subscription_dashboard_page.dart';
+import '../../../routes/app_routes.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -298,7 +298,7 @@ class _WalletSection extends StatelessWidget {
               offset: Offset(-4, -4),
             ),
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 10,
               spreadRadius: 1,
               offset: const Offset(4, 4),
@@ -531,9 +531,9 @@ class _SignOutButton extends ConsumerWidget {
           await ref.read(authProvider.notifier).logout();
           if (context.mounted) {
             CartProviderScope.of(context).clearSession();
-            Navigator.pushAndRemoveUntil(
+            Navigator.pushNamedAndRemoveUntil(
               context,
-              MaterialPageRoute(builder: (context) => const LoginPage()),
+              AppRoutes.login,
               (route) => false,
             );
           }
