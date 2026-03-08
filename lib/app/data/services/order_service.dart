@@ -13,7 +13,7 @@ class OrderService {
   }) async {
     try {
       final response = await _apiClient.post(
-        '/app/orders',
+        '${ApiClient.baseUrl}/orders',
         data: {
           'deliveryAddress': deliveryAddress,
           'paymentMethod': paymentMethod,
@@ -39,7 +39,7 @@ class OrderService {
   Future<List<dynamic>> getMyOrders() async {
     try {
       final response = await _apiClient.get(
-        '/app/orders/my',
+        '${ApiClient.baseUrl}/orders/my',
         requiresAuth: true,
       );
       // The backend returns { "success": true, "orders": [...] }

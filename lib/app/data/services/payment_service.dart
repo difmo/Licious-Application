@@ -1,14 +1,12 @@
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../network/api_client.dart';
-import 'wallet_service.dart';
 
 class PaymentService {
   final ApiClient _apiClient;
-  final WalletService _walletService;
   late Razorpay _razorpay;
 
-  PaymentService(this._apiClient, this._walletService) {
+  PaymentService(this._apiClient) {
     _razorpay = Razorpay();
   }
 
@@ -30,7 +28,7 @@ class PaymentService {
     try {
       // 1. Create order on backend
       final orderResponse = await _apiClient.post(
-        '/payment/create-order',
+        '${ApiClient.paymentBaseUrl}/create-order',
         data: {'amount': amount},
         requiresAuth: true,
       );
@@ -64,6 +62,5 @@ class PaymentService {
 final paymentServiceProvider = Provider<PaymentService>((ref) {
   return PaymentService(
     ref.watch(apiClientProvider),
-    ref.watch(walletServiceProvider),
   );
 });

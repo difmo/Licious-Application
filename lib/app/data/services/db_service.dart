@@ -4,6 +4,7 @@ import '../models/food_models.dart';
 import 'cart_service.dart';
 import 'wallet_service.dart';
 import 'address_service.dart';
+import '../network/api_client.dart';
 
 class CartProvider extends ChangeNotifier {
   final CartService? _service;
@@ -17,7 +18,12 @@ class CartProvider extends ChangeNotifier {
     AddressService? addressService,
   })  : _service = service,
         _walletService = walletService,
-        _addressService = addressService;
+        _addressService = addressService {
+    loadAddresses();
+    syncWallet();
+  }
+
+  AddressService? get addressService => _addressService;
 
   UserProfile _userProfile = const UserProfile(
     name: 'Guest User',
@@ -114,21 +120,25 @@ class CartProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  List<UserAddress> _addresses = [
-    const UserAddress(
-      id: 'ADDR001',
-      title: 'Home',
-      street: '123 MG Road',
-      details: 'Lucknow, Uttar Pradesh 226001',
-      isDefault: true,
-    ),
-    const UserAddress(
-      id: 'ADDR002',
-      title: 'Work',
-      street: 'Tower A, IT Park',
-      details: 'Shaheed Path, Lucknow, UP 226012',
-    ),
-  ];
+  List<UserAddress> _addresses = [];
+  int _selectedAddressIndex = 0;
+
+  int get selectedAddressIndex => _selectedAddressIndex;
+
+  void selectAddress(int index) {
+    _selectedAddressIndex = index;
+    notifyListeners();
+  }
+
+  UserAddress? get selectedAddress {
+    if (_addresses.isEmpty) return null;
+    if (_selectedAddressIndex >= 0 &&
+        _selectedAddressIndex < _addresses.length) {
+      return _addresses[_selectedAddressIndex];
+    }
+    return _addresses.firstWhere((a) => a.isDefault,
+        orElse: () => _addresses.first);
+  }
 
   final List<UserPaymentMethod> _payments = [
     const UserPaymentMethod(
@@ -560,6 +570,9 @@ class CartProvider extends ChangeNotifier {
   Future<void> loadAddresses() async {
     if (_addressService == null) return;
     try {
+      final token = await ApiClient.getToken();
+      if (token == null || token.isEmpty) return;
+
       final result = await _addressService!.getAddresses();
       if (result['success']) {
         final List<dynamic> data = result['data'] ?? [];
@@ -573,6 +586,15 @@ class CartProvider extends ChangeNotifier {
                   isDefault: json['isDefault'] ?? false,
                 ))
             .toList();
+
+        // Reset selection to default address if available
+        final defaultIdx = _addresses.indexWhere((a) => a.isDefault);
+        if (defaultIdx != -1) {
+          _selectedAddressIndex = defaultIdx;
+        } else if (_addresses.isNotEmpty) {
+          _selectedAddressIndex = 0;
+        }
+
         notifyListeners();
       }
     } catch (e) {

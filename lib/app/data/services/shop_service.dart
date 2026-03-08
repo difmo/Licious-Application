@@ -20,12 +20,6 @@ class ShopService {
 
   ShopService({required ApiClient client}) : _client = client;
 
-  // ── Fetch all shops ────────────────────────────────────────────────────────
-  /// GET /api/app/shops  (requires auth token)
-  /// Response: { "success": true, "data": [...] }
-  ///
-  /// If the backend returns an error or the list is empty, falls back to
-  /// [_fallbackShop] containing the single known shop ID.
   Future<List<ShopModel>> getShops() async {
     try {
       final json = await _client.get(
@@ -33,7 +27,6 @@ class ShopService {
         requiresAuth: true,
       );
 
-      // Backend may return "data", "shops", or "retailers" key
       final raw = json['data'] ?? json['shops'] ?? json['retailers'];
       if (raw is List && raw.isNotEmpty) {
         final shops = raw
@@ -41,10 +34,8 @@ class ShopService {
             .toList();
         return shops.isNotEmpty ? shops : [_fallbackShop];
       }
-      // Backend responded success:true but with empty/null list
       return [_fallbackShop];
     } on ApiException catch (e) {
-      // If the list endpoint doesn't exist (404) or fails, return fallback
       if (e.statusCode == 404 || e.statusCode == null) {
         return [_fallbackShop];
       }
@@ -54,9 +45,6 @@ class ShopService {
     }
   }
 
-  // ── Fetch products for a specific shop ────────────────────────────────────
-  /// GET /api/app/shops/:shopId/products  (requires auth token)
-  /// Response: { "success": true, "data": [...] }
   Future<List<ShopProduct>> getShopProducts(String shopId) async {
     try {
       final json = await _client.get(

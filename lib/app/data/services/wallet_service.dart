@@ -9,7 +9,7 @@ class WalletService {
   Future<Map<String, dynamic>> getBalance() async {
     try {
       final response = await _apiClient.get(
-        '/wallet/balance',
+        '${ApiClient.walletBaseUrl}/balance',
         requiresAuth: true,
       );
       return {
@@ -24,7 +24,7 @@ class WalletService {
   Future<List<dynamic>> getTransactionHistory() async {
     try {
       final response = await _apiClient.get(
-        '/wallet/history',
+        '${ApiClient.walletBaseUrl}/history',
         requiresAuth: true,
       );
       return response['data'] ?? [];
@@ -41,7 +41,7 @@ class WalletService {
   }) async {
     try {
       final response = await _apiClient.post(
-        '/wallet/topup-success',
+        '${ApiClient.walletBaseUrl}/topup-success',
         data: {
           'amount': amount,
           'razorpayOrderId': razorpayOrderId,

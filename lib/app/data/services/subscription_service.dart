@@ -22,7 +22,7 @@ class SubscriptionService {
   /// Fetch all available subscription plans.
   Future<List<SubscriptionPlan>> getSubscriptions() async {
     try {
-      final json = await _client.get('${ApiClient.baseUrl}/subscriptions',
+      final json = await _client.get('${ApiClient.subscriptionBaseUrl}/',
           requiresAuth: true);
       final success = json['success'] as bool? ?? false;
       if (!success) {
@@ -42,7 +42,7 @@ class SubscriptionService {
   /// Fetch user's active subscriptions.
   Future<List<UserSubscription>> getMySubscriptions() async {
     try {
-      final json = await _client.get('${ApiClient.baseUrl}/subscriptions/my',
+      final json = await _client.get('${ApiClient.subscriptionBaseUrl}/my',
           requiresAuth: true);
       final success = json['success'] as bool? ?? false;
       if (!success) {
@@ -77,7 +77,7 @@ class SubscriptionService {
       };
 
       final json = await _client.post(
-        '${ApiClient.baseUrl}/subscriptions/subscribe',
+        '${ApiClient.subscriptionBaseUrl}/subscribe',
         data: payload,
         requiresAuth: true,
       );
@@ -98,8 +98,8 @@ class SubscriptionService {
   /// Pause or Resume a subscription.
   Future<bool> updateStatus(String subscriptionId, String status) async {
     try {
-      final json = await _client.post(
-        '${ApiClient.baseUrl}/subscriptions/status',
+      final json = await _client.patch(
+        '${ApiClient.subscriptionBaseUrl}/status',
         data: {'subscriptionId': subscriptionId, 'status': status},
         requiresAuth: true,
       );
@@ -117,7 +117,7 @@ class SubscriptionService {
   }) async {
     try {
       final json = await _client.post(
-        '${ApiClient.baseUrl}/subscriptions/vacation',
+        '${ApiClient.subscriptionBaseUrl}/vacation',
         data: {
           'subscriptionId': subscriptionId,
           'startDate': startDate.toIso8601String(),

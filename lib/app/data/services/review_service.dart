@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../network/api_client.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -22,7 +23,7 @@ class ReviewService {
   }) async {
     try {
       final json = await _client.post(
-        '${ApiClient.baseUrl}/reviews',
+        '${ApiClient.reviewBaseUrl}/reviews',
         data: {
           'product': productId,
           'retailer': retailerId,
@@ -33,7 +34,7 @@ class ReviewService {
       );
       return json['success'] == true;
     } catch (e) {
-      print('Review submit error: $e');
+      debugPrint('Review submit error: $e');
       return false;
     }
   }
