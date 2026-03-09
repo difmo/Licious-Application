@@ -50,3 +50,67 @@ class SubscriptionPlan {
     );
   }
 }
+
+class UserSubscription {
+  final String id;
+  final String productId;
+  final String productName;
+  final String productImage;
+  final String frequency;
+  final int quantity;
+  final List<String> customDays;
+  final String status;
+  final DateTime startDate;
+  final DateTime? endDate;
+  final List<DateTime> vacationDates;
+
+  UserSubscription({
+    required this.id,
+    required this.productId,
+    required this.productName,
+    required this.productImage,
+    required this.frequency,
+    required this.quantity,
+    required this.customDays,
+    required this.status,
+    required this.startDate,
+    this.endDate,
+    this.vacationDates = const [],
+  });
+
+  factory UserSubscription.fromJson(Map<String, dynamic> json) {
+    final product = json['product'];
+    String imageUrl = '';
+    if (product is Map) {
+      // Backend returns 'images' as an array
+      final images = product['images'] as List<dynamic>?;
+      imageUrl = (images != null && images.isNotEmpty)
+          ? images.first.toString()
+          : product['image']?.toString() ?? '';
+    }
+
+    return UserSubscription(
+      id: json['_id']?.toString() ?? '',
+      productId: product is Map ? product['_id']?.toString() ?? '' : '',
+      productName:
+          product is Map ? product['name']?.toString() ?? 'Product' : 'Product',
+      productImage: imageUrl,
+      frequency: json['frequency']?.toString() ?? 'Daily',
+      quantity: (json['quantity'] as num?)?.toInt() ?? 1,
+      customDays: (json['customDays'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [],
+      status: json['status']?.toString() ?? 'Active',
+      startDate: DateTime.tryParse(json['startDate']?.toString() ?? '') ??
+          DateTime.now(),
+      endDate: json['endDate'] != null
+          ? DateTime.tryParse(json['endDate'].toString())
+          : null,
+      vacationDates: (json['vacationDates'] as List<dynamic>?)
+              ?.map((e) => DateTime.tryParse(e.toString()) ?? DateTime.now())
+              .toList() ??
+          [],
+    );
+  }
+}

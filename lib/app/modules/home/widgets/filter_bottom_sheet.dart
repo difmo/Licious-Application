@@ -157,8 +157,8 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('\$${_priceRange.start.round()}', style: _labelStyle),
-                      Text('\$${_priceRange.end.round()}', style: _labelStyle),
+                      Text('₹${_priceRange.start.round()}', style: _labelStyle),
+                      Text('₹${_priceRange.end.round()}', style: _labelStyle),
                     ],
                   ),
                   SliderTheme(

@@ -12,6 +12,11 @@ class AppRoutes {
   static const String categories = '/categories';
   static const String vegetables = '/vegetables';
   static const String cart = '/cart';
+  static const String wallet = '/wallet';
+  static const String subscriptions = '/subscriptions';
   static const String shippingAddress = '/shipping_address';
   static const String paymentMethod = '/payment_method';
+  static const String riderHome = '/rider-home';
+  static const String topUp = '/top-up';
+  static const String walletStatement = '/wallet-statement';
 }

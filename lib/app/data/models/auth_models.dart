@@ -3,20 +3,23 @@ class UserModel {
   final String fullName;
   final String email;
   final String phoneNumber;
+  final String role;
 
   UserModel({
     required this.id,
     required this.fullName,
     required this.email,
     required this.phoneNumber,
+    this.role = 'customer',
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
       id: json['_id'] ?? json['id'] ?? '',
-      fullName: json['fullName'] ?? '',
+      fullName: json['fullName'] ?? json['name'] ?? '',
       email: json['email'] ?? '',
-      phoneNumber: json['phoneNumber'] ?? '',
+      phoneNumber: json['phoneNumber'] ?? json['phone'] ?? '',
+      role: json['role'] ?? 'customer',
     );
   }
 
@@ -26,6 +29,7 @@ class UserModel {
       'fullName': fullName,
       'email': email,
       'phoneNumber': phoneNumber,
+      'role': role,
     };
   }
 }
@@ -34,6 +38,7 @@ class AuthResponseModel {
   final bool success;
   final String message;
   final String? token;
+  final String? refreshToken;
   final UserModel? data;
   final String? otp; // returned by /api/otp/send in dev/dummy mode
 
@@ -41,6 +46,7 @@ class AuthResponseModel {
     required this.success,
     required this.message,
     this.token,
+    this.refreshToken,
     this.data,
     this.otp,
   });
@@ -50,6 +56,7 @@ class AuthResponseModel {
       success: json['success'] ?? false,
       message: json['message'] ?? '',
       token: json['token'],
+      refreshToken: json['refreshToken'],
       otp: json['otp']?.toString(),
       data: json['data'] is Map<String, dynamic>
           ? UserModel.fromJson(json['data'] as Map<String, dynamic>)

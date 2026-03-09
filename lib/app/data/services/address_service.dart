@@ -1,3 +1,4 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../network/api_client.dart';
 
 class AddressService {
@@ -26,4 +27,22 @@ class AddressService {
       requiresAuth: true,
     );
   }
+
+  Future<Map<String, dynamic>> getAddresses() async {
+    return await _client.get(
+      '${ApiClient.baseUrl}/address',
+      requiresAuth: true,
+    );
+  }
+
+  Future<Map<String, dynamic>> deleteAddress(String id) async {
+    return await _client.delete(
+      '${ApiClient.baseUrl}/address/$id',
+      requiresAuth: true,
+    );
+  }
 }
+
+final addressServiceProvider = Provider<AddressService>((ref) {
+  return AddressService(ref.watch(apiClientProvider));
+});

@@ -1,310 +1,543 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../data/services/subscription_service.dart';
+import 'package:intl/intl.dart';
 import '../../data/models/subscription_model.dart';
+import '../../data/services/subscription_service.dart';
+import '../../modules/wallet/view/wallet_page.dart' show walletBalanceProvider;
 
-class SubscriptionPage extends ConsumerWidget {
+class SubscriptionPage extends ConsumerStatefulWidget {
   const SubscriptionPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final subscriptionAsync = ref.watch(subscriptionPlansProvider);
-
-    return Scaffold(
-      body: Stack(
-        children: [
-          // Background Image with Blur
-          Positioned.fill(
-            child: Image.asset(
-              'assets/images/liciousimage.jpeg', // Using an existing background asset
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Color(0xFF1E1E1E), Color(0xFF000000)],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Positioned.fill(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-              child: Container(color: Colors.black.withValues(alpha:  0.3)),
-            ),
-          ),
-
-          // Content
-          SafeArea(
-            child: Column(
-              children: [
-                // Custom App Bar
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.arrow_back, color: Colors.white),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                      const Spacer(),
-                    ],
-                  ),
-                ),
-
-                Expanded(
-                  child: subscriptionAsync.when(
-                    data: (plans) {
-                      if (plans.isEmpty) {
-                        return const Center(
-                          child: Text(
-                            'No plans available',
-                            style: TextStyle(color: Colors.white),
-                          ),
-                        );
-                      }
-                      
-                      return SingleChildScrollView(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                        child: Column(
-                          children: [
-                            const Text(
-                              'Choose Your Plan',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 28,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 30),
-                            
-                            // Horizontal scrolling for plans if many, or just vertical list
-                            // Based on image, it looks like a horizontal layout might be intended if there are only 2
-                            LayoutBuilder(
-                              builder: (context, constraints) {
-                                return Wrap(
-                                  spacing: 20,
-                                  runSpacing: 20,
-                                  alignment: WrapAlignment.center,
-                                  children: plans.map((plan) {
-                                    return ConstrainedBox(
-                                      constraints: BoxConstraints(
-                                        maxWidth: constraints.maxWidth > 600 
-                                            ? (constraints.maxWidth - 40) / 2 
-                                            : constraints.maxWidth,
-                                      ),
-                                      child: _PlanCard(plan: plan),
-                                    );
-                                  }).toList(),
-                                );
-                              }
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                    loading: () => const Center(
-                      child: CircularProgressIndicator(color: Colors.white),
-                    ),
-                    error: (err, stack) => Center(
-                      child: Text(
-                        'Error: $err',
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  ConsumerState<SubscriptionPage> createState() => _SubscriptionPageState();
 }
 
-class _PlanCard extends StatelessWidget {
-  final SubscriptionPlan plan;
+class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
+  DateTime _selectedDate = DateTime.now();
+  late final DateTime _startDate;
 
-  const _PlanCard({required this.plan});
+  @override
+  void initState() {
+    super.initState();
+    // Show 3 days in the past and scroll forward from there
+    _startDate = DateTime.now().subtract(const Duration(days: 3));
+  }
+
+  /// Returns true if the subscription delivers on the given date
+  bool _deliversOn(UserSubscription sub, DateTime date) {
+    // Check if date is before subscription start
+    final normalizedDate = DateTime(date.year, date.month, date.day);
+    final normalizedStart =
+        DateTime(sub.startDate.year, sub.startDate.month, sub.startDate.day);
+    if (normalizedDate.isBefore(normalizedStart)) return false;
+
+    // Check if endDate passed
+    if (sub.endDate != null) {
+      final normalizedEnd =
+          DateTime(sub.endDate!.year, sub.endDate!.month, sub.endDate!.day);
+      if (normalizedDate.isAfter(normalizedEnd)) return false;
+    }
+
+    // Check vacation dates
+    final isOnVacation = sub.vacationDates
+        .any((vd) => DateTime(vd.year, vd.month, vd.day) == normalizedDate);
+    if (isOnVacation) return false;
+
+    // Check frequency
+    switch (sub.frequency) {
+      case 'Daily':
+        return true;
+      case 'Alternate Days':
+        final diff = normalizedDate.difference(normalizedStart).inDays;
+        return diff % 2 == 0;
+      case 'Custom':
+        const dayNames = [
+          'Sunday',
+          'Monday',
+          'Tuesday',
+          'Wednesday',
+          'Thursday',
+          'Friday',
+          'Saturday'
+        ];
+        return sub.customDays.contains(dayNames[date.weekday % 7]);
+      default:
+        return true;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final isGold = plan.name.toLowerCase().contains('gold');
-    final isSilver = plan.name.toLowerCase().contains('silver');
-    final isPopular = plan.badge?.toLowerCase() == 'popular' || isSilver;
+    final subscriptionsAsync = ref.watch(mySubscriptionsProvider);
+    final balanceAsync = ref.watch(walletBalanceProvider);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha:  0.85),
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: Colors.white.withValues(alpha:  0.5), width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha:  0.1),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Stack(
-        children: [
-          // Content
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 40, 24, 30),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  plan.name,
-                  style: const TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w900,
-                    color: Color(0xFF1A1A1A),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '£${plan.price}/${plan.billingCycle}',
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF333333),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  plan.description,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF666666),
-                    height: 1.4,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                
-                // Features
-                ...plan.features.map((feature) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildHeader(balanceAsync),
+            _buildHorizontalCalendar(subscriptionsAsync),
+            Expanded(
+              child: subscriptionsAsync.when(
+                data: (subs) => SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
                     children: [
-                      const Icon(
-                        Icons.check_circle,
-                        color: Color(0xFF4CAF50),
-                        size: 20,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          feature,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Color(0xFF333333),
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
+                      _buildStatusCard(subs),
+                      const SizedBox(height: 20),
+                      _buildYourPlans(subs),
+                      const SizedBox(height: 30),
+                      _buildQuickActions(subs),
                     ],
                   ),
-                )),
-                
-                const SizedBox(height: 30),
-                
-                // Button
-                _GradientButton(
-                  text: 'Select ${plan.name}',
-                  isGold: isGold,
-                  onPressed: () {
-                    // Selection logic
-                  },
+                ),
+                loading: () => const Center(
+                    child: CircularProgressIndicator(color: Color(0xFF68B92E))),
+                error: (e, _) => Center(child: Text('Error: $e')),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader(AsyncValue<double> balanceAsync) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Daily Deliveries',
+                    style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF1A1A1A))),
+                Text(DateFormat('MMMM yyyy').format(_selectedDate),
+                    style: const TextStyle(color: Colors.grey, fontSize: 16)),
+              ],
+            ),
+          ),
+          // Wallet balance pill
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF68B92E).withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                  color: const Color(0xFF68B92E).withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.account_balance_wallet,
+                    color: Color(0xFF68B92E), size: 16),
+                const SizedBox(width: 6),
+                balanceAsync.when(
+                  data: (b) => Text('₹${b.toStringAsFixed(0)}',
+                      style: const TextStyle(
+                          color: Color(0xFF2E7D32),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14)),
+                  loading: () => const SizedBox(
+                      width: 12,
+                      height: 12,
+                      child: CircularProgressIndicator(strokeWidth: 2)),
+                  error: (_, __) => const Text('--'),
                 ),
               ],
             ),
           ),
-
-          // Badge
-          if (isPopular)
-            Positioned(
-              top: 16,
-              left: 16,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFD700),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Text(
-                  'Most Popular',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
-                ),
-              ),
-            ),
         ],
       ),
     );
   }
+
+  Widget _buildHorizontalCalendar(
+      AsyncValue<List<UserSubscription>> subsAsync) {
+    return SizedBox(
+      height: 90,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        itemCount: 30,
+        itemBuilder: (context, index) {
+          final date = _startDate.add(Duration(days: index));
+          final isSelected = date.day == _selectedDate.day &&
+              date.month == _selectedDate.month;
+          final isToday = date.day == DateTime.now().day &&
+              date.month == DateTime.now().month;
+
+          // Show dot if any subscriptions deliver that day
+          final hasSub = subsAsync.maybeWhen(
+            data: (subs) =>
+                subs.any((s) => s.status == 'Active' && _deliversOn(s, date)),
+            orElse: () => false,
+          );
+
+          return GestureDetector(
+            onTap: () => setState(() => _selectedDate = date),
+            child: Container(
+              width: 60,
+              margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+              decoration: BoxDecoration(
+                color:
+                    isSelected ? const Color(0xFF68B92E) : Colors.transparent,
+                borderRadius: BorderRadius.circular(16),
+                border: isToday && !isSelected
+                    ? Border.all(
+                        color: const Color(0xFF68B92E).withValues(alpha: 0.4))
+                    : null,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(DateFormat('E').format(date).toUpperCase(),
+                      style: TextStyle(
+                          color: isSelected ? Colors.white70 : Colors.grey,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 3),
+                  Text(date.day.toString(),
+                      style: TextStyle(
+                          color: isSelected ? Colors.white : Colors.black,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w900)),
+                  if (hasSub)
+                    Container(
+                      margin: const EdgeInsets.only(top: 3),
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color:
+                            isSelected ? Colors.white : const Color(0xFF68B92E),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildStatusCard(List<UserSubscription> subs) {
+    final deliveringSubs = subs
+        .where((s) => s.status == 'Active' && _deliversOn(s, _selectedDate))
+        .toList();
+    final hasDelivery = deliveringSubs.isNotEmpty;
+
+    // The backend cron handles price logic nightly
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEBFFD7).withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(24),
+        border:
+            Border.all(color: const Color(0xFF68B92E).withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: hasDelivery ? const Color(0xFF68B92E) : Colors.grey,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  hasDelivery ? 'SCHEDULED' : 'NO DELIVERY',
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold),
+                ),
+              ),
+              const Spacer(),
+              if (hasDelivery)
+                Text('${deliveringSubs.length} item(s)',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, color: Color(0xFF1A1A1A))),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (!hasDelivery)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Text('No deliveries scheduled for this day.',
+                    style: TextStyle(color: Colors.grey)),
+              ),
+            )
+          else
+            ...deliveringSubs.map((sub) => _buildDeliveryItem(sub)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDeliveryItem(UserSubscription sub) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: sub.productImage.isNotEmpty
+                ? Image.network(sub.productImage,
+                    width: 50,
+                    height: 50,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _imagePlaceholder)
+                : _imagePlaceholder,
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(sub.productName,
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text('Qty ${sub.quantity} • ${sub.frequency}',
+                    style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+              ],
+            ),
+          ),
+          const Icon(Icons.check_circle, color: Color(0xFF68B92E)),
+        ],
+      ),
+    );
+  }
+
+  Widget get _imagePlaceholder => Container(
+        width: 50,
+        height: 50,
+        color: const Color(0xFFE8F5E9),
+        child: const Icon(Icons.set_meal, color: Color(0xFF68B92E), size: 24),
+      );
+
+  Widget _buildYourPlans(List<UserSubscription> subs) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Your Plans',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 15),
+        if (subs.isEmpty)
+          const Text('No active plans. Subscribe to a product to get started!',
+              style: TextStyle(color: Colors.grey))
+        else
+          ...subs.map((sub) => _buildPlanItem(sub)),
+      ],
+    );
+  }
+
+  Widget _buildPlanItem(UserSubscription sub) {
+    final isActive = sub.status == 'Active';
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.12)),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 8,
+              offset: const Offset(0, 2))
+        ],
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            backgroundColor: (isActive ? const Color(0xFF68B92E) : Colors.grey)
+                .withValues(alpha: 0.12),
+            child: Icon(isActive ? Icons.check : Icons.pause,
+                color: isActive ? const Color(0xFF68B92E) : Colors.grey),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(sub.productName,
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text(sub.frequency,
+                    style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+              ],
+            ),
+          ),
+          // Pause / Resume toggle
+          Switch(
+            value: isActive,
+            activeThumbColor: const Color(0xFF68B92E),
+            onChanged: (val) async {
+              final newStatus = val ? 'Active' : 'Paused';
+              final ok = await ref
+                  .read(subscriptionServiceProvider)
+                  .updateStatus(sub.id, newStatus);
+              if (ok) ref.invalidate(mySubscriptionsProvider);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickActions(List<UserSubscription> subs) {
+    final isVacationOn = subs.any((s) => s.status == 'Active' && 
+      s.vacationDates.any((vd) => vd.isAfter(DateTime.now().subtract(const Duration(days: 1)))));
+
+    return Row(
+      children: [
+        Expanded(
+          child: _ActionButton(
+            icon: Icons.pause_circle_outline,
+            label: 'Pause Tomorrow',
+            color: Colors.orange,
+            onTap: subs.isEmpty ? null : () => _pauseTomorrow(subs),
+          ),
+        ),
+        const SizedBox(width: 15),
+        Expanded(
+          child: _ActionButton(
+            icon: Icons.flight_takeoff,
+            label: isVacationOn ? 'Vacation: ON' : 'Vacation: OFF',
+            color: isVacationOn ? Colors.blue : Colors.redAccent,
+            onTap: subs.isEmpty ? null : () => _toggleVacationMode(subs, isVacationOn),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _pauseTomorrow(List<UserSubscription> subs) async {
+    final tomorrow = DateTime.now().add(const Duration(days: 1));
+    final activeSubs = subs.where((s) => s.status == 'Active').toList();
+    if (activeSubs.isEmpty) return;
+
+    for (final sub in activeSubs) {
+      await ref.read(subscriptionServiceProvider).updateVacation(
+            subscriptionId: sub.id,
+            startDate: tomorrow,
+            endDate: tomorrow,
+          );
+    }
+    ref.invalidate(mySubscriptionsProvider);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Tomorrow\'s delivery paused for all plans!'),
+        backgroundColor: Colors.green,
+      ));
+    }
+  }
+
+  void _toggleVacationMode(List<UserSubscription> subs, bool isCurrentlyOn) async {
+    final activeSubs = subs.where((s) => s.status == 'Active').toList();
+    if (activeSubs.isEmpty) return;
+
+    if (isCurrentlyOn) {
+      // Turn Vacation Mode OFF by setting dates in the past (or clearing via API logic)
+      final past = DateTime.now().subtract(const Duration(days: 2));
+      for (final sub in activeSubs) {
+        await ref.read(subscriptionServiceProvider).updateVacation(
+              subscriptionId: sub.id,
+              startDate: past,
+              endDate: past,
+            );
+      }
+      ref.invalidate(mySubscriptionsProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Vacation mode turned OFF!'),
+          backgroundColor: Colors.orange,
+        ));
+      }
+    } else {
+      // Turn Vacation Mode ON by showing Date Picker
+      final DateTimeRange? picked = await showDateRangePicker(
+        context: context,
+        firstDate: DateTime.now(),
+        lastDate: DateTime.now().add(const Duration(days: 90)),
+        builder: (context, child) => Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF68B92E),
+              onPrimary: Colors.white,
+            ),
+          ),
+          child: child!,
+        ),
+      );
+
+      if (picked != null) {
+        for (final sub in activeSubs) {
+          await ref.read(subscriptionServiceProvider).updateVacation(
+                subscriptionId: sub.id,
+                startDate: picked.start,
+                endDate: picked.end,
+              );
+        }
+        ref.invalidate(mySubscriptionsProvider);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Vacation mode activated!'),
+            backgroundColor: Colors.blue,
+          ));
+        }
+      }
+    }
+  }
 }
 
-class _GradientButton extends StatelessWidget {
-  final String text;
-  final bool isGold;
-  final VoidCallback onPressed;
+class _ActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback? onTap;
 
-  const _GradientButton({
-    required this.text,
-    required this.isGold,
-    required this.onPressed,
+  const _ActionButton({
+    required this.icon,
+    required this.label,
+    required this.color,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final gradient = isGold
-        ? const LinearGradient(
-            colors: [Color(0xFFFF9D2E), Color(0xFFFF7E1A)],
-          )
-        : const LinearGradient(
-            colors: [Color(0xFF4BAFFF), Color(0xFF2E8EFF)],
-          );
-
     return GestureDetector(
-      onTap: onPressed,
+      onTap: onTap,
       child: Container(
-        width: double.infinity,
-        height: 56,
+        padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
-          gradient: gradient,
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: (isGold ? const Color(0xFFFF7E1A) : const Color(0xFF2E8EFF))
-                  .withValues(alpha:  0.3),
-              blurRadius: 12,
-              offset: const Offset(0, 6),
-            ),
-          ],
         ),
-        child: Center(
-          child: Text(
-            text,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+        child: Column(
+          children: [
+            Icon(icon, color: onTap == null ? Colors.grey : color, size: 24),
+            const SizedBox(height: 8),
+            Text(label,
+                style: TextStyle(
+                    color: onTap == null ? Colors.grey : color,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12)),
+          ],
         ),
       ),
     );
   }
 }
-
-

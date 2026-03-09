@@ -1,6 +1,6 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'dart:async';
 import '../../routes/app_routes.dart';
 import '../../data/services/db_service.dart';
 import '../../data/models/food_models.dart';
@@ -18,6 +18,7 @@ class _SplashPageState extends ConsumerState<SplashPage>
   late AnimationController _controller;
   late Animation<double> _fadeAnim;
   late Animation<double> _scaleAnim;
+  bool _navigated = false;
 
   @override
   void initState() {
@@ -36,26 +37,29 @@ class _SplashPageState extends ConsumerState<SplashPage>
 
     _controller.forward();
 
-    _initializeApp();
+    // Start checking auth state after the splash animation begins.
+    // We poll every 300ms so we react as soon as session restore completes.
+    Future.delayed(const Duration(seconds: 2), _checkAuthAndNavigate);
   }
 
-  Future<void> _initializeApp() async {
-    // Wait for the animation to play a bit
-    await Future.delayed(const Duration(seconds: 2));
-
-    if (!mounted) return;
-
-    // The AuthNotifier constructor already called _restoreSession().
-    // We wait until the state is not Initial (restoration in progress)
-    // or until we get a result.
+  void _checkAuthAndNavigate() {
+    if (!mounted || _navigated) return;
     final authState = ref.read(authProvider);
 
     if (authState is AuthAuthenticated) {
+      _navigated = true;
       _syncAndNavigate(authState);
-    } else {
-      // If it's still initial, it might be restoring. 
-      // Let's wait a bit more or check if we should go to onboarding.
-      Navigator.pushReplacementNamed(context, AppRoutes.initialRoute);
+    } else if (authState is AuthUnauthenticated ||
+        authState is AuthError ||
+        authState is AuthSuccess) {
+      // Session restoration ended or terminal state reached → navigate to Login/Onboarding
+      _navigated = true;
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, AppRoutes.initialRoute);
+      }
+    } else if (authState is AuthLoading || authState is AuthInitial) {
+      // Session is still being restored — check again shortly
+      Future.delayed(const Duration(milliseconds: 300), _checkAuthAndNavigate);
     }
   }
 
@@ -69,8 +73,12 @@ class _SplashPageState extends ConsumerState<SplashPage>
         profileImage: 'assets/images/image copy 2.png',
       ),
     );
-    
-    Navigator.pushReplacementNamed(context, AppRoutes.home);
+
+    if (auth.user.role == 'rider') {
+      Navigator.pushReplacementNamed(context, AppRoutes.riderHome);
+    } else {
+      Navigator.pushReplacementNamed(context, AppRoutes.home);
+    }
   }
 
   @override
@@ -91,14 +99,12 @@ class _SplashPageState extends ConsumerState<SplashPage>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Logo imageSSS
                 Image.asset(
                   'assets/images/logowithoutback.png',
                   width: 350,
                   height: 350,
                   fit: BoxFit.contain,
                   errorBuilder: (context, error, stackTrace) {
-                    // Fallback if image is missing
                     return const Icon(
                       Icons.set_meal,
                       size: 100,

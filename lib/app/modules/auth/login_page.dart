@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:licius_application/app/routes/app_routes.dart';
 import '../../data/models/food_models.dart';
 import '../../data/services/db_service.dart';
 import '../../widgets/common_button.dart';
@@ -115,14 +116,24 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       );
       _showSnackBar('Welcome back!',
           backgroundColor: Colors.green.shade600, icon: Icons.check_circle);
-      Navigator.pushReplacementNamed(context, '/home');
+
+      if (authState.user.role == 'rider') {
+        Navigator.pushNamedAndRemoveUntil(
+            context, AppRoutes.riderHome, (route) => false);
+      } else {
+        Navigator.pushNamedAndRemoveUntil(
+            context, AppRoutes.home, (route) => false);
+      }
     } else if (authState is AuthError) {
       _showSnackBar(authState.message, backgroundColor: Colors.red);
       ref.read(authProvider.notifier).reset();
     } else if (authState is AuthSuccess) {
       _showSnackBar(authState.message,
           backgroundColor: Colors.green.shade600, icon: Icons.check_circle);
-      Navigator.pushReplacementNamed(context, '/home');
+      // AuthSuccess might not have user object directly in some versions of provider
+      // but usually redirects to home. We'll stick to home as fallback.
+      Navigator.pushNamedAndRemoveUntil(
+          context, AppRoutes.home, (route) => false);
     }
   }
 
@@ -293,7 +304,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   Center(
                     child: GestureDetector(
                       onTap: () =>
-                          Navigator.pushReplacementNamed(context, '/signup'),
+                          Navigator.pushNamed(context, AppRoutes.signup),
                       child: RichText(
                         text: const TextSpan(
                           text: "Don't have an account ? ",

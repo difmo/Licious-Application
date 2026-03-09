@@ -3,13 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import './profile_detail_page.dart';
 import './edit_profile_page.dart';
 import '../../../data/services/db_service.dart';
-import '../../auth/login_page.dart';
 import './my_orders_page.dart';
 import './transactions_page.dart';
 import './saved_cards_page.dart';
 import '../../auth/provider/auth_provider.dart';
 import '../../home/controller/main_controller.dart';
 import '../../../data/models/food_models.dart';
+import '../../subscriptions/view/subscription_dashboard_page.dart';
+import '../../home/view/favorites_page.dart';
+import '../../../routes/app_routes.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -136,6 +138,12 @@ class _ActiveOrdersAndSubscriptions extends StatelessWidget {
         context,
         MaterialPageRoute(builder: (context) => const MyOrdersPage()),
       );
+    } else if (title == 'Subscriptions') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+            builder: (context) => const SubscriptionDashboardPage()),
+      );
     } else {
       Navigator.push(
         context,
@@ -194,11 +202,19 @@ class _ActiveOrdersAndSubscriptions extends StatelessWidget {
                       color: Colors.white.withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const Text('Arriving in 15 mins',
-                        style: TextStyle(
-                            color: Color(0xFF114F3B),
-                            fontSize: 10,
-                            fontWeight: FontWeight.w500)),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.location_on,
+                            size: 10, color: Color(0xFF114F3B)),
+                        const SizedBox(width: 4),
+                        const Text('Live Tracking ON',
+                            style: TextStyle(
+                                color: Color(0xFF114F3B),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w500)),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -270,58 +286,67 @@ class _WalletSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF0F4EC),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          const BoxShadow(
-            color: Colors.white,
-            blurRadius: 10,
-            spreadRadius: 1,
-            offset: Offset(-4, -4),
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            spreadRadius: 1,
-            offset: const Offset(4, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.account_balance_wallet_outlined,
-              color: Color(0xFF114F3B), size: 24),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    final provider = CartProviderScope.of(context);
+    final balance = provider.walletBalance;
+
+    return GestureDetector(
+      onTap: () {
+        MainControllerScope.of(context)
+            .changePage(3); // Index 3 is Wallet in MainPage
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF0F4EC),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            const BoxShadow(
+              color: Colors.white,
+              blurRadius: 10,
+              spreadRadius: 1,
+              offset: Offset(-4, -4),
+            ),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              spreadRadius: 1,
+              offset: const Offset(4, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.account_balance_wallet_outlined,
+                color: Color(0xFF114F3B), size: 24),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('My Wallet',
+                      style: TextStyle(
+                          color: Color(0xFF114F3B),
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold)),
+                  Text('Check balance & statements',
+                      style: TextStyle(color: Colors.black54, fontSize: 12)),
+                ],
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text('My Wallet',
-                    style: TextStyle(
+                const Text('Balance:',
+                    style: TextStyle(color: Colors.black54, fontSize: 12)),
+                Text('₹${balance.toStringAsFixed(2)}',
+                    style: const TextStyle(
                         color: Color(0xFF114F3B),
                         fontSize: 16,
                         fontWeight: FontWeight.bold)),
-                Text('Credit Cards | Transactions',
-                    style: TextStyle(color: Colors.black54, fontSize: 12)),
               ],
             ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              const Text('Balance:',
-                  style: TextStyle(color: Colors.black54, fontSize: 12)),
-              const Text('\$15.50',
-                  style: TextStyle(
-                      color: Color(0xFF114F3B),
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold)),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -359,7 +384,10 @@ class _QuickActionBtn extends StatelessWidget {
             MaterialPageRoute(builder: (context) => const MyOrdersPage()),
           );
         } else if (navigateTo == 'My Favorites') {
-          MainControllerScope.of(context).changePage(1);
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const FavoritesPage()),
+          );
         } else {
           Navigator.push(
             context,
@@ -426,11 +454,6 @@ class _ListTilesSection extends StatelessWidget {
     return Column(
       children: const [
         _ListTileItem(icon: Icons.notifications_none, title: 'Notifications'),
-        SizedBox(height: 16),
-        _ListTileItem(icon: Icons.access_time, title: 'Transaction History'),
-        SizedBox(height: 16),
-        _ListTileItem(
-            icon: Icons.credit_card_outlined, title: 'Credit/Debit Card'),
       ],
     );
   }
@@ -515,9 +538,9 @@ class _SignOutButton extends ConsumerWidget {
           await ref.read(authProvider.notifier).logout();
           if (context.mounted) {
             CartProviderScope.of(context).clearSession();
-            Navigator.pushAndRemoveUntil(
+            Navigator.pushNamedAndRemoveUntil(
               context,
-              MaterialPageRoute(builder: (context) => const LoginPage()),
+              AppRoutes.login,
               (route) => false,
             );
           }

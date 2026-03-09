@@ -2,12 +2,28 @@ import 'package:flutter/material.dart';
 import '../models/product_model.dart';
 import '../models/food_models.dart';
 import 'cart_service.dart';
+import 'wallet_service.dart';
+import 'address_service.dart';
+import '../network/api_client.dart';
 
 class CartProvider extends ChangeNotifier {
   final CartService? _service;
+  final WalletService? _walletService;
+  final AddressService? _addressService;
   final List<CartItem> _items = [];
 
-  CartProvider({CartService? service}) : _service = service;
+  CartProvider({
+    CartService? service,
+    WalletService? walletService,
+    AddressService? addressService,
+  })  : _service = service,
+        _walletService = walletService,
+        _addressService = addressService {
+    loadAddresses();
+    syncWallet();
+  }
+
+  AddressService? get addressService => _addressService;
 
   UserProfile _userProfile = const UserProfile(
     name: 'Guest User',
@@ -72,40 +88,57 @@ class CartProvider extends ChangeNotifier {
     ),
   ];
 
-  final List<UserOrder> _orders = [
-    UserOrder(
-      id: 'ORD001',
-      restaurantName: 'Red Shrimp',
-      date: '24 Feb, 7:12 PM',
-      total: 349.00,
-      status: 'Delivered',
-      items: ['1x Freshwater Prawn', '1x Fresh and Raw'],
-    ),
-    UserOrder(
-      id: 'ORD002',
-      restaurantName: 'Tiger Shrimp',
-      date: '22 Feb, 1:45 PM',
-      total: 199.00,
-      status: 'Delivered',
-      items: ['1x Frozen Vannamei Shrimp'],
-    ),
-  ];
+  List<UserOrder> _orders = [];
+  bool _isOrdersLoading = false;
 
-  final List<UserAddress> _addresses = [
-    const UserAddress(
-      id: 'ADDR001',
-      title: 'Home',
-      street: '123 MG Road',
-      details: 'Lucknow, Uttar Pradesh 226001',
-      isDefault: true,
-    ),
-    const UserAddress(
-      id: 'ADDR002',
-      title: 'Work',
-      street: 'Tower A, IT Park',
-      details: 'Shaheed Path, Lucknow, UP 226012',
-    ),
-  ];
+  bool get isOrdersLoading => _isOrdersLoading;
+
+  void setOrders(List<UserOrder> newOrders) {
+    _orders = newOrders;
+    notifyListeners();
+  }
+
+  void setLoadingOrders(bool loading) {
+    _isOrdersLoading = loading;
+    notifyListeners();
+  }
+
+  double _walletBalance = 0.0;
+  List<dynamic> _transactions = [];
+
+  double get walletBalance => _walletBalance;
+  List<dynamic> get transactions => _transactions;
+
+  Future<void> syncWallet() async {
+    if (_walletService == null) return;
+    final result = await _walletService!.getBalance();
+    if (result['success']) {
+      _walletBalance = (result['balance'] as num).toDouble();
+      notifyListeners();
+    }
+    _transactions = await _walletService!.getTransactionHistory();
+    notifyListeners();
+  }
+
+  List<UserAddress> _addresses = [];
+  int _selectedAddressIndex = 0;
+
+  int get selectedAddressIndex => _selectedAddressIndex;
+
+  void selectAddress(int index) {
+    _selectedAddressIndex = index;
+    notifyListeners();
+  }
+
+  UserAddress? get selectedAddress {
+    if (_addresses.isEmpty) return null;
+    if (_selectedAddressIndex >= 0 &&
+        _selectedAddressIndex < _addresses.length) {
+      return _addresses[_selectedAddressIndex];
+    }
+    return _addresses.firstWhere((a) => a.isDefault,
+        orElse: () => _addresses.first);
+  }
 
   final List<UserPaymentMethod> _payments = [
     const UserPaymentMethod(
@@ -121,8 +154,6 @@ class CartProvider extends ChangeNotifier {
       expiry: '-',
     ),
   ];
-
-
 
   final List<Product> _recommendedProducts = const [
     Product(
@@ -449,7 +480,6 @@ class CartProvider extends ChangeNotifier {
   }
 
   // ── API Integration ───────────────────────────────────────────────────────
-  
   /// Syncs the local cart with the backend.
   Future<void> loadCartFromApi() async {
     if (_service == null) return;
@@ -470,13 +500,19 @@ class CartProvider extends ChangeNotifier {
   List<Restaurant> get favRestaurants {
     final List<Restaurant> favs = [];
     for (var id in _favoriteIds) {
-      final r = _restaurants.firstWhere((res) => res.id == id, orElse: () => _restaurants.first);
-      if (!_favoriteIds.contains(r.id)) continue; // Double check but it should be fine
-      if (!favs.contains(r)) favs.add(r);
+      final r = _restaurants.firstWhere((res) => res.id == id,
+          orElse: () => _restaurants.first);
+      if (!_favoriteIds.contains(r.id)) {
+        continue; // Double check but it should be fine
+      }
+      if (!favs.contains(r)) {
+        favs.add(r);
+      }
     }
     // Correct way: map ids to restaurants in order
     return _favoriteIds
-        .map((id) => _restaurants.firstWhere((r) => r.id == id, orElse: () => _restaurants.first))
+        .map((id) => _restaurants.firstWhere((r) => r.id == id,
+            orElse: () => _restaurants.first))
         .toList();
   }
 
@@ -500,21 +536,72 @@ class CartProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-
-  void addAddress(UserAddress address) {
-    if (address.isDefault) {
-      for (int i = 0; i < _addresses.length; i++) {
-        _addresses[i] = UserAddress(
-          id: _addresses[i].id,
-          title: _addresses[i].title,
-          street: _addresses[i].street,
-          details: _addresses[i].details,
-          isDefault: false,
-        );
+  void addAddress(UserAddress address) async {
+    if (_addressService != null) {
+      final result = await _addressService!.saveAddress(
+        label: address.title,
+        fullAddress: address.street,
+        city: address.details.split(',').first.trim(),
+        state: address.details.contains(',')
+            ? address.details.split(',')[1].trim()
+            : '',
+        pincode: address.details.split(' ').last,
+        isDefault: address.isDefault,
+      );
+      if (result['success']) {
+        loadAddresses();
       }
+    } else {
+      // Fallback for local testing
+      if (address.isDefault) {
+        for (int i = 0; i < _addresses.length; i++) {
+          _addresses[i] = UserAddress(
+            id: _addresses[i].id,
+            title: _addresses[i].title,
+            street: _addresses[i].street,
+            details: _addresses[i].details,
+            isDefault: false,
+          );
+        }
+      }
+      _addresses.add(address);
+      notifyListeners();
     }
-    _addresses.add(address);
-    notifyListeners();
+  }
+
+  Future<void> loadAddresses() async {
+    if (_addressService == null) return;
+    try {
+      final token = await ApiClient.getToken();
+      if (token == null || token.isEmpty) return;
+
+      final result = await _addressService!.getAddresses();
+      if (result['success']) {
+        final List<dynamic> data = result['data'] ?? [];
+        _addresses = data
+            .map((json) => UserAddress(
+                  id: json['_id'] ?? '',
+                  title: json['label'] ?? 'Address',
+                  street: json['fullAddress'] ?? '',
+                  details:
+                      '${json['city'] ?? ''}, ${json['state'] ?? ''} ${json['pincode'] ?? ''}',
+                  isDefault: json['isDefault'] ?? false,
+                ))
+            .toList();
+
+        // Reset selection to default address if available
+        final defaultIdx = _addresses.indexWhere((a) => a.isDefault);
+        if (defaultIdx != -1) {
+          _selectedAddressIndex = defaultIdx;
+        } else if (_addresses.isNotEmpty) {
+          _selectedAddressIndex = 0;
+        }
+
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error loading addresses: $e');
+    }
   }
 
   void updateAddress(UserAddress address) {

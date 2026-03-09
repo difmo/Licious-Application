@@ -148,7 +148,7 @@ class CartPage extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha:  0.3),
+              color: Colors.black.withValues(alpha: 0.3),
               blurRadius: 15,
               spreadRadius: 0,
               offset: const Offset(0, 8),
@@ -212,49 +212,93 @@ class CartPage extends StatelessWidget {
                 ),
               ),
               // Quantity controls
-              Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF7F8FA),
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                child: Row(
-                  children: [
-                    IconButton(
-                      onPressed: () => cart.decrement(item.title),
-                      icon: const Icon(
-                        Icons.remove,
-                        size: 18,
-                        color: Color(0xFF1A1A1A),
-                      ),
+              // Quantity controls
+              Column(
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF7F8FA),
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    child: Row(
+                      children: [
+                        IconButton(
+                          onPressed: () => cart.decrement(item.title),
+                          icon: const Icon(
+                            Icons.remove,
+                            size: 18,
+                            color: Color(0xFF1A1A1A),
+                          ),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                            minWidth: 32,
+                            minHeight: 32,
+                          ),
+                        ),
+                        Text(
+                          '${item.quantity}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: Color(0xFF1A1A1A),
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => cart.increment(item.title),
+                          icon: const Icon(
+                            Icons.add,
+                            size: 18,
+                            color: Color(0xFF68B92E),
+                          ),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                            minWidth: 32,
+                            minHeight: 32,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: () {
+                      final product = cart.recommendedProducts.firstWhere(
+                        (p) => p.id == item.id,
+                        orElse: () => Product(
+                          id: item.id,
+                          name: item.title,
+                          image: item.image,
+                          price: item.unitPrice,
+                          weight: item.subtitle,
+                          category: '',
+                          description: '',
+                          whyChoose: [],
+                        ),
+                      );
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (context) =>
+                            SubscriptionConfigDrawer(product: product),
+                      );
+                    },
+                    style: TextButton.styleFrom(
                       padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(
-                        minWidth: 32,
-                        minHeight: 32,
-                      ),
+                      minimumSize: const Size(0, 0),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
-                    Text(
-                      '${item.quantity}',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                        color: Color(0xFF1A1A1A),
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () => cart.increment(item.title),
-                      icon: const Icon(
-                        Icons.add,
-                        size: 18,
+                    child: const Text(
+                      'Schedule',
+                      style: TextStyle(
                         color: Color(0xFF68B92E),
-                      ),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(
-                        minWidth: 32,
-                        minHeight: 32,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        decoration: TextDecoration.underline,
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -270,7 +314,7 @@ class CartPage extends StatelessWidget {
         borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha:  0.3),
+            color: Colors.black.withValues(alpha: 0.3),
             blurRadius: 15,
             spreadRadius: 0,
             offset: const Offset(0, -8),
@@ -320,7 +364,8 @@ class CartPage extends StatelessWidget {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const ShippingAddressPage()),
+                  MaterialPageRoute(
+                      builder: (_) => const ShippingAddressPage()),
                 );
               },
               style: ElevatedButton.styleFrom(
@@ -384,5 +429,3 @@ class CartPage extends StatelessWidget {
     );
   }
 }
-
-

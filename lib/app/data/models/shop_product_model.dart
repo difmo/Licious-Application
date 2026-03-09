@@ -86,6 +86,7 @@ class ShopModel {
   final String location;
   final double rating;
   final String deliveryTime;
+  final bool isShopActive;
 
   const ShopModel({
     required this.id,
@@ -95,6 +96,7 @@ class ShopModel {
     this.location = '',
     this.rating = 4.5,
     this.deliveryTime = '30-45 mins',
+    this.isShopActive = true,
   });
 
   factory ShopModel.fromJson(Map<String, dynamic> json) {
@@ -106,6 +108,7 @@ class ShopModel {
       location: (json['location'] ?? json['address'] ?? '').toString(),
       rating: (json['rating'] as num?)?.toDouble() ?? 4.5,
       deliveryTime: (json['deliveryTime'] ?? '30-45 mins').toString(),
+      isShopActive: json['isShopActive'] ?? json['isActive'] ?? true,
     );
   }
 }
