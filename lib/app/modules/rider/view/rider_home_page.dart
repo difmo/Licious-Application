@@ -538,22 +538,67 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEBFFD7),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          '#${(order['orderId']?.toString() ?? '').length >= 6 ? order['orderId'].toString().substring(order['orderId'].toString().length - 6).toUpperCase() : (order['orderId']?.toString() ?? '').toUpperCase()}',
-                          style: const TextStyle(
-                            color: Color(0xFF439462),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                            letterSpacing: 0.5,
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEBFFD7),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              '#${(order['orderId']?.toString() ?? '').length >= 6 ? order['orderId'].toString().substring(order['orderId'].toString().length - 6).toUpperCase() : (order['orderId']?.toString() ?? '').toUpperCase()}',
+                              style: const TextStyle(
+                                color: Color(0xFF439462),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
                           ),
-                        ),
+                          if (order['orderType'] == 'Subscription') ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.purple.shade50,
+                                borderRadius: BorderRadius.circular(6),
+                                border:
+                                    Border.all(color: Colors.purple.shade100),
+                              ),
+                              child: Text(
+                                'SUBSCRIPTION',
+                                style: TextStyle(
+                                  color: Colors.purple.shade700,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 9,
+                                ),
+                              ),
+                            ),
+                          ],
+                          if (order['hasExtras'] == true) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.shade50,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: Colors.blue.shade100),
+                              ),
+                              child: Text(
+                                '+ EXTRAS',
+                                style: TextStyle(
+                                  color: Colors.blue.shade700,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 9,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                       Container(
                         padding: const EdgeInsets.symmetric(

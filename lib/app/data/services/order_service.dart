@@ -39,7 +39,7 @@ class OrderService {
   Future<List<dynamic>> getMyOrders() async {
     try {
       final response = await _apiClient.get(
-        '${ApiClient.baseUrl}/orders/my',
+        '${ApiClient.baseUrl}/orders/my-orders',
         requiresAuth: true,
       );
       // The backend returns { "success": true, "orders": [...] }
@@ -47,6 +47,34 @@ class OrderService {
     } catch (e) {
       debugPrint('Error fetching orders: $e');
       return [];
+    }
+  }
+
+  Future<Map<String, dynamic>> placeSpotOrder({
+    required Map<String, dynamic> deliveryAddress,
+    required String paymentMethod,
+  }) async {
+    try {
+      final response = await _apiClient.post(
+        '${ApiClient.baseUrl}/orders/spot-order',
+        data: {
+          'deliveryAddress': deliveryAddress,
+          'paymentMethod': paymentMethod,
+          'orderType': 'One-time',
+        },
+        requiresAuth: true,
+      );
+
+      return {
+        'success': response['success'] ?? true,
+        'order': response['order'] ?? response['data'],
+        'message': response['message'],
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': e.toString(),
+      };
     }
   }
 }

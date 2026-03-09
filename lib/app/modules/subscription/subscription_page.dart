@@ -50,7 +50,8 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
       case 'Alternate Days':
         final diff = normalizedDate.difference(normalizedStart).inDays;
         return diff % 2 == 0;
-      case 'Custom':
+      case 'Weekly':
+        // customDays holds selected days e.g. ['Sunday', 'Wednesday']
         const dayNames = [
           'Sunday',
           'Monday',
@@ -60,9 +61,10 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
           'Friday',
           'Saturday'
         ];
-        return sub.customDays.contains(dayNames[date.weekday % 7]);
+        final dayName = dayNames[date.weekday % 7];
+        return sub.customDays.contains(dayName);
       default:
-        return true;
+        return false;
     }
   }
 
@@ -398,8 +400,10 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
   }
 
   Widget _buildQuickActions(List<UserSubscription> subs) {
-    final isVacationOn = subs.any((s) => s.status == 'Active' && 
-      s.vacationDates.any((vd) => vd.isAfter(DateTime.now().subtract(const Duration(days: 1)))));
+    final isVacationOn = subs.any((s) =>
+        s.status == 'Active' &&
+        s.vacationDates.any((vd) =>
+            vd.isAfter(DateTime.now().subtract(const Duration(days: 1)))));
 
     return Row(
       children: [
@@ -417,7 +421,9 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
             icon: Icons.flight_takeoff,
             label: isVacationOn ? 'Vacation: ON' : 'Vacation: OFF',
             color: isVacationOn ? Colors.blue : Colors.redAccent,
-            onTap: subs.isEmpty ? null : () => _toggleVacationMode(subs, isVacationOn),
+            onTap: subs.isEmpty
+                ? null
+                : () => _toggleVacationMode(subs, isVacationOn),
           ),
         ),
       ],
@@ -445,7 +451,8 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
     }
   }
 
-  void _toggleVacationMode(List<UserSubscription> subs, bool isCurrentlyOn) async {
+  void _toggleVacationMode(
+      List<UserSubscription> subs, bool isCurrentlyOn) async {
     final activeSubs = subs.where((s) => s.status == 'Active').toList();
     if (activeSubs.isEmpty) return;
 

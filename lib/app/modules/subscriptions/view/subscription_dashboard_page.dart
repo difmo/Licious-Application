@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/subscription_model.dart';
 import '../../../data/services/subscription_service.dart';
+import '../../../data/services/order_service.dart';
 import '../../../core/constants/app_colors.dart';
 
 class SubscriptionDashboardPage extends ConsumerWidget {
@@ -168,12 +169,32 @@ class SubscriptionDashboardPage extends ConsumerWidget {
                     ),
                   ],
                 ),
-                TextButton.icon(
-                  onPressed: () => _showVacationPicker(context, ref, sub),
-                  icon: const Icon(Icons.calendar_month, size: 18),
-                  label: const Text('Manage'),
-                  style: TextButton.styleFrom(
-                      foregroundColor: AppColors.primaryDark),
+                Row(
+                  children: [
+                    if (isActive)
+                      ElevatedButton(
+                        onPressed: () => _placeSpotOrder(context, ref, sub),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange.shade50,
+                          foregroundColor: Colors.orange.shade900,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: const Text('Deliver Today',
+                            style: TextStyle(
+                                fontSize: 12, fontWeight: FontWeight.bold)),
+                      ),
+                    const SizedBox(width: 8),
+                    TextButton.icon(
+                      onPressed: () => _showVacationPicker(context, ref, sub),
+                      icon: const Icon(Icons.calendar_month, size: 18),
+                      label: const Text('Manage'),
+                      style: TextButton.styleFrom(
+                          foregroundColor: AppColors.primaryDark),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -181,6 +202,43 @@ class SubscriptionDashboardPage extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _placeSpotOrder(
+      BuildContext context, WidgetRef ref, UserSubscription sub) async {
+    // Logic to place a one-time order for today
+    final success = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Deliver Today?'),
+        content: Text(
+            'Would you like an extra delivery of ${sub.productName} today?'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Yes, Order')),
+        ],
+      ),
+    );
+
+    if (success == true) {
+      // For now, using default address and wallet as payment
+      // In a real app, you might want to confirm these
+      final res = await ref.read(orderServiceProvider).placeSpotOrder(
+        deliveryAddress: {}, // Backend should handle if empty or use user default
+        paymentMethod: 'Wallet',
+      );
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(res['message'] ?? 'Spot order placed successfully'),
+          backgroundColor: res['success'] == true ? Colors.green : Colors.red,
+        ));
+      }
+    }
   }
 
   void _showVacationPicker(
