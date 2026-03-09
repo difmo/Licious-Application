@@ -78,7 +78,7 @@ class _HomeBannerState extends State<HomeBanner> {
                   },
                   scaleFactor: 0.96,
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(30),
                     child: Stack(
                       children: [
                         Image.asset(
@@ -86,7 +86,8 @@ class _HomeBannerState extends State<HomeBanner> {
                           width: double.infinity,
                           height: 180,
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => Container(
+                          errorBuilder: (context, error, stackTrace) =>
+                              Container(
                             color: Colors.blue.shade100,
                             child: const Center(child: Text('Food Banner')),
                           ),
@@ -100,8 +101,8 @@ class _HomeBannerState extends State<HomeBanner> {
                                 end: Alignment.bottomCenter,
                                 colors: [
                                   Colors.transparent,
-                                  Colors.black.withValues(alpha:  0.1),
-                                  Colors.black.withValues(alpha:  0.4),
+                                  Colors.black.withValues(alpha: 0.1),
+                                  Colors.black.withValues(alpha: 0.4),
                                 ],
                               ),
                             ),
@@ -129,7 +130,7 @@ class _HomeBannerState extends State<HomeBanner> {
               decoration: BoxDecoration(
                 color: _currentPage == index
                     ? const Color(0xFF68B92E)
-                    : Colors.grey.withValues(alpha:  0.3),
+                    : Colors.grey.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(3),
               ),
             ),
@@ -139,5 +140,3 @@ class _HomeBannerState extends State<HomeBanner> {
     ).animate().fadeIn(duration: 500.ms, curve: Curves.easeIn);
   }
 }
-
-

@@ -3,12 +3,9 @@ import 'package:flutter/services.dart';
 import '../../../data/services/db_service.dart';
 import '../widgets/home_header.dart';
 import '../widgets/category_circles.dart';
-import '../widgets/filter_bar.dart';
 import '../widgets/home_banner.dart';
 import '../widgets/restaurant_list_section.dart';
 import '../../categories/view/category_items_page.dart';
-import 'restaurant_menu_page.dart';
-import '../../../data/models/shop_product_model.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -35,7 +32,7 @@ class HomePage extends StatelessWidget {
 
               // Categories
               SliverPadding(
-                padding: const EdgeInsets.only(top: 10, bottom: 20),
+                padding: const EdgeInsets.only(top: 4, bottom: 8),
                 sliver: SliverToBoxAdapter(
                   child: CategoryCircles(
                     categories: categories,
@@ -52,26 +49,8 @@ class HomePage extends StatelessWidget {
                 ),
               ),
 
-              // Filters
-              const SliverToBoxAdapter(child: FilterBar()),
-
-              // Divider
-              const SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  child: Divider(height: 1, color: Color(0xFFEEEEEE)),
-                ),
-              ),
-
               // Banner (Horizontal Scrolling Carousel)
               const SliverToBoxAdapter(child: HomeBanner()),
-
-              const SliverToBoxAdapter(child: SizedBox(height: 8)),
-
-              // Favorite Restaurants (Horizontal tray)
-              SliverToBoxAdapter(child: _buildFavoriteTray(context, cart)),
-
-              const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
               // Restaurants Section
               const SliverToBoxAdapter(child: RestaurantListSection()),
@@ -85,82 +64,6 @@ class HomePage extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildFavoriteTray(BuildContext context, CartProvider provider) {
-    final favorites = provider.favRestaurants;
-    if (favorites.isEmpty) return const SizedBox.shrink();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Text(
-            'Your Favorites',
-            style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF1A1A1A)),
-          ),
-        ),
-        SizedBox(
-          height: 110,
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            scrollDirection: Axis.horizontal,
-            itemCount: favorites.length,
-            itemBuilder: (context, index) {
-              final restaurant = favorites[index];
-              return GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => RestaurantMenuPage(
-                        shop: ShopModel(
-                          id: restaurant.id,
-                          name: restaurant.name,
-                          image: restaurant.image,
-                          businessName: restaurant.name,
-                          rating: restaurant.rating,
-                          deliveryTime: restaurant.deliveryTime,
-                        ),
-                      ),
-                    ),
-                  );
-                },
-                child: Container(
-                  width: 90,
-                  margin: const EdgeInsets.only(right: 12),
-                  child: Column(
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(15),
-                        child: Image.asset(
-                          restaurant.image,
-                          width: 70,
-                          height: 70,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        restaurant.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            fontSize: 10, fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
     );
   }
 }

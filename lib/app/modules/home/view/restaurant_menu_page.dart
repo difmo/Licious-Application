@@ -43,6 +43,7 @@ class RestaurantMenuPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final productsAsync = ref.watch(shopProductsProvider(shop.id));
+    final cart = CartProviderScope.of(context);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
@@ -71,8 +72,18 @@ class RestaurantMenuPage extends ConsumerWidget {
                 padding: const EdgeInsets.only(right: 12),
                 child: CircleAvatar(
                   backgroundColor: Colors.white.withValues(alpha: 0.9),
-                  child: const Icon(Icons.bookmark_border,
-                      color: Colors.black87, size: 20),
+                  child: IconButton(
+                    padding: EdgeInsets.zero,
+                    icon: Icon(
+                        cart.isFavorite(shop.id)
+                            ? Icons.bookmark
+                            : Icons.bookmark_border,
+                        color: cart.isFavorite(shop.id)
+                            ? const Color(0xFF68B92E)
+                            : Colors.black87,
+                        size: 20),
+                    onPressed: () => cart.toggleFavorite(shop.id),
+                  ),
                 ),
               ),
             ],
@@ -84,12 +95,12 @@ class RestaurantMenuPage extends ConsumerWidget {
           // ── Restaurant Info Card ────────────────────────────────────────
           SliverToBoxAdapter(
             child: Container(
-              margin: const EdgeInsets.all(16),
-              padding: const EdgeInsets.all(16),
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.grey.shade100),
+                border: Border.all(color: Colors.grey.shade300, width: 1.2),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.04),
@@ -108,7 +119,9 @@ class RestaurantMenuPage extends ConsumerWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              shop.deliveryTime.isNotEmpty ? shop.deliveryTime : _deliveryTime,
+                              shop.deliveryTime.isNotEmpty
+                                  ? shop.deliveryTime
+                                  : _deliveryTime,
                               style: const TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
@@ -120,8 +133,7 @@ class RestaurantMenuPage extends ConsumerWidget {
                               Text(
                                 shop.location,
                                 style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey.shade600),
+                                    fontSize: 12, color: Colors.grey.shade600),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -142,7 +154,9 @@ class RestaurantMenuPage extends ConsumerWidget {
                                 size: 14, color: Colors.white),
                             const SizedBox(width: 4),
                             Text(
-                              shop.rating > 0 ? shop.rating.toStringAsFixed(1) : _rating.toStringAsFixed(1),
+                              shop.rating > 0
+                                  ? shop.rating.toStringAsFixed(1)
+                                  : _rating.toStringAsFixed(1),
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
@@ -180,8 +194,8 @@ class RestaurantMenuPage extends ConsumerWidget {
                   const SizedBox(height: 12),
                   // Offer banner
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
                       color: const Color(0xFFEBFFD7),
                       borderRadius: BorderRadius.circular(10),
@@ -231,20 +245,17 @@ class RestaurantMenuPage extends ConsumerWidget {
             error: (err, _) => SliverToBoxAdapter(
               child: _ProductsErrorState(
                 message: err.toString(),
-                onRetry: () =>
-                    ref.invalidate(shopProductsProvider(shop.id)),
+                onRetry: () => ref.invalidate(shopProductsProvider(shop.id)),
               ),
             ),
             data: (products) {
               if (products.isEmpty) {
-                return const SliverToBoxAdapter(
-                    child: _ProductsEmptyState());
+                return const SliverToBoxAdapter(child: _ProductsEmptyState());
               }
               return SliverPadding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 sliver: SliverGrid(
-                  gridDelegate:
-                      const SliverGridDelegateWithFixedCrossAxisCount(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
                     childAspectRatio: 0.78,
                     crossAxisSpacing: 12,
@@ -315,18 +326,17 @@ class _ProductCard extends ConsumerStatefulWidget {
 }
 
 class _ProductCardState extends ConsumerState<_ProductCard> {
-  bool _isFavorite = false;
-
   @override
   Widget build(BuildContext context) {
     final cart = CartProviderScope.of(context);
     final p = widget.product;
+    final isFav = cart.isFavorite(p.id);
 
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade100),
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: Colors.grey.shade300, width: 1.2),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
@@ -343,23 +353,15 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
             children: [
               ClipRRect(
                 borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(16)),
-                child: p.primaryImage.isNotEmpty
-                    ? Image.network(
-                        p.primaryImage,
-                        height: 120,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => _imagePlaceholder(),
-                      )
-                    : _imagePlaceholder(),
+                    const BorderRadius.vertical(top: Radius.circular(30)),
+                child: _buildProductImage(p),
               ),
               // Favorite button
               Positioned(
                 top: 6,
                 right: 6,
                 child: GestureDetector(
-                  onTap: () => setState(() => _isFavorite = !_isFavorite),
+                  onTap: () => cart.toggleFavorite(p.id),
                   child: Container(
                     padding: const EdgeInsets.all(5),
                     decoration: BoxDecoration(
@@ -367,9 +369,9 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
-                      _isFavorite ? Icons.favorite : Icons.favorite_border,
+                      isFav ? Icons.favorite : Icons.favorite_border,
                       size: 14,
-                      color: _isFavorite ? Colors.red : Colors.grey,
+                      color: isFav ? Colors.red : Colors.grey,
                     ),
                   ),
                 ),
@@ -378,8 +380,8 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
               if (!p.isAvailable)
                 Positioned.fill(
                   child: ClipRRect(
-                    borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(16)),
+                    borderRadius:
+                        const BorderRadius.vertical(top: Radius.circular(30)),
                     child: Container(
                       color: Colors.black.withValues(alpha: 0.45),
                       child: const Center(
@@ -425,8 +427,7 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
                 if (p.description.isNotEmpty)
                   Text(
                     p.description,
-                    style: TextStyle(
-                        fontSize: 10, color: Colors.grey.shade500),
+                    style: TextStyle(fontSize: 10, color: Colors.grey.shade500),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -500,6 +501,76 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
         .slideY(begin: 0.08, end: 0, duration: 350.ms, curve: Curves.easeOut);
   }
 
+  Widget _buildProductImage(ShopProduct p) {
+    String imagePath = p.primaryImage;
+
+    // 1. Resolve Path (Backend vs Asset vs Empty)
+    if (imagePath.isNotEmpty) {
+      if (!imagePath.startsWith('http') && !imagePath.startsWith('assets/')) {
+        if (imagePath.startsWith('/')) {
+          imagePath = 'https://shrimpbite-backend.vercel.app$imagePath';
+        } else {
+          imagePath = 'assets/images/$imagePath';
+        }
+      }
+    }
+
+    // 2. Build Image with multiple fallbacks
+    if (imagePath.isNotEmpty) {
+      if (imagePath.startsWith('http')) {
+        return Image.network(
+          imagePath,
+          height: 120,
+          width: double.infinity,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _buildPlaceholderOrFallback(p.name),
+        );
+      } else {
+        return Image.asset(
+          imagePath,
+          height: 120,
+          width: double.infinity,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _buildPlaceholderOrFallback(p.name),
+        );
+      }
+    }
+
+    return _buildPlaceholderOrFallback(p.name);
+  }
+
+  /// Tries to return a relevant local asset based on the product name keywords
+  Widget _buildPlaceholderOrFallback(String name) {
+    final lowerName = name.toLowerCase();
+    String? assetPath;
+
+    if (lowerName.contains('tiger')) {
+      assetPath = 'assets/images/shrimp_tiger_trio.png';
+    } else if (lowerName.contains('cooked') || lowerName.contains('boiled')) {
+      assetPath = 'assets/images/shrimp_cooked_duo.png';
+    } else if (lowerName.contains('lemon') || lowerName.contains('herb')) {
+      assetPath = 'assets/images/shrimp_lemon_herb.png';
+    } else if (lowerName.contains('dish') || lowerName.contains('curry')) {
+      assetPath = 'assets/images/shrimp_dish_1.png';
+    } else if (lowerName.contains('rohu') || lowerName.contains('fish')) {
+      assetPath =
+          'assets/images/shrimp_dish_5.png'; // Using a nice dish as fallback
+    } else if (lowerName.contains('prawn') || lowerName.contains('shrimp')) {
+      assetPath = 'assets/images/shrimp_fresh_pile.png';
+    } else {
+      // Default generic shrimp dish
+      assetPath = 'assets/images/shrimp_dish_2.png';
+    }
+
+    return Image.asset(
+      assetPath,
+      height: 120,
+      width: double.infinity,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => _imagePlaceholder(),
+    );
+  }
+
   Widget _imagePlaceholder() {
     return Container(
       height: 120,
@@ -554,8 +625,8 @@ class _ProductShimmerCardState extends State<_ProductShimmerCard>
     _ctrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 1200))
       ..repeat(reverse: true);
-    _anim = Tween<double>(begin: 0.4, end: 0.8).animate(
-        CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+    _anim = Tween<double>(begin: 0.4, end: 0.8)
+        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
   }
 
   @override
@@ -597,8 +668,7 @@ class _ProductShimmerCardState extends State<_ProductShimmerCard>
                   Container(
                       height: 10,
                       width: 70,
-                      color: Colors.grey
-                          .withValues(alpha: _anim.value * 0.7)),
+                      color: Colors.grey.withValues(alpha: _anim.value * 0.7)),
                 ],
               ),
             ),
@@ -615,8 +685,7 @@ class _ProductsErrorState extends StatelessWidget {
   final String message;
   final VoidCallback onRetry;
 
-  const _ProductsErrorState(
-      {required this.message, required this.onRetry});
+  const _ProductsErrorState({required this.message, required this.onRetry});
 
   @override
   Widget build(BuildContext context) {

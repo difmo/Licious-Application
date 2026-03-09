@@ -40,14 +40,6 @@ class CategoryItemsPage extends ConsumerWidget {
             fontSize: 18,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Color(0xFF1A1A1A)),
-            tooltip: 'Refresh',
-            onPressed: () =>
-                ref.invalidate(productsByCategoryProvider(categoryName)),
-          ),
-        ],
       ),
       body: productsAsync.when(
         loading: () => const _ProductLoadingGrid(),

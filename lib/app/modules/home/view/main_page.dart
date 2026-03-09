@@ -154,18 +154,20 @@ class _MainPageState extends State<MainPage> {
             height: 70,
             margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
             decoration: BoxDecoration(
-              color: const Color(0xFFEBFFD7),
-              borderRadius: BorderRadius.circular(35),
+              color:
+                  const Color(0xFFF1FFDD).withValues(alpha: 0.95), // Light lime
+              borderRadius: BorderRadius.circular(50),
               border: Border.all(
-                  color: const Color(0xFF68B92E).withValues(alpha: 0.1)),
+                  color: const Color(0xFF68B92E).withValues(alpha: 0.15)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildNavItem(0, Icons.home_filled, 'Home'),
-                _buildNavItem(1, Icons.shopping_cart_outlined, 'Orders'),
+                _buildNavItem(0, Icons.home_rounded, 'Home'),
+                _buildNavItem(1, Icons.shopping_basket_rounded, 'Orders'),
                 const SizedBox(width: 68), // Space for FAB
-                _buildNavItem(3, Icons.wallet_rounded, 'Wallet'),
+                _buildNavItem(
+                    3, Icons.account_balance_wallet_rounded, 'Wallet'),
                 _buildNavItem(4, Icons.person_rounded, 'Profile'),
               ],
             ),
@@ -176,24 +178,30 @@ class _MainPageState extends State<MainPage> {
             child: GestureDetector(
               onTap: () => _controller.changePage(2),
               child: Container(
-                width: 68,
-                height: 68,
+                width: 70,
+                height: 70,
                 decoration: BoxDecoration(
                   color: Colors.white,
                   shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF68B92E).withValues(alpha: 0.15),
+                      blurRadius: 15,
+                      spreadRadius: 2,
+                    ),
+                  ],
                   border: Border.all(
                     color: isCartSelected
                         ? const Color(0xFF68B92E)
-                        : const Color(0xFF68B92E).withValues(alpha: 0.2),
+                        : Colors.transparent,
                     width: 2,
                   ),
                 ),
                 child: Center(
                   child: Icon(
-                    Icons.shopping_cart_outlined,
-                    color: isCartSelected
-                        ? const Color(0xFF68B92E)
-                        : const Color(0xFFE6B347),
+                    Icons.shopping_cart_rounded,
+                    color:
+                        const Color(0xFFC0D53E), // Olive/Lime color from image
                     size: 34,
                   ),
                 ),

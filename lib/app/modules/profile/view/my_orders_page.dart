@@ -37,12 +37,6 @@ class MyOrdersPage extends ConsumerWidget {
               ),
               onPressed: () => Navigator.pop(context),
             ),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.refresh, color: Color(0xFF114F3B)),
-                onPressed: () => ref.invalidate(myOrdersProvider),
-              ),
-            ],
             flexibleSpace: const FlexibleSpaceBar(
               title: Text(
                 'My Orders',
