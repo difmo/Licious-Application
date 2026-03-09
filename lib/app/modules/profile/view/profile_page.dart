@@ -10,6 +10,7 @@ import '../../auth/provider/auth_provider.dart';
 import '../../home/controller/main_controller.dart';
 import '../../../data/models/food_models.dart';
 import '../../subscriptions/view/subscription_dashboard_page.dart';
+import '../../home/view/favorites_page.dart';
 import '../../../routes/app_routes.dart';
 
 class ProfilePage extends StatelessWidget {
@@ -201,11 +202,18 @@ class _ActiveOrdersAndSubscriptions extends StatelessWidget {
                       color: Colors.white.withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const Text('Arriving in 15 mins',
-                        style: TextStyle(
-                            color: Color(0xFF114F3B),
-                            fontSize: 10,
-                            fontWeight: FontWeight.w500)),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.location_on, size: 10, color: Color(0xFF114F3B)),
+                        const SizedBox(width: 4),
+                        const Text('Live Tracking ON',
+                            style: TextStyle(
+                                color: Color(0xFF114F3B),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w500)),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -319,7 +327,7 @@ class _WalletSection extends StatelessWidget {
                           color: Color(0xFF114F3B),
                           fontSize: 16,
                           fontWeight: FontWeight.bold)),
-                  Text('Credit Cards | Transactions',
+                  Text('Check balance & statements',
                       style: TextStyle(color: Colors.black54, fontSize: 12)),
                 ],
               ),
@@ -375,7 +383,10 @@ class _QuickActionBtn extends StatelessWidget {
             MaterialPageRoute(builder: (context) => const MyOrdersPage()),
           );
         } else if (navigateTo == 'My Favorites') {
-          MainControllerScope.of(context).changePage(1);
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const FavoritesPage()),
+          );
         } else {
           Navigator.push(
             context,
@@ -442,11 +453,6 @@ class _ListTilesSection extends StatelessWidget {
     return Column(
       children: const [
         _ListTileItem(icon: Icons.notifications_none, title: 'Notifications'),
-        SizedBox(height: 16),
-        _ListTileItem(icon: Icons.access_time, title: 'Transaction History'),
-        SizedBox(height: 16),
-        _ListTileItem(
-            icon: Icons.credit_card_outlined, title: 'Credit/Debit Card'),
       ],
     );
   }

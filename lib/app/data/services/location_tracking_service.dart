@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:geolocator/geolocator.dart';
 import 'rider_service.dart';
@@ -21,7 +22,8 @@ class LocationTaskHandler extends TaskHandler {
   void onRepeatEvent(DateTime timestamp) async {
     try {
       final position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high);
+          locationSettings:
+              const LocationSettings(accuracy: LocationAccuracy.high));
 
       if (_riderService != null) {
         await _riderService!
@@ -34,7 +36,7 @@ class LocationTaskHandler extends TaskHandler {
             'Tracking location: ${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}',
       );
     } catch (e) {
-      print('Error in location sync: $e');
+      debugPrint('Error in location sync: $e');
     }
   }
 
@@ -62,7 +64,7 @@ class LocationTrackingService {
         playSound: false,
       ),
       foregroundTaskOptions: ForegroundTaskOptions(
-        eventAction: ForegroundTaskEventAction.repeat(30000),
+        eventAction: ForegroundTaskEventAction.repeat(10000), // 10 seconds
         autoRunOnBoot: true,
         allowWakeLock: true,
         allowWifiLock: true,

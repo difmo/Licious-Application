@@ -184,3 +184,41 @@ class Product {
     );
   }
 }
+
+class WalletTransaction {
+  final String id;
+  final String orderId;
+  final String type; // 'Credit' or 'Debit'
+  final String category; // 'Payment', 'Top-up', 'Refund'
+  final double amount;
+  final double balanceAfter;
+  final String description;
+  final String status; // 'Success', 'Failed', 'Pending'
+  final DateTime createdAt;
+
+  const WalletTransaction({
+    required this.id,
+    required this.orderId,
+    required this.type,
+    required this.category,
+    required this.amount,
+    required this.balanceAfter,
+    required this.description,
+    required this.status,
+    required this.createdAt,
+  });
+
+  factory WalletTransaction.fromJson(Map<String, dynamic> json) {
+    return WalletTransaction(
+      id: json['transactionId']?.toString() ?? json['_id']?.toString() ?? '',
+      orderId: json['orderId']?.toString() ?? '',
+      type: json['type']?.toString() ?? 'Debit',
+      category: json['category']?.toString() ?? 'Payment',
+      amount: double.tryParse(json['amount']?.toString() ?? '0') ?? 0.0,
+      balanceAfter: double.tryParse(json['balanceAfter']?.toString() ?? '0') ?? 0.0,
+      description: json['description']?.toString() ?? '',
+      status: json['status']?.toString() ?? 'Success',
+      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : DateTime.now(),
+    );
+  }
+}

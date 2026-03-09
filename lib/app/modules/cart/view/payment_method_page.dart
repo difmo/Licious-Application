@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:licius_application/app/data/services/db_service.dart';
 import '../../../data/services/order_service.dart';
@@ -243,6 +242,8 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
                     ? null
                     : () async {
                         setState(() => _isLoading = true);
+                        final messenger = ScaffoldMessenger.of(context);
+                        final navigator = Navigator.of(context);
                         try {
                           final selectedAddr = cartProvider.selectedAddress;
                           if (selectedAddr == null) {
@@ -287,9 +288,7 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
                             // Success path for all items
                             await cartProvider.syncWallet();
                             cartProvider.clearCart();
-                            if (!mounted) return;
-                            Navigator.pushAndRemoveUntil(
-                                context,
+                            navigator.pushAndRemoveUntil(
                                 MaterialPageRoute(
                                     builder: (_) => const OrderSuccessPage()),
                                 (route) => route.isFirst);
@@ -302,9 +301,7 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
                             if (response['success'] == true) {
                               await cartProvider.syncWallet();
                               cartProvider.clearCart();
-                              if (!mounted) return;
-                              Navigator.pushAndRemoveUntil(
-                                  context,
+                              navigator.pushAndRemoveUntil(
                                   MaterialPageRoute(
                                       builder: (_) => const OrderSuccessPage()),
                                   (route) => route.isFirst);
@@ -314,8 +311,7 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
                             }
                           }
                         } catch (e) {
-                          if (!mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
+                          messenger.showSnackBar(
                               SnackBar(content: Text('Error: $e')));
                         } finally {
                           if (mounted) setState(() => _isLoading = false);

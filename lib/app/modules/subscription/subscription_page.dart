@@ -398,13 +398,16 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
   }
 
   Widget _buildQuickActions(List<UserSubscription> subs) {
+    final isVacationOn = subs.any((s) => s.status == 'Active' && 
+      s.vacationDates.any((vd) => vd.isAfter(DateTime.now().subtract(const Duration(days: 1)))));
+
     return Row(
       children: [
         Expanded(
           child: _ActionButton(
             icon: Icons.pause_circle_outline,
             label: 'Pause Tomorrow',
-            color: Colors.redAccent,
+            color: Colors.orange,
             onTap: subs.isEmpty ? null : () => _pauseTomorrow(subs),
           ),
         ),
@@ -412,9 +415,9 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
         Expanded(
           child: _ActionButton(
             icon: Icons.flight_takeoff,
-            label: 'Vacation Mode',
-            color: Colors.blue,
-            onTap: subs.isEmpty ? null : () => _showVacationPicker(subs),
+            label: isVacationOn ? 'Vacation: ON' : 'Vacation: OFF',
+            color: isVacationOn ? Colors.blue : Colors.redAccent,
+            onTap: subs.isEmpty ? null : () => _toggleVacationMode(subs, isVacationOn),
           ),
         ),
       ],
@@ -442,39 +445,59 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
     }
   }
 
-  void _showVacationPicker(List<UserSubscription> subs) async {
+  void _toggleVacationMode(List<UserSubscription> subs, bool isCurrentlyOn) async {
     final activeSubs = subs.where((s) => s.status == 'Active').toList();
     if (activeSubs.isEmpty) return;
 
-    final DateTimeRange? picked = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 90)),
-      builder: (context, child) => Theme(
-        data: Theme.of(context).copyWith(
-          colorScheme: const ColorScheme.light(
-            primary: Color(0xFF68B92E),
-            onPrimary: Colors.white,
-          ),
-        ),
-        child: child!,
-      ),
-    );
-
-    if (picked != null) {
+    if (isCurrentlyOn) {
+      // Turn Vacation Mode OFF by setting dates in the past (or clearing via API logic)
+      final past = DateTime.now().subtract(const Duration(days: 2));
       for (final sub in activeSubs) {
         await ref.read(subscriptionServiceProvider).updateVacation(
               subscriptionId: sub.id,
-              startDate: picked.start,
-              endDate: picked.end,
+              startDate: past,
+              endDate: past,
             );
       }
       ref.invalidate(mySubscriptionsProvider);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Vacation mode activated!'),
-          backgroundColor: Colors.blue,
+          content: Text('Vacation mode turned OFF!'),
+          backgroundColor: Colors.orange,
         ));
+      }
+    } else {
+      // Turn Vacation Mode ON by showing Date Picker
+      final DateTimeRange? picked = await showDateRangePicker(
+        context: context,
+        firstDate: DateTime.now(),
+        lastDate: DateTime.now().add(const Duration(days: 90)),
+        builder: (context, child) => Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF68B92E),
+              onPrimary: Colors.white,
+            ),
+          ),
+          child: child!,
+        ),
+      );
+
+      if (picked != null) {
+        for (final sub in activeSubs) {
+          await ref.read(subscriptionServiceProvider).updateVacation(
+                subscriptionId: sub.id,
+                startDate: picked.start,
+                endDate: picked.end,
+              );
+        }
+        ref.invalidate(mySubscriptionsProvider);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Vacation mode activated!'),
+            backgroundColor: Colors.blue,
+          ));
+        }
       }
     }
   }

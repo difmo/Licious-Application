@@ -127,7 +127,7 @@ class WalletPage extends ConsumerWidget {
             Icons.history,
             'Statement',
             Colors.orange,
-            () {}, // Full statement view
+            () => Navigator.pushNamed(context, AppRoutes.walletStatement),
           ),
         ),
       ],

@@ -53,7 +53,7 @@ class ProductDetailsPage extends ConsumerWidget {
                 leading: Padding(
                   padding: const EdgeInsets.only(left: 16),
                   child: CircleAvatar(
-                    backgroundColor: Colors.white.withOpacity(0.9),
+                    backgroundColor: Colors.white.withValues(alpha: 0.9),
                     child: IconButton(
                       icon: const Icon(Icons.arrow_back, color: Colors.black87),
                       onPressed: () => Navigator.pop(context),
@@ -64,7 +64,7 @@ class ProductDetailsPage extends ConsumerWidget {
                   Padding(
                     padding: const EdgeInsets.only(right: 16),
                     child: CircleAvatar(
-                      backgroundColor: Colors.white.withOpacity(0.9),
+                      backgroundColor: Colors.white.withValues(alpha: 0.9),
                       child: IconButton(
                         icon: Icon(
                           product.isFavorite
@@ -180,7 +180,7 @@ class ProductDetailsPage extends ConsumerWidget {
                 color: Colors.white,
                 boxShadow: [
                   BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withValues(alpha: 0.05),
                       blurRadius: 10,
                       offset: const Offset(0, -5))
                 ],
@@ -315,7 +315,7 @@ class _SubscriptionConfigDrawerState extends State<SubscriptionConfigDrawer> {
                       label: Text(freq),
                       selected: _frequency == freq,
                       onSelected: (val) => setState(() => _frequency = freq),
-                      selectedColor: const Color(0xFF68B92E).withOpacity(0.2),
+                      selectedColor: const Color(0xFF68B92E).withValues(alpha: 0.2),
                       labelStyle: TextStyle(
                           color: _frequency == freq
                               ? const Color(0xFF2E7D32)
@@ -355,6 +355,8 @@ class _SubscriptionConfigDrawerState extends State<SubscriptionConfigDrawer> {
             return ElevatedButton(
               onPressed: () async {
                 final subService = ref.read(subscriptionServiceProvider);
+                final messenger = ScaffoldMessenger.of(context);
+                final navigator = Navigator.of(context);
                 final res = await subService.subscribeToProduct(
                   productId: widget.product.id,
                   frequency: _frequency,
@@ -362,8 +364,8 @@ class _SubscriptionConfigDrawerState extends State<SubscriptionConfigDrawer> {
                   customDays: _frequency == 'Custom' ? _days : [],
                 );
                 if (mounted) {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  navigator.pop();
+                  messenger.showSnackBar(SnackBar(
                     content: Text(res['message'] ?? 'Subscribed successfully!'),
                     backgroundColor:
                         res['success'] == true ? Colors.green : Colors.red,

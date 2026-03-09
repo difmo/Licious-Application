@@ -1,30 +1,31 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:socket_io_client/socket_io_client.dart' as io;
 import '../network/api_client.dart';
 
 class SocketService {
-  late IO.Socket socket;
+  late io.Socket socket;
 
   SocketService() {
     _initSocket();
   }
 
   void _initSocket() {
-    socket = IO.io(ApiClient.baseUrl, <String, dynamic>{
+    socket = io.io(ApiClient.baseUrl, <String, dynamic>{
       'transports': ['websocket'],
       'autoConnect': true,
     });
 
     socket.onConnect((_) {
-      print('Socket connected');
+      debugPrint('Socket connected');
     });
 
     socket.onDisconnect((_) {
-      print('Socket disconnected');
+      debugPrint('Socket disconnected');
     });
 
-    socket.onConnectError((err) => print('Socket connection error: $err'));
-    socket.onError((err) => print('Socket error: $err'));
+    socket.onConnectError((err) => debugPrint('Socket connection error: $err'));
+    socket.onError((err) => debugPrint('Socket error: $err'));
   }
 
   void joinOrderRoom(String orderId) {

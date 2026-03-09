@@ -44,7 +44,29 @@ class RiderService {
     try {
       final res = await _apiClient.patch(
         '${ApiClient.riderBaseUrl}/location',
-        data: {'lat': lat, 'lng': lng},
+        data: {
+          'latitude': lat,
+          'longitude': lng,
+        },
+        requiresAuth: true,
+      );
+      return res;
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  Future<Map<String, dynamic>> updateDeliveryStatus({
+    required String orderId,
+    required String status,
+  }) async {
+    try {
+      final res = await _apiClient.patch(
+        '${ApiClient.riderBaseUrl}/status',
+        data: {
+          'orderId': orderId,
+          'status': status,
+        },
         requiresAuth: true,
       );
       return res;
@@ -65,6 +87,55 @@ class RiderService {
       return res;
     } catch (e) {
       return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  Future<Map<String, dynamic>> updateStatus(String status) async {
+    try {
+      final res = await _apiClient.patch(
+        '${ApiClient.riderBaseUrl}/status',
+        data: {'status': status},
+        requiresAuth: true,
+      );
+      return res;
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  Future<Map<String, dynamic>> getOrderDetails(String id) async {
+    try {
+      final res = await _apiClient.get(
+        '${ApiClient.riderBaseUrl}/orders/$id',
+        requiresAuth: true,
+      );
+      return res;
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  Future<Map<String, dynamic>> getEarnings() async {
+    try {
+      final res = await _apiClient.get(
+        '${ApiClient.riderBaseUrl}/earnings',
+        requiresAuth: true,
+      );
+      return res;
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  Future<List<dynamic>> getDeliveryHistory() async {
+    try {
+      final response = await _apiClient.get(
+        '${ApiClient.riderBaseUrl}/history',
+        requiresAuth: true,
+      );
+      return response['data'] ?? [];
+    } catch (e) {
+      return [];
     }
   }
 }

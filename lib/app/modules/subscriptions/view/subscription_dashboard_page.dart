@@ -83,7 +83,7 @@ class SubscriptionDashboardPage extends ConsumerWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, 4))
         ],
@@ -129,7 +129,7 @@ class SubscriptionDashboardPage extends ConsumerWidget {
                 ),
                 Switch(
                   value: isActive,
-                  activeColor: AppColors.accentGreen,
+                  activeThumbColor: AppColors.accentGreen,
                   onChanged: (val) async {
                     final newStatus = val ? 'Active' : 'Paused';
                     final success = await ref

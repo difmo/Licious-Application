@@ -450,45 +450,19 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
                     color: Color(0xFF1A1A1A),
                   ),
                 ),
-                GestureDetector(
-                  onTap: p.isAvailable
-                      ? () {
-                          cart.addToCart(CartItem(
-                            id: p.id,
-                            title: p.name,
-                            unitPrice: p.price,
-                            subtitle: p.category?.name ?? 'Shrimp',
-                            image: p.primaryImage,
-                            category: 'restaurant',
-                          ));
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('${p.name} added to cart!'),
-                              duration: const Duration(seconds: 1),
-                              backgroundColor: const Color(0xFF439462),
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10)),
-                            ),
-                          );
-                        }
-                      : null,
-                  child: Container(
+                // Dynamic Cart Controls
+                if (p.isAvailable)
+                  _buildCartControls(context, cart, p)
+                else
+                  Container(
                     width: 32,
                     height: 32,
                     decoration: BoxDecoration(
-                      color: p.isAvailable
-                          ? const Color(0xFF68B92E)
-                          : Colors.grey.shade300,
+                      color: Colors.grey.shade300,
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Icon(
-                      Icons.add,
-                      color: p.isAvailable ? Colors.white : Colors.grey,
-                      size: 18,
-                    ),
+                    child: const Icon(Icons.add, color: Colors.grey, size: 18),
                   ),
-                ),
               ],
             ),
           ),
@@ -498,6 +472,88 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
         .animate(delay: (60 * widget.index).ms)
         .fadeIn(duration: 350.ms)
         .slideY(begin: 0.08, end: 0, duration: 350.ms, curve: Curves.easeOut);
+  }
+
+  Widget _buildCartControls(
+      BuildContext context, CartProvider cart, ShopProduct p) {
+    final cartItem = cart.items.firstWhere(
+      (item) => item.id == p.id,
+      orElse: () => CartItem(
+        id: p.id,
+        title: p.name,
+        unitPrice: p.price,
+        subtitle: p.category?.name ?? 'Shrimp',
+        image: p.primaryImage,
+        category: 'restaurant',
+        quantity: 0,
+      ),
+    );
+
+    if (cartItem.quantity == 0) {
+      return GestureDetector(
+        onTap: () {
+          cart.addToCart(CartItem(
+            id: p.id,
+            title: p.name,
+            unitPrice: p.price,
+            subtitle: p.category?.name ?? 'Shrimp',
+            image: p.primaryImage,
+            category: 'restaurant',
+          ));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${p.name} added to cart!'),
+              duration: const Duration(seconds: 1),
+              backgroundColor: const Color(0xFF439462),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+          );
+        },
+        child: Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: const Color(0xFF68B92E),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Icon(Icons.add, color: Colors.white, size: 18),
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7F8FA),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFF68B92E), width: 0.5),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          GestureDetector(
+            onTap: () => cart.decrement(p.name),
+            child: const Icon(Icons.remove, size: 16, color: Color(0xFF1A1A1A)),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '${cartItem.quantity}',
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1A1A1A),
+            ),
+          ),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: () => cart.increment(p.name),
+            child: const Icon(Icons.add, size: 16, color: Color(0xFF68B92E)),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _imagePlaceholder() {

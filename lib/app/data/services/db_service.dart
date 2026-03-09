@@ -503,9 +503,10 @@ class CartProvider extends ChangeNotifier {
     for (var id in _favoriteIds) {
       final r = _restaurants.firstWhere((res) => res.id == id,
           orElse: () => _restaurants.first);
-      if (!_favoriteIds.contains(r.id))
+      if (!_favoriteIds.contains(r.id)) {
         continue; // Double check but it should be fine
-      if (!favs.contains(r)) favs.add(r);
+      }
+      if (!favs.contains(r)) { favs.add(r); }
     }
     // Correct way: map ids to restaurants in order
     return _favoriteIds

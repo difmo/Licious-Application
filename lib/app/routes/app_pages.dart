@@ -15,9 +15,10 @@ import '../modules/cart/view/shipping_address_page.dart';
 import '../modules/cart/view/payment_method_page.dart';
 import '../modules/subscription/subscription_page.dart';
 import '../modules/wallet/view/wallet_page.dart';
-import '../modules/rider/view/rider_home_page.dart';
+import '../modules/rider/view/rider_main_page.dart';
 
 import '../modules/wallet/view/top_up_page.dart';
+import '../modules/wallet/view/wallet_statement_screen.dart';
 
 class AppPages {
   static Map<String, WidgetBuilder> get routes => {
@@ -36,7 +37,8 @@ class AppPages {
         AppRoutes.cart: (context) => const CartPage(),
         AppRoutes.shippingAddress: (context) => const ShippingAddressPage(),
         AppRoutes.paymentMethod: (context) => const PaymentMethodPage(),
-        AppRoutes.riderHome: (context) => const RiderHomePage(),
+        AppRoutes.riderHome: (context) => const RiderMainPage(),
         AppRoutes.topUp: (context) => const TopUpPage(),
+        AppRoutes.walletStatement: (context) => const WalletStatementScreen(),
       };
 }
