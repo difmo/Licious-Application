@@ -303,8 +303,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   // Sign up link
                   Center(
                     child: GestureDetector(
-                      onTap: () => Navigator.pushReplacementNamed(
-                          context, AppRoutes.signup),
+                      onTap: () =>
+                          Navigator.pushNamed(context, AppRoutes.signup),
                       child: RichText(
                         text: const TextSpan(
                           text: "Don't have an account ? ",

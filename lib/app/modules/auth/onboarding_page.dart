@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:licius_application/app/routes/app_routes.dart';
 
 class OnboardingPage extends StatefulWidget {
   const OnboardingPage({super.key});
@@ -55,11 +56,11 @@ class _OnboardingPageState extends State<OnboardingPage> {
         curve: Curves.easeInOut,
       );
     } else {
-      Navigator.pushReplacementNamed(context, '/welcome');
+      Navigator.pushReplacementNamed(context, AppRoutes.login);
     }
   }
 
-  void _skip() => Navigator.pushReplacementNamed(context, '/welcome');
+  void _skip() => Navigator.pushReplacementNamed(context, AppRoutes.login);
 
   // ---------- build ----------
   @override
@@ -95,9 +96,8 @@ class _OnboardingPageState extends State<OnboardingPage> {
             bottom: 0,
             left: 0,
             right: 0,
-            child: layout == 'bottom'
-                ? _buildSkipNextNav()
-                : _buildGetStartedNav(),
+            child:
+                layout == 'bottom' ? _buildSkipNextNav() : _buildSkipNextNav(),
           ),
         ],
       ),
