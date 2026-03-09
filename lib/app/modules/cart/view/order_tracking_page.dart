@@ -60,7 +60,7 @@ class OrderTrackingPage extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha:  0.3),
+            color: Colors.black.withValues(alpha: 0.3),
             blurRadius: 15,
             spreadRadius: 0,
             offset: const Offset(0, 8),
@@ -190,13 +190,16 @@ class OrderTrackingPage extends StatelessWidget {
           'Order Placed',
           '4:25 PM',
           'Your order has been received.',
+          icon: Icons.receipt_long_rounded,
           isCompleted: true,
+          isFirst: true,
           isLast: false,
         ),
         _buildStepItem(
           'Processing',
-          '4:26 PM',
+          '4:30 PM',
           'Our experts are picking the freshest catch.',
+          icon: Icons.restaurant_rounded,
           isCompleted: true,
           isFirst: false,
           isLast: false,
@@ -206,6 +209,7 @@ class OrderTrackingPage extends StatelessWidget {
           'Packed & Ready',
           '4:35 PM (Est.)',
           'Waiting for the delivery partner.',
+          icon: Icons.inventory_2_rounded,
           isCompleted: false,
           isFirst: false,
           isLast: false,
@@ -214,6 +218,7 @@ class OrderTrackingPage extends StatelessWidget {
           'Out for Delivery',
           '4:45 PM (Est.)',
           'Your order is on the way!',
+          icon: Icons.delivery_dining_rounded,
           isCompleted: false,
           isFirst: false,
           isLast: true,
@@ -226,57 +231,50 @@ class OrderTrackingPage extends StatelessWidget {
     String title,
     String time,
     String description, {
+    required IconData icon,
     bool isCompleted = false,
     bool isFirst = false,
     bool isLast = false,
     bool isActive = false,
   }) {
+    final statusColor = isCompleted || isActive
+        ? const Color(0xFF68B92E)
+        : Colors.grey.shade400;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Column(
           children: [
             Container(
-              width: 24,
-              height: 24,
+              width: 36,
+              height: 36,
               decoration: BoxDecoration(
                 color: isCompleted ? const Color(0xFF68B92E) : Colors.white,
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: isCompleted
-                      ? const Color(0xFF68B92E)
-                      : Colors.grey.shade300,
+                  color: statusColor,
                   width: 2,
                 ),
                 boxShadow: isActive
                     ? [
                         BoxShadow(
-                          color: const Color(0xFF68B92E).withValues(alpha:  0.3),
+                          color: const Color(0xFF68B92E).withValues(alpha: 0.2),
                           blurRadius: 10,
                           spreadRadius: 2,
                         ),
                       ]
                     : null,
               ),
-              child: isCompleted
-                  ? const Icon(Icons.check, color: Colors.white, size: 14)
-                  : isActive
-                  ? Center(
-                      child: Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF68B92E),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    )
-                  : null,
+              child: Icon(
+                icon,
+                color: isCompleted ? Colors.white : statusColor,
+                size: 18,
+              ),
             ),
             if (!isLast)
               Container(
                 width: 2,
-                height: 50,
+                height: 40,
                 color: isCompleted
                     ? const Color(0xFF68B92E)
                     : Colors.grey.shade300,
@@ -405,5 +403,3 @@ class OrderTrackingPage extends StatelessWidget {
     );
   }
 }
-
-

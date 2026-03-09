@@ -278,7 +278,7 @@ class _PaymentPageState extends State<PaymentPage> {
           decoration: BoxDecoration(
             color: isCompleted
                 ? const Color(0xFF68B92E)
-                : Colors.grey.withValues(alpha:  0.2),
+                : Colors.grey.withValues(alpha: 0.2),
             shape: BoxShape.circle,
           ),
           child: isCompleted && !isActive
@@ -313,7 +313,7 @@ class _PaymentPageState extends State<PaymentPage> {
       margin: const EdgeInsets.only(bottom: 20, left: 4, right: 4),
       color: isCompleted
           ? const Color(0xFF68B92E)
-          : Colors.grey.withValues(alpha:  0.2),
+          : Colors.grey.withValues(alpha: 0.2),
     );
   }
 
@@ -329,7 +329,7 @@ class _PaymentPageState extends State<PaymentPage> {
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: isSelected
-                  ? const Color(0xFF68B92E).withValues(alpha:  0.5)
+                  ? const Color(0xFF68B92E).withValues(alpha: 0.5)
                   : Colors.grey.shade100,
               width: isSelected ? 2 : 1,
             ),
@@ -340,7 +340,7 @@ class _PaymentPageState extends State<PaymentPage> {
                 icon,
                 color: isSelected
                     ? const Color(0xFF68B92E)
-                    : color.withValues(alpha:  0.6),
+                    : color.withValues(alpha: 0.6),
                 size: 32,
               ),
               const SizedBox(height: 12),
@@ -384,7 +384,7 @@ class _PaymentPageState extends State<PaymentPage> {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: Colors.red.withValues(alpha:  0.8),
+                      color: Colors.red.withValues(alpha: 0.8),
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -394,7 +394,7 @@ class _PaymentPageState extends State<PaymentPage> {
                       width: 40,
                       height: 40,
                       decoration: BoxDecoration(
-                        color: Colors.amber.withValues(alpha:  0.8),
+                        color: Colors.amber.withValues(alpha: 0.8),
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -424,7 +424,7 @@ class _PaymentPageState extends State<PaymentPage> {
                   Text(
                     'CARD HOLDER',
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha:  0.6),
+                      color: Colors.white.withValues(alpha: 0.6),
                       fontSize: 10,
                     ),
                   ),
@@ -444,7 +444,7 @@ class _PaymentPageState extends State<PaymentPage> {
                   Text(
                     'EXPIRES',
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha:  0.6),
+                      color: Colors.white.withValues(alpha: 0.6),
                       fontSize: 10,
                     ),
                   ),
@@ -474,5 +474,3 @@ class _PaymentPageState extends State<PaymentPage> {
     );
   }
 }
-
-

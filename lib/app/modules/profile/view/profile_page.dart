@@ -163,7 +163,7 @@ class _ActiveOrdersAndSubscriptions extends StatelessWidget {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: const Color(0xFFA5C9AD),
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(15),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -174,7 +174,7 @@ class _ActiveOrdersAndSubscriptions extends StatelessWidget {
                       color: Color(0xFF114F3B),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.inventory_2_outlined,
+                    child: const Icon(Icons.inventory_2_rounded,
                         color: Colors.white, size: 20),
                   ),
                   const SizedBox(height: 12),
@@ -182,7 +182,7 @@ class _ActiveOrdersAndSubscriptions extends StatelessWidget {
                     'Active Orders',
                     style: TextStyle(
                       color: Color(0xFF114F3B),
-                      fontSize: 16,
+                      fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -190,22 +190,22 @@ class _ActiveOrdersAndSubscriptions extends StatelessWidget {
                     '1 Active Order',
                     style: TextStyle(
                       color: Color(0xFF114F3B),
-                      fontSize: 12,
+                      fontSize: 14,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                   Container(
                     padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.5),
+                      color: const Color(0xFFE0EDE3),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: const Text('Arriving in 15 mins',
                         style: TextStyle(
                             color: Color(0xFF114F3B),
-                            fontSize: 10,
-                            fontWeight: FontWeight.w500)),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600)),
                   ),
                 ],
               ),
@@ -220,7 +220,7 @@ class _ActiveOrdersAndSubscriptions extends StatelessWidget {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: const Color(0xFF114F3B),
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(15),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -231,7 +231,7 @@ class _ActiveOrdersAndSubscriptions extends StatelessWidget {
                       color: const Color(0xFFA5C9AD).withValues(alpha: 0.3),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.card_membership_outlined,
+                    child: const Icon(Icons.bookmark_rounded,
                         color: Color(0xFFA5C9AD), size: 20),
                   ),
                   const SizedBox(height: 12),
@@ -239,7 +239,7 @@ class _ActiveOrdersAndSubscriptions extends StatelessWidget {
                     'Subscriptions',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 16,
+                      fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -247,20 +247,15 @@ class _ActiveOrdersAndSubscriptions extends StatelessWidget {
                     '2 Active Plans',
                     style: TextStyle(
                       color: Color(0xFFA5C9AD),
-                      fontSize: 12,
+                      fontSize: 14,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.transparent,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Text('Renewal Jun 11, 2023',
+                  const SizedBox(height: 12),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                    child: Text('Renewal Jun 11, 2023',
                         style:
-                            TextStyle(color: Color(0xFFA5C9AD), fontSize: 10)),
+                            TextStyle(color: Color(0xFFA5C9AD), fontSize: 11)),
                   ),
                 ],
               ),
@@ -288,22 +283,9 @@ class _WalletSection extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFFF0F4EC),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            const BoxShadow(
-              color: Colors.white,
-              blurRadius: 10,
-              spreadRadius: 1,
-              offset: Offset(-4, -4),
-            ),
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              spreadRadius: 1,
-              offset: const Offset(4, 4),
-            ),
-          ],
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: Colors.grey.shade300, width: 1.2),
         ),
         child: Row(
           children: [
@@ -389,22 +371,9 @@ class _QuickActionBtn extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 12),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: const Color(0xFFF0F4EC),
-          boxShadow: [
-            const BoxShadow(
-              color: Colors.white,
-              blurRadius: 10,
-              spreadRadius: 1,
-              offset: Offset(-4, -4),
-            ),
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              spreadRadius: 1,
-              offset: const Offset(4, 4),
-            ),
-          ],
-          borderRadius: BorderRadius.circular(30),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: Colors.grey.shade300, width: 1.2),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -483,22 +452,9 @@ class _ListTileItem extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         decoration: BoxDecoration(
-          color: const Color(0xFFF0F4EC),
-          borderRadius: BorderRadius.circular(30),
-          boxShadow: [
-            const BoxShadow(
-              color: Colors.white,
-              blurRadius: 10,
-              spreadRadius: 1,
-              offset: Offset(-4, -4),
-            ),
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              spreadRadius: 1,
-              offset: const Offset(4, 4),
-            ),
-          ],
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: Colors.grey.shade300, width: 1.2),
         ),
         child: Row(
           children: [

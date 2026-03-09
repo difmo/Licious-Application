@@ -79,15 +79,33 @@ class ProductDetailsPage extends ConsumerWidget {
                   ),
                 ],
                 flexibleSpace: FlexibleSpaceBar(
-                  background: Hero(
-                    tag: 'product_${product.id}',
-                    child: Image.asset(product.image, fit: BoxFit.cover),
+                  background: Container(
+                    margin: const EdgeInsets.fromLTRB(16, 10, 16, 2),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(30),
+                      border:
+                          Border.all(color: Colors.grey.shade300, width: 1.2),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(30),
+                      child: Hero(
+                        tag: 'product_${product.id}',
+                        child: _buildProductImage(product),
+                      ),
+                    ),
                   ),
                 ),
               ),
               SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
+                child: Container(
+                  margin: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(30),
+                    border: Border.all(color: Colors.grey.shade300, width: 1.2),
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -163,11 +181,11 @@ class ProductDetailsPage extends ConsumerWidget {
                               ),
                             )),
                       ],
-                      const SizedBox(height: 140),
                     ],
                   ),
                 ),
               ),
+              const SliverToBoxAdapter(child: SizedBox(height: 140)),
             ],
           ),
           Positioned(
@@ -196,12 +214,11 @@ class ProductDetailsPage extends ConsumerWidget {
                         style: TextStyle(
                             fontWeight: FontWeight.bold, fontSize: 16)),
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF68B92E),
-                      side: const BorderSide(
-                          color: Color(0xFF68B92E), width: 1.5),
-                      minimumSize: const Size(double.infinity, 50),
+                      foregroundColor: const Color(0xFF114F3B),
+                      side: BorderSide(color: Colors.grey.shade300, width: 1),
+                      minimumSize: const Size(double.infinity, 54),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
+                          borderRadius: BorderRadius.circular(50)),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -214,7 +231,7 @@ class ProductDetailsPage extends ConsumerWidget {
                             foregroundColor: Colors.white,
                             minimumSize: const Size(double.infinity, 56),
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16)),
+                                borderRadius: BorderRadius.circular(50)),
                             elevation: 0,
                           ),
                           child: const Text('Add to Cart',
@@ -226,9 +243,8 @@ class ProductDetailsPage extends ConsumerWidget {
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           decoration: BoxDecoration(
                               color: const Color(0xFFF7F8FA),
-                              borderRadius: BorderRadius.circular(16),
-                              border:
-                                  Border.all(color: const Color(0xFF68B92E))),
+                              borderRadius: BorderRadius.circular(50),
+                              border: Border.all(color: Colors.grey.shade300)),
                           child: Row(
                             children: [
                               const Text('Item in Cart',
@@ -239,8 +255,8 @@ class ProductDetailsPage extends ConsumerWidget {
                               const Spacer(),
                               IconButton(
                                   onPressed: () => cart.decrement(product.name),
-                                  icon:
-                                      const Icon(Icons.remove_circle_outline)),
+                                  icon: const Icon(Icons.remove_circle_outline,
+                                      color: Colors.grey)),
                               Padding(
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 12),
@@ -260,6 +276,52 @@ class ProductDetailsPage extends ConsumerWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildProductImage(Product product) {
+    if (product.image.isEmpty) {
+      return _errorPlaceholder();
+    }
+
+    String path = product.image;
+    if (!path.startsWith('http') && !path.startsWith('assets/')) {
+      if (path.startsWith('/')) {
+        path = 'https://shrimpbite-backend.vercel.app$path';
+      } else {
+        path = 'assets/images/$path';
+      }
+    }
+
+    if (path.startsWith('http')) {
+      return Image.network(
+        path,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _errorPlaceholder(),
+      );
+    }
+
+    return Image.asset(
+      path,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => _errorPlaceholder(),
+    );
+  }
+
+  Widget _errorPlaceholder() {
+    return Container(
+      color: const Color(0xFFF7F8FA),
+      child: const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.set_meal_outlined, size: 60, color: Colors.grey),
+            SizedBox(height: 12),
+            Text('Image not available',
+                style: TextStyle(color: Colors.grey, fontSize: 13)),
+          ],
+        ),
       ),
     );
   }

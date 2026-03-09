@@ -31,14 +31,19 @@ class ApiClient {
   // static const String otpBaseUrl =
   //     'https://shrimpbite-backend.vercel.app/api/otp';
 
-  static const String baseUrl = 'http://localhost:5000/api/app';
-  static const String riderBaseUrl = 'http://localhost:5000/api/rider';
-  static const String otpBaseUrl = 'http://localhost:5000/api/otp';
-  static const String walletBaseUrl = 'http://localhost:5000/api/wallet';
-  static const String paymentBaseUrl = 'http://localhost:5000/api/payment';
+  static const String baseUrl = 'https://shrimpbite-backend.vercel.app/api/app';
+  static const String riderBaseUrl =
+      'https://shrimpbite-backend.vercel.app/api/rider';
+  static const String otpBaseUrl =
+      'https://shrimpbite-backend.vercel.app/api/otp';
+  static const String walletBaseUrl =
+      'https://shrimpbite-backend.vercel.app/api/wallet';
+  static const String paymentBaseUrl =
+      'https://shrimpbite-backend.vercel.app/api/payment';
   static const String subscriptionBaseUrl =
-      'http://localhost:5000/api/subscription';
-  static const String reviewBaseUrl = 'http://localhost:5000/api/reviews';
+      'https://shrimpbite-backend.vercel.app/api/subscription';
+  static const String reviewBaseUrl =
+      'https://shrimpbite-backend.vercel.app/api/reviews';
 
   late Dio _dio;
 

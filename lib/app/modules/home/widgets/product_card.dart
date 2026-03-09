@@ -47,8 +47,8 @@ class ProductCard extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.shade100),
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(color: Colors.grey.shade300),
         ),
         child: Stack(
           children: [
@@ -60,27 +60,13 @@ class ProductCard extends StatelessWidget {
                   tag: 'product_${product.id}',
                   child: ClipRRect(
                     borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(16),
+                      top: Radius.circular(30),
                     ),
-                    child: Image.asset(
-                      product.image,
-                      height: 110,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          height: 110,
-                          color: Colors.grey.shade200,
-                          child: const Center(
-                            child: Icon(Icons.broken_image, color: Colors.grey),
-                          ),
-                        );
-                      },
-                    ),
+                    child: _buildProductImage(product),
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.all(12),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -123,10 +109,10 @@ class ProductCard extends StatelessWidget {
                               onTap: onAdd,
                               scaleFactor: 0.9,
                               child: Container(
-                                padding: const EdgeInsets.all(6),
+                                padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
                                   color: const Color(0xFF68B92E),
-                                  borderRadius: BorderRadius.circular(8),
+                                  borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: const Icon(
                                   Icons.add,
@@ -138,15 +124,15 @@ class ProductCard extends StatelessWidget {
                           else
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 4,
-                                vertical: 2,
+                                horizontal: 6,
+                                vertical: 4,
                               ),
                               decoration: BoxDecoration(
                                 color: const Color(0xFFF7F8FA),
-                                borderRadius: BorderRadius.circular(20),
+                                borderRadius: BorderRadius.circular(50),
                                 border: Border.all(
-                                  color: const Color(0xFF68B92E),
-                                  width: 0.5,
+                                  color: Colors.grey.shade300,
+                                  width: 1,
                                 ),
                               ),
                               child: Row(
@@ -160,7 +146,7 @@ class ProductCard extends StatelessWidget {
                                       color: Color(0xFF1A1A1A),
                                     ),
                                   ),
-                                  const SizedBox(width: 6),
+                                  const SizedBox(width: 8),
                                   Text(
                                     '${cartItem.quantity}',
                                     style: const TextStyle(
@@ -169,7 +155,7 @@ class ProductCard extends StatelessWidget {
                                       color: Color(0xFF1A1A1A),
                                     ),
                                   ),
-                                  const SizedBox(width: 6),
+                                  const SizedBox(width: 8),
                                   BounceWidget(
                                     onTap: () => cart.increment(product.name),
                                     scaleFactor: 0.8,
@@ -225,7 +211,7 @@ class ProductCard extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha:  0.9),
+                    color: Colors.white.withValues(alpha: 0.9),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
@@ -239,8 +225,50 @@ class ProductCard extends StatelessWidget {
           ],
         ),
       ),
-    ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.05, end: 0, duration: 400.ms, curve: Curves.easeOutQuad);
+    ).animate().fadeIn(duration: 400.ms).slideY(
+        begin: 0.05, end: 0, duration: 400.ms, curve: Curves.easeOutQuad);
+  }
+
+  Widget _buildProductImage(Product product) {
+    if (product.image.isEmpty) {
+      return _errorPlaceholder();
+    }
+
+    String path = product.image;
+    if (!path.startsWith('http') && !path.startsWith('assets/')) {
+      if (path.startsWith('/')) {
+        path = 'https://shrimpbite-backend.vercel.app$path';
+      } else {
+        path = 'assets/images/$path';
+      }
+    }
+
+    if (path.startsWith('http')) {
+      return Image.network(
+        path,
+        height: 110,
+        width: double.infinity,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _errorPlaceholder(),
+      );
+    }
+
+    return Image.asset(
+      path,
+      height: 110,
+      width: double.infinity,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => _errorPlaceholder(),
+    );
+  }
+
+  Widget _errorPlaceholder() {
+    return Container(
+      height: 110,
+      color: Colors.grey.shade100,
+      child: const Center(
+        child: Icon(Icons.set_meal_outlined, size: 30, color: Colors.grey),
+      ),
+    );
   }
 }
-
-

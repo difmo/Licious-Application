@@ -31,13 +31,6 @@ class CategoriesPage extends ConsumerWidget {
             fontSize: 18,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Color(0xFF1A1A1A)),
-            tooltip: 'Refresh',
-            onPressed: () => ref.invalidate(categoriesProvider),
-          ),
-        ],
       ),
       body: categoriesAsync.when(
         loading: () => const _LoadingGrid(),
@@ -105,8 +98,8 @@ class _CategoryCard extends StatelessWidget {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) =>
-                CategoryItemsPage(categoryName: category.name, categoryId: category.id),
+            builder: (_) => CategoryItemsPage(
+                categoryName: category.name, categoryId: category.id),
           ),
         );
       },
@@ -116,7 +109,7 @@ class _CategoryCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha:  0.08),
+              color: Colors.black.withValues(alpha: 0.08),
               blurRadius: 15,
               spreadRadius: 0,
               offset: const Offset(0, 6),
@@ -357,5 +350,3 @@ class _EmptyView extends StatelessWidget {
     );
   }
 }
-
-

@@ -93,7 +93,7 @@ class _ShopsList extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
           child: Row(
             children: [
               const Text(
@@ -119,22 +119,23 @@ class _ShopsList extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
                 child: Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF68B92E).withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(50),
+                    border: Border.all(color: Colors.grey.shade300, width: 1.2),
                   ),
                   child: const Row(
                     children: [
-                      Icon(Icons.filter_list_rounded,
+                      Icon(Icons.tune_rounded,
                           size: 16, color: Color(0xFF68B92E)),
-                      SizedBox(width: 4),
+                      SizedBox(width: 6),
                       Text(
                         'Filters',
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
-                          color: Color(0xFF68B92E),
+                          color: Color(0xFF1A1A1A),
                         ),
                       ),
                     ],
@@ -216,15 +217,8 @@ class _ShopCard extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.shade100),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(color: Colors.grey.shade300, width: 1.2),
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           // ── Hero Banner ─────────────────────────────────────────────────
@@ -232,7 +226,7 @@ class _ShopCard extends StatelessWidget {
             children: [
               ClipRRect(
                 borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(16)),
+                    const BorderRadius.vertical(top: Radius.circular(30)),
                 child: _buildHeroImage(),
               ),
               // Closed/Offline Overlay
@@ -242,7 +236,7 @@ class _ShopCard extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.4),
                       borderRadius:
-                          const BorderRadius.vertical(top: Radius.circular(16)),
+                          const BorderRadius.vertical(top: Radius.circular(30)),
                     ),
                     child: const Center(
                       child: Text(

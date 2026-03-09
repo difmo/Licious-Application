@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/services/db_service.dart';
 import '../controller/main_controller.dart';
 import '../../../widgets/bounce_widget.dart';
+import '../view/notifications_page.dart';
+import 'voice_search_dialog.dart';
 
 class HomeHeader extends StatefulWidget {
   const HomeHeader({super.key});
@@ -12,13 +15,20 @@ class HomeHeader extends StatefulWidget {
 }
 
 class _HomeHeaderState extends State<HomeHeader> {
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final cart = CartProviderScope.of(context);
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 20),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
       decoration: const BoxDecoration(color: Colors.white),
       // decoration: const BoxDecoration(color: Color(0xFFF9FFF6)),
       child: Column(
@@ -38,17 +48,17 @@ class _HomeHeaderState extends State<HomeHeader> {
                         Text(
                           'Vibhav Khand -4',
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: 10,
                             fontWeight: FontWeight.bold,
                             color: Color(0xFF1A1A1A),
                           ),
                         ),
-                        Icon(Icons.keyboard_arrow_down, size: 20),
+                        Icon(Icons.keyboard_arrow_down, size: 15),
                       ],
                     ),
                     Text(
                       'Vibhav Khand, Gomti Nagar, L...',
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                      style: TextStyle(fontSize: 10, color: Colors.grey),
                     ),
                   ],
                 ),
@@ -56,7 +66,39 @@ class _HomeHeaderState extends State<HomeHeader> {
               // Header Buttons
               const SizedBox(width: 8),
 
-              // Cart Icon removed from here
+              // Notification Icon
+              BounceWidget(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const NotificationsPage()),
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Consumer(
+                    builder: (context, ref, child) {
+                      final notifications = ref.watch(notificationsProvider);
+                      final hasUnread = notifications.any((n) => !n.isRead);
+                      return Badge(
+                        isLabelVisible: hasUnread,
+                        smallSize: 8,
+                        backgroundColor: const Color(0xFF68B92E),
+                        child: const Icon(Icons.notifications_none_rounded,
+                            size: 22, color: Color(0xFF1A1A1A)),
+                      );
+                    },
+                  ),
+                ),
+              ),
+
+              const SizedBox(width: 12),
+              // Profile Icon
               BounceWidget(
                 onTap: () {
                   MainControllerScope.of(context).changePage(4);
@@ -84,6 +126,7 @@ class _HomeHeaderState extends State<HomeHeader> {
                     border: Border.all(color: Colors.grey.shade200),
                   ),
                   child: TextField(
+                    controller: _searchController,
                     decoration: InputDecoration(
                       hintText: 'Search "curries"',
                       fillColor: Colors.white,
@@ -108,12 +151,28 @@ class _HomeHeaderState extends State<HomeHeader> {
                         Icons.search,
                         color: Color(0xFFE54141),
                       ),
-                      suffixIcon: const Row(
+                      suffixIcon: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          VerticalDivider(indent: 10, endIndent: 10),
-                          Icon(Icons.mic, color: Color(0xFFE54141)),
-                          SizedBox(width: 8),
+                          const VerticalDivider(indent: 10, endIndent: 10),
+                          GestureDetector(
+                            onTap: () async {
+                              final result =
+                                  await VoiceSearchDialog.show(context);
+                              if (result != null && result.isNotEmpty) {
+                                _searchController.text = result;
+                              }
+                            },
+                            child: Container(
+                              color:
+                                  Colors.transparent, // Ensures easy tap target
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 4, vertical: 8),
+                              child: const Icon(Icons.mic,
+                                  color: Color(0xFFE54141)),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
                         ],
                       ),
                     ),
@@ -124,7 +183,9 @@ class _HomeHeaderState extends State<HomeHeader> {
           ),
         ],
       ),
-    ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.1, duration: 400.ms, curve: Curves.easeOut);
+    )
+        .animate()
+        .fadeIn(duration: 400.ms)
+        .slideY(begin: -0.1, duration: 400.ms, curve: Curves.easeOut);
   }
-
 }

@@ -789,11 +789,18 @@ class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
 
   Widget _buildNotificationCard(String title, String desc, bool value) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -826,6 +833,7 @@ class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
             value: value,
             onChanged: (v) {},
             activeThumbColor: const Color(0xFF68B92E),
+            activeTrackColor: const Color(0xFFEBFFD7),
           ),
         ],
       ),

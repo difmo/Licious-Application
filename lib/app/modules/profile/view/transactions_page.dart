@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../wallet/view/wallet_page.dart';
 
-class TransactionsPage extends StatelessWidget {
+class TransactionsPage extends ConsumerWidget {
   const TransactionsPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final balanceAsync = ref.watch(walletBalanceProvider);
+    final historyAsync = ref.watch(walletHistoryProvider);
+
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
       appBar: AppBar(
@@ -30,66 +35,14 @@ class TransactionsPage extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Current Wallet Balance Card
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: const Color(0xFF114F3B), // Using our deep green brand color for contrast
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF114F3B).withValues(alpha: 0.2),
-                    blurRadius: 15,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Stack(
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
-                      Text(
-                        'Current Wallet Balance',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      SizedBox(height: 8),
-                      Text(
-                        '\$42.50',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 36,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Positioned(
-                    right: 0,
-                    bottom: 0,
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.account_balance_wallet_rounded,
-                        color: Colors.white,
-                        size: 24,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+            balanceAsync.when(
+              data: (balance) => _buildBalanceCard(balance),
+              loading: () => _buildBalanceCard(null),
+              error: (_, __) => _buildBalanceCard(0.0),
             ),
             const SizedBox(height: 32),
             const Text(
-              'Today',
+              'Transactions',
               style: TextStyle(
                 color: Color(0xFF1A1A1A),
                 fontSize: 16,
@@ -97,33 +50,38 @@ class TransactionsPage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            _buildTransactionItem(
-              icon: Icons.set_meal_rounded,
-              title: 'Shrimp Shack',
-              subtitle: 'Wallet balance used • 7:30 PM',
-              amount: '-\$24.50',
-              isPositive: false,
-            ),
-            _buildTransactionItem(
-              icon: Icons.account_balance_wallet_rounded,
-              title: 'Add money to wallet',
-              subtitle: 'From Chase Credit Card • 10:00 AM',
-              amount: '+\$55.00',
-              isPositive: true,
-            ),
-            _buildTransactionItem(
-              icon: Icons.set_meal_rounded,
-              title: 'The Fried Prawn',
-              subtitle: 'Visa ###12oe used • 8:45 PM',
-              amount: '-\$16.05',
-              isPositive: false,
-            ),
-            _buildTransactionItem(
-              icon: Icons.local_cafe_rounded, // Approximate for the soup icon
-              title: 'Shrimp Shack',
-              subtitle: 'Refund to Wallet • 12:30 PM',
-              amount: '+\$12.00',
-              isPositive: true,
+            historyAsync.when(
+              data: (history) {
+                if (history.isEmpty) {
+                  return const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(24),
+                      child: Text('No transactions yet',
+                          style: TextStyle(color: Colors.grey)),
+                    ),
+                  );
+                }
+                return Column(
+                  children: history.map((tx) {
+                    final isCredit = tx['type'] == 'Credit';
+                    final amount = (tx['amount'] as num?)?.toDouble() ?? 0.0;
+                    final description =
+                        tx['description']?.toString() ?? 'Transaction';
+                    final date = tx['createdAt'] != null
+                        ? _formatDate(tx['createdAt'].toString())
+                        : '';
+                    return _buildTransactionItem(
+                      title: description,
+                      date: date,
+                      amount:
+                          '${isCredit ? '+' : '-'}₹${amount.toStringAsFixed(2)}',
+                      isCredit: isCredit,
+                    );
+                  }).toList(),
+                );
+              },
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (_, __) => const Text('Failed to load transactions'),
             ),
           ],
         ),
@@ -131,28 +89,87 @@ class TransactionsPage extends StatelessWidget {
     );
   }
 
-  Widget _buildTransactionItem({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required String amount,
-    required bool isPositive,
-  }) {
-    // Subtle colors for the light theme icons
-    final Color iconColor = isPositive ? const Color(0xFF439462) : const Color(0xFFE85D04);
-    final Color iconBgColor = isPositive 
-        ? const Color(0xFF439462).withValues(alpha: 0.1) 
-        : const Color(0xFFE85D04).withValues(alpha: 0.1);
-
+  Widget _buildBalanceCard(double? balance) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      width: double.infinity,
+      padding: const EdgeInsets.all(28),
+      decoration: BoxDecoration(
+        color: const Color(0xFF114F3B),
+        borderRadius: BorderRadius.circular(25),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF114F3B).withValues(alpha: 0.2),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Current Wallet Balance',
+                  style: TextStyle(
+                      color: Color(0xFFA5C9AD),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500),
+                ),
+                const SizedBox(height: 12),
+                balance == null
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : Text(
+                        '₹${balance.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 36,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.account_balance_wallet,
+                color: Colors.white, size: 28),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatDate(String isoString) {
+    try {
+      final dt = DateTime.parse(isoString).toLocal();
+      return '${dt.day}/${dt.month}/${dt.year}';
+    } catch (_) {
+      return isoString;
+    }
+  }
+
+  Widget _buildTransactionItem({
+    required String title,
+    required String date,
+    required String amount,
+    required bool isCredit,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -161,43 +178,40 @@ class TransactionsPage extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: iconBgColor,
-              shape: BoxShape.circle,
+              color: (isCredit ? Colors.green : Colors.orange)
+                  .withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, color: iconColor, size: 22),
+            child: Icon(
+              isCredit ? Icons.add_rounded : Icons.restaurant_rounded,
+              color: isCredit ? Colors.green : Colors.orange,
+              size: 24,
+            ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 15),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                    color: Color(0xFF1A1A1A),
-                  ),
-                ),
+                Text(title,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                        color: Color(0xFF1A1A1A))),
                 const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    color: Colors.grey,
-                    fontSize: 12,
-                  ),
-                ),
+                Text(date,
+                    style: TextStyle(color: Colors.grey[600], fontSize: 12)),
               ],
             ),
           ),
           Text(
             amount,
             style: TextStyle(
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w900,
               fontSize: 16,
-              color: isPositive ? const Color(0xFF439462) : const Color(0xFF1A1A1A),
+              color: isCredit ? Colors.green : Colors.black,
             ),
           ),
         ],

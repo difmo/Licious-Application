@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import '../../routes/app_routes.dart';
 import '../../data/models/subscription_model.dart';
 import '../../data/services/subscription_service.dart';
 import '../../modules/wallet/view/wallet_page.dart' show walletBalanceProvider;
@@ -236,54 +237,84 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
 
     // The backend cron handles price logic nightly
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFFEBFFD7).withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(24),
-        border:
-            Border.all(color: const Color(0xFF68B92E).withValues(alpha: 0.2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: hasDelivery ? const Color(0xFF68B92E) : Colors.grey,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  hasDelivery ? 'SCHEDULED' : 'NO DELIVERY',
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold),
-                ),
+    return GestureDetector(
+      onTap: hasDelivery
+          ? () => Navigator.pushNamed(context, AppRoutes.orderTracking)
+          : null,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: Colors.grey.shade300, width: 1.2),
+          boxShadow: [
+            if (hasDelivery)
+              BoxShadow(
+                color: const Color(0xFF68B92E).withValues(alpha: 0.1),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
               ),
-              const Spacer(),
-              if (hasDelivery)
-                Text('${deliveringSubs.length} item(s)',
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: hasDelivery ? const Color(0xFF68B92E) : Colors.grey,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    hasDelivery ? 'SCHEDULED' : 'NO DELIVERY',
                     style: const TextStyle(
-                        fontWeight: FontWeight.bold, color: Color(0xFF1A1A1A))),
-            ],
-          ),
-          const SizedBox(height: 16),
-          if (!hasDelivery)
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 12),
-                child: Text('No deliveries scheduled for this day.',
-                    style: TextStyle(color: Colors.grey)),
-              ),
-            )
-          else
-            ...deliveringSubs.map((sub) => _buildDeliveryItem(sub)),
-        ],
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const Spacer(),
+                if (hasDelivery) ...[
+                  Row(
+                    children: [
+                      const Icon(Icons.location_searching_rounded,
+                          color: Color(0xFF68B92E), size: 16),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Track',
+                        style: TextStyle(
+                          color: const Color(0xFF68B92E),
+                          fontWeight: FontWeight.w900,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Text('${deliveringSubs.length} item(s)',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF1A1A1A))),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 16),
+            if (!hasDelivery)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  child: Text('No deliveries scheduled for this day.',
+                      style: TextStyle(color: Colors.grey)),
+                ),
+              )
+            else
+              ...deliveringSubs.map((sub) => _buildDeliveryItem(sub)),
+          ],
+        ),
       ),
     );
   }
@@ -351,14 +382,8 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.12)),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 8,
-              offset: const Offset(0, 2))
-        ],
+        borderRadius: BorderRadius.circular(50),
+        border: Border.all(color: Colors.grey.shade300, width: 1.2),
       ),
       child: Row(
         children: [
@@ -500,8 +525,9 @@ class _ActionButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(16),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(50),
+          border: Border.all(color: Colors.grey.shade300, width: 1.2),
         ),
         child: Column(
           children: [
