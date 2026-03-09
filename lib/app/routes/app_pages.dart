@@ -19,6 +19,7 @@ import '../modules/rider/view/rider_home_page.dart';
 
 import '../modules/wallet/view/top_up_page.dart';
 import '../modules/cart/view/order_tracking_page.dart';
+import '../modules/orders/view/track_order_page.dart';
 
 class AppPages {
   static Map<String, WidgetBuilder> get routes => {
@@ -40,5 +41,9 @@ class AppPages {
         AppRoutes.riderHome: (context) => const RiderHomePage(),
         AppRoutes.topUp: (context) => const TopUpPage(),
         AppRoutes.orderTracking: (context) => const OrderTrackingPage(),
+        AppRoutes.trackOrder: (context) {
+          final args = ModalRoute.of(context)?.settings.arguments as String?;
+          return TrackOrderPage(orderId: args ?? '');
+        },
       };
 }

@@ -1,11 +1,32 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
+import '../../../data/services/order_service.dart';
 import '../../../routes/app_routes.dart';
 
-class OrderTrackingPage extends StatelessWidget {
-  const OrderTrackingPage({super.key});
+final orderDetailsProvider =
+    FutureProvider.family.autoDispose<Map<String, dynamic>?, String>((ref, id) {
+  return ref.read(orderServiceProvider).getOrderDetails(id);
+});
+
+class OrderTrackingPage extends ConsumerWidget {
+  final String? orderId;
+  const OrderTrackingPage({super.key, this.orderId});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final id =
+        orderId ?? (ModalRoute.of(context)?.settings.arguments as String?);
+
+    if (id == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Track Order')),
+        body: const Center(child: Text('No Order ID provided')),
+      );
+    }
+
+    final orderAsync = ref.watch(orderDetailsProvider(id));
+
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
       appBar: AppBar(
@@ -25,34 +46,52 @@ class OrderTrackingPage extends StatelessWidget {
           ),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildOrderInfoCard(),
-            const SizedBox(height: 24),
-            const Text(
-              'Order Status',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1A1A1A),
-              ),
+      body: orderAsync.when(
+        data: (order) {
+          if (order == null)
+            return const Center(child: Text('Order not found'));
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildOrderInfoCard(order),
+                const SizedBox(height: 24),
+                const Text(
+                  'Order Status',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1A1A1A),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _buildTrackingStepper(order),
+                const SizedBox(height: 24),
+                _buildDeliveryDetails(order),
+                const SizedBox(height: 32),
+                if (order['status'] == 'Out for Delivery') ...[
+                  _buildLiveTrackButton(context, id),
+                  const SizedBox(height: 16),
+                ],
+                _buildGoHomeButton(context),
+              ],
             ),
-            const SizedBox(height: 16),
-            _buildTrackingStepper(),
-            const SizedBox(height: 24),
-            _buildDeliveryDetails(),
-            const SizedBox(height: 32),
-            _buildGoHomeButton(context),
-          ],
-        ),
+          );
+        },
+        loading: () => const Center(
+            child: CircularProgressIndicator(color: Color(0xFF68B92E))),
+        error: (err, _) => Center(child: Text('Error: $err')),
       ),
     );
   }
 
-  Widget _buildOrderInfoCard() {
+  Widget _buildOrderInfoCard(Map<String, dynamic> order) {
+    final id = order['_id']?.toString() ?? '';
+    final shortId =
+        id.length > 6 ? id.substring(id.length - 6).toUpperCase() : id;
+    final status = order['status']?.toString() ?? 'Pending';
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -60,7 +99,7 @@ class OrderTrackingPage extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 15,
             spreadRadius: 0,
             offset: const Offset(0, 8),
@@ -75,18 +114,20 @@ class OrderTrackingPage extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Order ID: #SH-82910',
-                    style: TextStyle(
+                  Text(
+                    'Order ID: #SH-$shortId',
+                    style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
                       color: Colors.grey,
                     ),
                   ),
                   const SizedBox(height: 4),
-                  const Text(
-                    'Arriving in 25-30 mins',
-                    style: TextStyle(
+                  Text(
+                    status == 'Delivered'
+                        ? 'Order Delivered'
+                        : 'Arriving in 25-30 mins',
+                    style: const TextStyle(
                       fontWeight: FontWeight.w900,
                       fontSize: 18,
                       color: Color(0xFF1A1A1A),
@@ -96,8 +137,8 @@ class OrderTrackingPage extends StatelessWidget {
               ),
               Container(
                 padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEBFFD7),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFEBFFD7),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -111,117 +152,132 @@ class OrderTrackingPage extends StatelessWidget {
           const SizedBox(height: 16),
           const Divider(height: 1, color: Color(0xFFF1F4F8)),
           const SizedBox(height: 16),
-          _buildItemSummary(),
+          _buildItemsSummary(order),
         ],
       ),
     );
   }
 
-  Widget _buildItemSummary() {
-    return Row(
-      children: [
-        Stack(
-          children: [
-            Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF7F8FA),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Image.asset(
-                'assets/images/image copy 11.png',
-                fit: BoxFit.contain,
-              ),
-            ),
-            Positioned(
-              right: 0,
-              bottom: 0,
-              child: Container(
-                padding: const EdgeInsets.all(4),
-                decoration: const BoxDecoration(
-                  color: Color(0xFF439462),
-                  shape: BoxShape.circle,
-                ),
-                child: const Text(
-                  '1',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 8,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(width: 12),
-        const Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildItemsSummary(Map<String, dynamic> order) {
+    final items = order['items'] as List<dynamic>? ?? [];
+    if (items.isEmpty) return const SizedBox();
+
+    return Column(
+      children: items.map((item) {
+        final product = item['product'];
+        final name =
+            product is Map ? product['name']?.toString() ?? 'Item' : 'Item';
+        final price = (item['price'] as num?)?.toDouble() ?? 0.0;
+        final qty = item['quantity'] ?? 1;
+        final images =
+            product is Map ? product['images'] as List<dynamic>? : null;
+        final imageUrl =
+            images != null && images.isNotEmpty ? images.first.toString() : '';
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Row(
             children: [
-              Text(
-                'White Shrimp',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF7F8FA),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: imageUrl.isNotEmpty
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Image.network(imageUrl, fit: BoxFit.cover),
+                      )
+                    : const Icon(Icons.shopping_bag_outlined,
+                        color: Colors.grey),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
+                    Text(
+                      'Qty $qty',
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
+                ),
               ),
               Text(
-                'High Quality • 500g',
-                style: TextStyle(fontSize: 12, color: Colors.grey),
+                '₹${(price * qty).toStringAsFixed(0)}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 16,
+                  color: Color(0xFF68B92E),
+                ),
               ),
             ],
           ),
-        ),
-        const Text(
-          '₹349',
-          style: TextStyle(
-            fontWeight: FontWeight.w900,
-            fontSize: 16,
-            color: Color(0xFF68B92E),
-          ),
-        ),
-      ],
+        );
+      }).toList(),
     );
   }
 
-  Widget _buildTrackingStepper() {
+  Widget _buildTrackingStepper(Map<String, dynamic> order) {
+    final status = order['status']?.toString() ?? 'Pending';
+    final createdAt = DateTime.tryParse(order['createdAt']?.toString() ?? '') ??
+        DateTime.now();
+    final timeFormat = DateFormat('h:mm a');
+
+    bool isPlaced = true;
+    bool isProcessing = [
+      'Processing',
+      'Packed',
+      'Out for Delivery',
+      'Delivered'
+    ].contains(status);
+    bool isPacked =
+        ['Packed', 'Out for Delivery', 'Delivered'].contains(status);
+    bool isOut = ['Out for Delivery', 'Delivered'].contains(status);
+    bool isDelivered = status == 'Delivered';
+
     return Column(
       children: [
         _buildStepItem(
           'Order Placed',
-          '4:25 PM',
+          timeFormat.format(createdAt),
           'Your order has been received.',
           icon: Icons.receipt_long_rounded,
-          isCompleted: true,
+          isCompleted: isPlaced,
           isFirst: true,
-          isLast: false,
+          isActive: status == 'Pending',
         ),
         _buildStepItem(
           'Processing',
-          '4:30 PM',
+          timeFormat.format(createdAt.add(const Duration(minutes: 5))),
           'Our experts are picking the freshest catch.',
           icon: Icons.restaurant_rounded,
-          isCompleted: true,
-          isFirst: false,
-          isLast: false,
-          isActive: true,
+          isCompleted: isProcessing,
+          isActive: status == 'Processing',
         ),
         _buildStepItem(
           'Packed & Ready',
-          '4:35 PM (Est.)',
+          timeFormat.format(createdAt.add(const Duration(minutes: 15))),
           'Waiting for the delivery partner.',
           icon: Icons.inventory_2_rounded,
-          isCompleted: false,
-          isFirst: false,
-          isLast: false,
+          isCompleted: isPacked,
+          isActive: status == 'Packed',
         ),
         _buildStepItem(
           'Out for Delivery',
-          '4:45 PM (Est.)',
-          'Your order is on the way!',
+          timeFormat.format(createdAt.add(const Duration(minutes: 25))),
+          isDelivered ? 'Rider was on the way!' : 'Your order is on the way!',
           icon: Icons.delivery_dining_rounded,
-          isCompleted: false,
-          isFirst: false,
+          isCompleted: isOut,
           isLast: true,
+          isActive: status == 'Out for Delivery',
         ),
       ],
     );
@@ -327,7 +383,17 @@ class OrderTrackingPage extends StatelessWidget {
     );
   }
 
-  Widget _buildDeliveryDetails() {
+  Widget _buildDeliveryDetails(Map<String, dynamic> order) {
+    final address = order['deliveryAddress'];
+    String addressStr = 'No address details';
+    if (address is Map) {
+      addressStr =
+          '${address['street'] ?? ''}, ${address['city'] ?? ''}'.trim();
+      if (addressStr == ',') addressStr = 'Default Address';
+    } else if (address != null) {
+      addressStr = address.toString();
+    }
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -348,11 +414,11 @@ class OrderTrackingPage extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 16),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   'Delivery Address',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
@@ -360,10 +426,10 @@ class OrderTrackingPage extends StatelessWidget {
                     color: Colors.grey,
                   ),
                 ),
-                SizedBox(height: 2),
+                const SizedBox(height: 2),
                 Text(
-                  '221B Baker Street, London',
-                  style: TextStyle(
+                  addressStr,
+                  style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 15,
                     color: Color(0xFF1A1A1A),
@@ -373,6 +439,34 @@ class OrderTrackingPage extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildLiveTrackButton(BuildContext context, String orderId) {
+    return SizedBox(
+      width: double.infinity,
+      height: 56,
+      child: ElevatedButton.icon(
+        onPressed: () {
+          // Navigate to TrackOrderPage (the one with Google Maps)
+          Navigator.pushNamed(context, AppRoutes.trackOrder,
+              arguments: orderId);
+        },
+        icon: const Icon(Icons.map_rounded),
+        label: const Text(
+          'Track Live on Map',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF68B92E),
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          elevation: 4,
+          shadowColor: const Color(0xFF68B92E).withValues(alpha: 0.3),
+        ),
       ),
     );
   }
@@ -388,15 +482,15 @@ class OrderTrackingPage extends StatelessWidget {
           ).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
         },
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF439462),
-          foregroundColor: Colors.white,
+          backgroundColor: const Color(0xFF439462).withValues(alpha: 0.1),
+          foregroundColor: const Color(0xFF439462),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
           elevation: 0,
         ),
         child: const Text(
-          'Go back to Home',
+          'Back to Home',
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
       ),

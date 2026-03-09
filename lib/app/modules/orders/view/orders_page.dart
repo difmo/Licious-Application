@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/services/order_service.dart';
+import '../../../routes/app_routes.dart';
 
 // Live orders provider for the bottom-nav Orders tab
 final liveOrdersProvider = FutureProvider.autoDispose<List<dynamic>>((ref) {
@@ -356,20 +357,32 @@ class _LiveOrderCardState extends State<_LiveOrderCard>
                               ),
                             ],
                           ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 6),
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                  color: const Color(0xFFE67E22), width: 1.5),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              _isDelivered ? 'Reorder' : 'Track',
-                              style: const TextStyle(
-                                  color: Color(0xFF2D3436),
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12),
+                          GestureDetector(
+                            onTap: () {
+                              final orderId = widget.order['_id']?.toString();
+                              if (orderId != null) {
+                                Navigator.pushNamed(
+                                  context,
+                                  AppRoutes.orderTracking,
+                                  arguments: orderId,
+                                );
+                              }
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 6),
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                    color: const Color(0xFFE67E22), width: 1.5),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                _isDelivered ? 'Reorder' : 'Track',
+                                style: const TextStyle(
+                                    color: Color(0xFF2D3436),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12),
+                              ),
                             ),
                           ),
                         ],

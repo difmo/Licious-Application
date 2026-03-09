@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:licius_application/app/data/services/db_service.dart';
 import '../../../data/services/order_service.dart';
 import '../../../data/services/subscription_service.dart';
@@ -28,6 +29,37 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
   @override
   void dispose() {
     super.dispose();
+  }
+
+  String _getFrequencyDesc() {
+    DateTime now = DateTime.now();
+    DateTime nextDelivery = now.add(const Duration(days: 1));
+
+    if (_frequency == 'Weekly' && _days.isNotEmpty) {
+      while (DateFormat('EEEE').format(nextDelivery) != _days.first) {
+        nextDelivery = nextDelivery.add(const Duration(days: 1));
+      }
+    } else if (_frequency == 'Custom' && _days.isNotEmpty) {
+      while (!_days.contains(DateFormat('EEEE').format(nextDelivery))) {
+        if (nextDelivery.difference(now).inDays > 7) break; // Safety break
+        nextDelivery = nextDelivery.add(const Duration(days: 1));
+      }
+    }
+
+    String dateStr = DateFormat('EEE, dd MMM').format(nextDelivery);
+
+    if (_frequency == 'Daily') {
+      return 'Delivered every morning (7-9 AM). Next: $dateStr';
+    } else if (_frequency == 'Alternate Days') {
+      return 'Delivered every other day. Next delivery on $dateStr.';
+    } else if (_frequency == 'Weekly') {
+      if (_days.isEmpty) return 'Please select a delivery day.';
+      return 'Delivered every ${_days.first}. Next delivery: $dateStr';
+    } else if (_frequency == 'Custom') {
+      if (_days.isEmpty) return 'Please select at least one delivery day.';
+      return 'Next delivery on $dateStr.';
+    }
+    return '';
   }
 
   @override
@@ -218,7 +250,23 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
                         return ChoiceChip(
                           label: Text(f),
                           selected: isSel,
-                          onSelected: (val) => setState(() => _frequency = f),
+                          onSelected: (val) {
+                            setState(() {
+                              _frequency = f;
+                              _days.clear();
+                              if (f == 'Daily') {
+                                _days.addAll([
+                                  'Monday',
+                                  'Tuesday',
+                                  'Wednesday',
+                                  'Thursday',
+                                  'Friday',
+                                  'Saturday',
+                                  'Sunday'
+                                ]);
+                              }
+                            });
+                          },
                           selectedColor: const Color(0xFF439462),
                           labelStyle: TextStyle(
                               color: isSel ? Colors.white : Colors.black,
@@ -226,6 +274,91 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
                                   isSel ? FontWeight.bold : FontWeight.normal),
                         );
                       }).toList(),
+                    ),
+                    if (_frequency == 'Custom' || _frequency == 'Weekly') ...[
+                      const SizedBox(height: 20),
+                      Text(
+                          _frequency == 'Weekly'
+                              ? 'Select Delivery Day'
+                              : 'Select Delivery Days',
+                          style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF374151))),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          'Monday',
+                          'Tuesday',
+                          'Wednesday',
+                          'Thursday',
+                          'Friday',
+                          'Saturday',
+                          'Sunday'
+                        ].map((day) {
+                          bool isSelected = _days.contains(day);
+                          return FilterChip(
+                            label: Text(day.substring(0, 3)),
+                            selected: isSelected,
+                            onSelected: (val) {
+                              setState(() {
+                                if (val) {
+                                  if (_frequency == 'Weekly') _days.clear();
+                                  _days.add(day);
+                                } else {
+                                  if (_frequency == 'Custom') _days.remove(day);
+                                }
+                              });
+                            },
+                            selectedColor:
+                                const Color(0xFF439462).withValues(alpha: 0.2),
+                            checkmarkColor: const Color(0xFF439462),
+                            labelStyle: TextStyle(
+                              color: isSelected
+                                  ? const Color(0xFF439462)
+                                  : Colors.black87,
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                            ),
+                            backgroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              side: BorderSide(
+                                color: isSelected
+                                    ? const Color(0xFF439462)
+                                    : Colors.grey.shade300,
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                            color: Colors.blue.withValues(alpha: 0.1)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.info_outline,
+                              color: Colors.blue, size: 20),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              _getFrequencyDesc(),
+                              style: const TextStyle(
+                                  fontSize: 13, color: Colors.blueGrey),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 24),
                   ],
@@ -254,6 +387,14 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
                                 'Insufficient wallet balance. Please top up.');
                           }
 
+                          // Validation for days
+                          if (_orderType == 1 &&
+                              (_frequency == 'Weekly' ||
+                                  _frequency == 'Custom') &&
+                              _days.isEmpty) {
+                            throw Exception('Please select delivery day(s)');
+                          }
+
                           final deliveryAddressMap = {
                             'address': selectedAddr.street,
                             'city':
@@ -277,7 +418,7 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
                                 productId: item.id,
                                 frequency: _frequency,
                                 quantity: item.quantity,
-                                customDays: _frequency == 'Custom' ? _days : [],
+                                customDays: _days,
                               );
                               if (res['success'] != true) {
                                 throw Exception(res['message'] ??

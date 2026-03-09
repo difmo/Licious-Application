@@ -49,6 +49,19 @@ class OrderService {
       return [];
     }
   }
+
+  Future<Map<String, dynamic>?> getOrderDetails(String orderId) async {
+    try {
+      final response = await _apiClient.get(
+        '${ApiClient.baseUrl}/orders/$orderId',
+        requiresAuth: true,
+      );
+      return response['order'] ?? response['data'];
+    } catch (e) {
+      debugPrint('Error fetching order details: $e');
+      return null;
+    }
+  }
 }
 
 final orderServiceProvider = Provider<OrderService>((ref) {
