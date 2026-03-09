@@ -10,11 +10,13 @@ class SocketService {
   }
 
   void _initSocket() {
-    socket = io
-        .io("https://shrimpbite-socket-server.onrender.com", <String, dynamic>{
-      'transports': ['websocket'],
-      'autoConnect': true,
-    });
+    socket = io.io(
+        // "https://shrimpbite-socket-server.onrender.com",
+        "http://localhost:5001",
+        <String, dynamic>{
+          'transports': ['websocket'],
+          'autoConnect': true,
+        });
     socket.onConnect((_) {
       debugPrint('Socket connected');
     });
