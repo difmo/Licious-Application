@@ -1,5 +1,14 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../network/api_client.dart';
+
+// Separate Dio client for the Socket/Render server
+final _socketServerDio = Dio(BaseOptions(
+  baseUrl: 'https://shrimpbite-socket-server.onrender.com',
+  connectTimeout: const Duration(seconds: 30),
+  receiveTimeout: const Duration(seconds: 30),
+  contentType: Headers.jsonContentType,
+));
 
 class RiderService {
   final ApiClient _apiClient;
@@ -85,6 +94,38 @@ class RiderService {
         requiresAuth: true,
       );
       return res;
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  /// Marks the order as delivered by:
+  /// 1. Calling the Vercel API PATCH /rider/complete
+  /// 2. Notifying the Socket/Render server via POST /api/order/delivered
+  Future<Map<String, dynamic>> markAsDelivered({
+    required String orderId,
+  }) async {
+    try {
+      // Step 1: complete on Vercel API
+      final vercelRes = await _apiClient.patch(
+        '${ApiClient.riderBaseUrl}/complete',
+        data: {'orderId': orderId},
+        requiresAuth: true,
+      );
+
+      // Step 2: notify socket server (fire-and-forget, don't block on failure)
+      try {
+        await _socketServerDio.post(
+          '/api/order/delivered',
+          data: {'orderId': orderId},
+        );
+      } catch (_) {
+        // Socket server notification is best-effort
+      }
+
+      return vercelRes is Map<String, dynamic>
+          ? vercelRes
+          : {'success': true, 'message': 'Order marked as delivered'};
     } catch (e) {
       return {'success': false, 'message': e.toString()};
     }

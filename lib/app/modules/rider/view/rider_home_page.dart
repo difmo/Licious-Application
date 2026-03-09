@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:geolocator/geolocator.dart';
+// import 'package:geolocator/geolocator.dart'; // disabled for testing
 import '../../auth/provider/auth_provider.dart';
 import '../../../data/services/rider_service.dart';
-import '../../../data/services/location_tracking_service.dart';
+// import '../../../data/services/location_tracking_service.dart'; // disabled for testing
 import '../../../core/constants/app_colors.dart';
 import '../../../routes/app_routes.dart';
 import 'rider_order_details_page.dart';
@@ -26,65 +26,30 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
   bool _isOnline = false;
   bool _isTogglingStatus = false;
 
-  // Active delivery statuses that block going offline
-  static const _activeStatuses = {'assigned', 'out_for_delivery', 'arrived'};
+  // NOTE: _activeStatuses, _ensureLocationPermission, _checkLocationPermission,
+  // and _hasActiveDelivery are all disabled for testing. Re-enable in production.
+  // static const _activeStatuses = {'assigned', 'out_for_delivery', 'arrived'};
 
   @override
   void initState() {
     super.initState();
-    _checkLocationPermission();
+    // _checkLocationPermission(); // disabled for testing
   }
 
+  /*  ── Location helpers (re-enable for production) ──────────────────────────
   Future<bool> _ensureLocationPermission() async {
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      if (mounted) {
-        _showAlert(
-          icon: Icons.location_off_rounded,
-          title: 'Location Services Off',
-          message: 'Please enable GPS / location services to go online.',
-          actionLabel: 'Open Settings',
-          onAction: () => Geolocator.openLocationSettings(),
-        );
-      }
-      return false;
-    }
-
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-    }
-    if (permission == LocationPermission.denied ||
-        permission == LocationPermission.deniedForever) {
-      if (mounted) {
-        _showAlert(
-          icon: Icons.lock_outline_rounded,
-          title: 'Location Permission Denied',
-          message:
-              'Shrimpbite needs "While in use" location access to go online.',
-          actionLabel: permission == LocationPermission.deniedForever
-              ? 'Open App Settings'
-              : 'Try Again',
-          onAction: () => permission == LocationPermission.deniedForever
-              ? Geolocator.openAppSettings()
-              : _toggleOnline(true),
-        );
-      }
-      return false;
-    }
+    if (!serviceEnabled) { ... }
+    ...
     return true;
   }
-
-  Future<void> _checkLocationPermission() async {
-    await _ensureLocationPermission();
-  }
-
   bool _hasActiveDelivery(List<dynamic> orders) {
     return orders.any((o) {
       final status = (o['status']?.toString() ?? '').toLowerCase();
       return _activeStatuses.contains(status);
     });
   }
+  */
 
   Future<void> _toggleOnline(bool value) async {
     if (_isTogglingStatus) return;
@@ -93,11 +58,9 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
     try {
       // ── Going ONLINE ────────────────────────────────────────────────────
       if (value) {
-        final hasPermission = await _ensureLocationPermission();
-        if (!hasPermission) {
-          setState(() => _isTogglingStatus = false);
-          return;
-        }
+        // NOTE: Location check disabled for testing — re-enable in production
+        // final hasPermission = await _ensureLocationPermission();
+        // if (!hasPermission) { setState(() => _isTogglingStatus = false); return; }
 
         // Call backend PATCH /rider/status { status: 'online' }
         final riderService = ref.read(riderServiceProvider);
@@ -112,7 +75,8 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
           return;
         }
 
-        await LocationTrackingService.start();
+        // NOTE: LocationTracking disabled for testing — re-enable in production
+        // await LocationTrackingService.start();
         if (mounted) {
           setState(() => _isOnline = true);
           _showSnack('You are now ONLINE ✅');
@@ -121,24 +85,10 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
 
       // ── Going OFFLINE ───────────────────────────────────────────────────
       } else {
-        // Check for any active deliveries
-        final ordersAsyncValue = ref.read(riderOrdersProvider);
-        final orders = ordersAsyncValue.value ?? [];
-
-        if (_hasActiveDelivery(orders)) {
-          if (mounted) {
-            _showAlert(
-              icon: Icons.delivery_dining_rounded,
-              title: 'Active Delivery in Progress',
-              message:
-                  'You cannot go offline while you have an active delivery.\n\nComplete or hand over the delivery first.',
-              actionLabel: 'Got it',
-              onAction: () {},
-            );
-          }
-          setState(() => _isTogglingStatus = false);
-          return;
-        }
+        // NOTE: Active delivery block disabled for testing — re-enable in production
+        // final ordersAsyncValue = ref.read(riderOrdersProvider);
+        // final orders = ordersAsyncValue.value ?? [];
+        // if (_hasActiveDelivery(orders)) { ... return; }
 
         // Call backend PATCH /rider/status { status: 'offline' }
         final riderService = ref.read(riderServiceProvider);
@@ -153,7 +103,8 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
           return;
         }
 
-        await LocationTrackingService.stop();
+        // NOTE: LocationTracking disabled for testing — re-enable in production
+        // await LocationTrackingService.stop();
         if (mounted) {
           setState(() => _isOnline = false);
           _showSnack('You are now OFFLINE');
@@ -179,6 +130,7 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
     ));
   }
 
+  /* _showAlert — re-enable with location helpers in production
   void _showAlert({
     required IconData icon,
     required String title,
@@ -225,6 +177,7 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
       ),
     );
   }
+  */
 
   Future<void> _handleResponse(String orderId, String response) async {
     final riderService = ref.read(riderServiceProvider);
@@ -248,19 +201,41 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
     }
   }
 
-  Future<void> _completeDelivery(String orderId) async {
+  Future<void> _markDelivered(String orderId) async {
     final riderService = ref.read(riderServiceProvider);
-    final result = await riderService.completeOrder(orderId: orderId);
+    final result = await riderService.markAsDelivered(orderId: orderId);
 
     if (mounted) {
+      final isSuccess = result['success'] != false;
+      ScaffoldMessenger.of(context).clearSnackBars();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(result['message'] ?? 'Delivery completed'),
-          backgroundColor: AppColors.accentGreen,
+          content: Row(
+            children: [
+              Icon(
+                isSuccess ? Icons.check_circle_rounded : Icons.error_rounded,
+                color: Colors.white,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  isSuccess
+                      ? '✅ Order Delivered Successfully!'
+                      : result['message'] ?? 'Failed to mark as delivered',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: isSuccess ? AppColors.accentGreen : Colors.redAccent,
           behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          duration: const Duration(seconds: 3),
         ),
       );
-      ref.invalidate(riderOrdersProvider);
+      if (isSuccess) {
+        ref.invalidate(riderOrdersProvider);
+      }
     }
   }
 
@@ -520,9 +495,12 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
   }
 
   Widget _buildOrderCard(dynamic order) {
-    final status = order['riderAssignmentStatus'];
-    final isPending = status == 'Pending';
-    final isAccepted = status == 'Accepted';
+    final assignmentStatus = order['riderAssignmentStatus'];
+    final orderStatus = (order['status']?.toString() ?? 'Pending').toLowerCase();
+    
+    final isPending = assignmentStatus == 'Pending';
+    final isAccepted = assignmentStatus == 'Accepted';
+    final isDelivered = orderStatus == 'delivered' || orderStatus == 'completed';
 
     return GestureDetector(
       onTap: () => Navigator.push(
@@ -650,97 +628,64 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
                 ],
               ),
             )
-          else if (isAccepted)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: const BoxDecoration(
-                color: Color(0xFFF7F8FA),
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(20),
-                  bottomRight: Radius.circular(20),
-                ),
-              ),
-              child: Column(
+          else if (isAccepted && !isDelivered)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+              child: Row(
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () async {
-                            final result = await ref
-                                .read(riderServiceProvider)
-                                .updateDeliveryStatus(
-                                  orderId: order['orderId'],
-                                  status: 'Out for Delivery',
-                                );
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                    content: Text(result['message'] ??
-                                        'Status updated to Out for Delivery')),
-                              );
-                              ref.invalidate(riderOrdersProvider);
-                            }
-                          },
-                          icon: const Icon(Icons.delivery_dining_rounded),
-                          label: const Text('Out for Delivery'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.accentGreen,
-                            side: BorderSide(color: AppColors.accentGreen),
+                  // Left: Out for Delivery
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        final result = await ref
+                            .read(riderServiceProvider)
+                            .updateDeliveryStatus(
+                              orderId: order['orderId'],
+                              status: 'Out for Delivery',
+                            );
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                            content: Text(result['message'] ??
+                                '🚚 Out for Delivery!'),
+                            backgroundColor: AppColors.accentGreen,
+                            behavior: SnackBarBehavior.floating,
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                          ),
-                        ),
+                                borderRadius: BorderRadius.circular(10)),
+                          ));
+                          ref.invalidate(riderOrdersProvider);
+                        }
+                      },
+                      icon: const Icon(Icons.delivery_dining_rounded, size: 16),
+                      label: const Text('Out for\nDelivery',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                              fontSize: 11, fontWeight: FontWeight.bold)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.accentGreen,
+                        side: BorderSide(color: AppColors.accentGreen),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () async {
-                            final result = await ref
-                                .read(riderServiceProvider)
-                                .updateDeliveryStatus(
-                                  orderId: order['orderId'],
-                                  status: 'Arrived',
-                                );
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                    content: Text(result['message'] ??
-                                        'Status updated to Arrived')),
-                              );
-                              ref.invalidate(riderOrdersProvider);
-                            }
-                          },
-                          icon: const Icon(Icons.location_on_rounded),
-                          label: const Text('Arrived'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.orange,
-                            side: const BorderSide(color: Colors.orange),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
+                  const SizedBox(width: 12),
+                  // Right: Mark as Delivered
+                  Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: () => _completeDelivery(order['orderId']),
-                      icon: const Icon(Icons.check_circle_outline_rounded),
-                      label: const Text('Mark as Delivered',
-                          style: TextStyle(fontWeight: FontWeight.bold)),
+                      onPressed: () => _markDelivered(order['orderId']),
+                      icon: const Icon(Icons.check_circle_rounded, size: 16),
+                      label: const Text('Mark as\nDelivered',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                              fontSize: 11, fontWeight: FontWeight.bold)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF68B92E),
                         foregroundColor: Colors.white,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12)),
-                        padding: const EdgeInsets.symmetric(vertical: 15),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                     ),
                   ),

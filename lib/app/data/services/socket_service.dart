@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
-import '../network/api_client.dart';
 
 class SocketService {
   late io.Socket socket;
@@ -11,11 +10,11 @@ class SocketService {
   }
 
   void _initSocket() {
-    socket = io.io(ApiClient.baseUrl, <String, dynamic>{
+    socket = io
+        .io("https://shrimpbite-socket-server.onrender.com", <String, dynamic>{
       'transports': ['websocket'],
       'autoConnect': true,
     });
-
     socket.onConnect((_) {
       debugPrint('Socket connected');
     });

@@ -191,46 +191,60 @@ class _RiderOrderDetailsPageState extends ConsumerState<RiderOrderDetailsPage> {
             // ── Status Buttons ────────────────────────────────────────────
             if (_isLoading)
               const Center(child: CircularProgressIndicator(color: AppColors.accentGreen))
-            else
+            else if (status.toLowerCase() != 'delivered' && status.toLowerCase() != 'completed')
               Column(
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _StatusButton(
-                          label: 'Out for Delivery',
-                          icon: Icons.delivery_dining_rounded,
-                          color: AppColors.accentGreen,
-                          onTap: () => _updateStatus('Out for Delivery'),
+                  if (status.toLowerCase() == 'pending' || status.toLowerCase() == 'preparing' || status.toLowerCase() == 'accepted')
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () => _updateStatus('Out for Delivery'),
+                        icon: const Icon(Icons.delivery_dining_rounded),
+                        label: const Text('Start Delivery (Out for Delivery)', 
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.accentGreen,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _StatusButton(
-                          label: 'Arrived',
-                          icon: Icons.my_location_rounded,
-                          color: Colors.orange,
-                          onTap: () => _updateStatus('Arrived'),
+                    )
+                  else if (status.toLowerCase() == 'out for delivery')
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () => _updateStatus('Arrived'),
+                        icon: const Icon(Icons.location_on_rounded),
+                        label: const Text('I Have Arrived',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: () => _updateStatus('Delivered'),
-                      icon: const Icon(Icons.check_circle_rounded),
-                      label: const Text('Mark as Delivered', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.accentGreen,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    )
+                  else if (status.toLowerCase() == 'arrived')
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () => _updateStatus('Delivered'),
+                        icon: const Icon(Icons.check_circle_rounded),
+                        label: const Text('Mark as Delivered', 
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.accentGreen,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
                       ),
                     ),
-                  ),
                 ],
               ).animate(delay: 200.ms).fadeIn().slideY(begin: 0.1, end: 0),
 
@@ -333,25 +347,4 @@ class _QuickActionButton extends StatelessWidget {
   }
 }
 
-class _StatusButton extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final Color color;
-  final VoidCallback onTap;
-  const _StatusButton({required this.label, required this.icon, required this.color, required this.onTap});
 
-  @override
-  Widget build(BuildContext context) {
-    return OutlinedButton.icon(
-      onPressed: onTap,
-      icon: Icon(icon, size: 18),
-      label: Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-      style: OutlinedButton.styleFrom(
-        foregroundColor: color,
-        side: BorderSide(color: color),
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
-  }
-}
