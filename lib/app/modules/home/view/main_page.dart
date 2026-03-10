@@ -31,7 +31,6 @@ class _MainPageState extends State<MainPage> {
     _controller.addListener(() {
       if (mounted) setState(() {});
     });
-
     // Initial cart sync from API
     WidgetsBinding.instance.addPostFrameCallback((_) {
       CartProviderScope.of(context).loadCartFromApi();

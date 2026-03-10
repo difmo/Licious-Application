@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 import '../../../core/api/auth_interceptor.dart';
 import '../../../core/storage/secure_storage_service.dart';
 
@@ -32,7 +33,15 @@ final apiClientProvider = Provider<ApiClient>((ref) {
   final storage = SecureStorageService();
   dio.interceptors.addAll([
     AuthInterceptor(dio, storage),
-    LogInterceptor(requestBody: true, responseBody: true),
+    PrettyDioLogger(
+      requestHeader: true,
+      requestBody: true,
+      responseBody: true,
+      responseHeader: false,
+      error: true,
+      compact: true,
+      maxWidth: 90,
+    ),
   ]);
 
   return ApiClient(dio);
@@ -50,16 +59,35 @@ class ApiClient {
 
   final Dio _dio;
 
-  ApiClient([Dio? dio])
-      : _dio = dio ??
-            Dio(BaseOptions(
-              baseUrl: dotenv.get('API_BASE_URL'),
-              connectTimeout: const Duration(seconds: 30),
-            ));
+  ApiClient([Dio? dio]) : _dio = dio ?? _createDefaultDio();
+
+  static Dio _createDefaultDio() {
+    final dio = Dio(BaseOptions(
+      baseUrl: dotenv.get('API_BASE_URL'),
+      connectTimeout: const Duration(seconds: 30),
+      receiveTimeout: const Duration(seconds: 30),
+      contentType: Headers.jsonContentType,
+    ));
+
+    final storage = SecureStorageService();
+    dio.interceptors.addAll([
+      AuthInterceptor(dio, storage),
+      PrettyDioLogger(
+        requestHeader: true,
+        requestBody: true,
+        responseBody: true,
+        error: true,
+        compact: true,
+      ),
+    ]);
+    return dio;
+  }
 
   // ── HTTP Methods ───────────────────────────────────────────────────────────
 
-  Future<dynamic> get(String path, {Map<String, dynamic>? queryParameters, bool requiresAuth = false}) async {
+  Future<dynamic> get(String path,
+      {Map<String, dynamic>? queryParameters,
+      bool requiresAuth = false}) async {
     try {
       final response = await _dio.get(
         path,
@@ -72,7 +100,8 @@ class ApiClient {
     }
   }
 
-  Future<dynamic> post(String path, {dynamic data, bool requiresAuth = false}) async {
+  Future<dynamic> post(String path,
+      {dynamic data, bool requiresAuth = false}) async {
     try {
       final response = await _dio.post(
         path,
@@ -85,7 +114,8 @@ class ApiClient {
     }
   }
 
-  Future<dynamic> put(String path, {dynamic data, bool requiresAuth = false}) async {
+  Future<dynamic> put(String path,
+      {dynamic data, bool requiresAuth = false}) async {
     try {
       final response = await _dio.put(
         path,
@@ -98,7 +128,8 @@ class ApiClient {
     }
   }
 
-  Future<dynamic> patch(String path, {dynamic data, bool requiresAuth = false}) async {
+  Future<dynamic> patch(String path,
+      {dynamic data, bool requiresAuth = false}) async {
     try {
       final response = await _dio.patch(
         path,
@@ -111,7 +142,8 @@ class ApiClient {
     }
   }
 
-  Future<dynamic> delete(String path, {dynamic data, bool requiresAuth = false}) async {
+  Future<dynamic> delete(String path,
+      {dynamic data, bool requiresAuth = false}) async {
     try {
       final response = await _dio.delete(
         path,
@@ -127,13 +159,21 @@ class ApiClient {
   ApiException _handleError(DioException e) {
     if (e.response != null) {
       final message = e.response?.data['message'] ?? e.message;
-      return ApiException(statusCode: e.response?.statusCode, message: message.toString());
+      return ApiException(
+          statusCode: e.response?.statusCode, message: message.toString());
     }
     return ApiException(message: e.message ?? 'Network error');
   }
 
   // ── Helper static methods for token access ──────────────────────────────
-  static Future<String?> getToken() async => await SecureStorageService().getAccessToken();
-  static Future<void> saveToken(String token) async => await SecureStorageService().saveTokens(access: token, refresh: ''); // Adjust as needed
-  static Future<void> clearToken() async => await SecureStorageService().clearAll();
+  static Future<String?> getToken() async =>
+      await SecureStorageService().getAccessToken();
+  static Future<void> saveToken(String token) async {
+    final storage = SecureStorageService();
+    final refresh = await storage.getRefreshToken();
+    await storage.saveTokens(access: token, refresh: refresh ?? '');
+  }
+
+  static Future<void> clearToken() async =>
+      await SecureStorageService().clearAll();
 }

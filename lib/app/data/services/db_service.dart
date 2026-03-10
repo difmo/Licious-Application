@@ -480,7 +480,6 @@ class CartProvider extends ChangeNotifier {
   }
 
   // ── API Integration ───────────────────────────────────────────────────────
-
   /// Syncs the local cart with the backend.
   Future<void> loadCartFromApi() async {
     if (_service == null) return;
@@ -506,7 +505,9 @@ class CartProvider extends ChangeNotifier {
       if (!_favoriteIds.contains(r.id)) {
         continue; // Double check but it should be fine
       }
-      if (!favs.contains(r)) { favs.add(r); }
+      if (!favs.contains(r)) {
+        favs.add(r);
+      }
     }
     // Correct way: map ids to restaurants in order
     return _favoriteIds

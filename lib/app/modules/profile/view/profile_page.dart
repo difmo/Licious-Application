@@ -13,8 +13,24 @@ import '../../subscriptions/view/subscription_dashboard_page.dart';
 import '../../home/view/favorites_page.dart';
 import '../../../routes/app_routes.dart';
 
-class ProfilePage extends StatelessWidget {
+class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
+
+  @override
+  ConsumerState<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends ConsumerState<ProfilePage> {
+  @override
+  void initState() {
+    super.initState();
+    // Sync wallet balance whenever the profile tab is visited
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        CartProviderScope.of(context).syncWallet();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -205,7 +221,8 @@ class _ActiveOrdersAndSubscriptions extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.location_on, size: 10, color: Color(0xFF114F3B)),
+                        const Icon(Icons.location_on,
+                            size: 10, color: Color(0xFF114F3B)),
                         const SizedBox(width: 4),
                         const Text('Live Tracking ON',
                             style: TextStyle(

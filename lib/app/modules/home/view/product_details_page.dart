@@ -277,7 +277,44 @@ class SubscriptionConfigDrawer extends StatefulWidget {
 class _SubscriptionConfigDrawerState extends State<SubscriptionConfigDrawer> {
   String _frequency = 'Daily';
   int _quantity = 1;
-  final List<String> _days = ['Monday', 'Wednesday', 'Friday'];
+  List<String> _selectedDays = [];
+  late DateTime _startDate;
+  final List<String> _weekDays = [
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday'
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _startDate = DateTime.now().add(const Duration(days: 1));
+  }
+
+  Future<void> _pickDate() async {
+    final tomorrow = DateTime.now().add(const Duration(days: 1));
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _startDate,
+      firstDate: tomorrow,
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (context, child) => Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: const ColorScheme.light(
+            primary: Color(0xFF68B92E),
+            onPrimary: Colors.white,
+            surface: Colors.white,
+          ),
+        ),
+        child: child!,
+      ),
+    );
+    if (picked != null) setState(() => _startDate = picked);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -310,12 +347,16 @@ class _SubscriptionConfigDrawerState extends State<SubscriptionConfigDrawer> {
           const SizedBox(height: 12),
           Wrap(
             spacing: 8,
-            children: ['Daily', 'Alternate Days', 'Weekly', 'Custom']
+            children: ['Daily', 'Alternate Days', 'Weekly']
                 .map((freq) => ChoiceChip(
                       label: Text(freq),
                       selected: _frequency == freq,
-                      onSelected: (val) => setState(() => _frequency = freq),
-                      selectedColor: const Color(0xFF68B92E).withValues(alpha: 0.2),
+                      onSelected: (_) => setState(() {
+                        _frequency = freq;
+                        if (freq != 'Weekly') _selectedDays = [];
+                      }),
+                      selectedColor:
+                          const Color(0xFF68B92E).withValues(alpha: 0.2),
                       labelStyle: TextStyle(
                           color: _frequency == freq
                               ? const Color(0xFF2E7D32)
@@ -326,6 +367,54 @@ class _SubscriptionConfigDrawerState extends State<SubscriptionConfigDrawer> {
                     ))
                 .toList(),
           ),
+          if (_frequency == 'Weekly') ...[
+            const SizedBox(height: 16),
+            const Text('Select Days',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: _weekDays.map((day) {
+                final short = day.substring(0, 3);
+                final selected = _selectedDays.contains(day);
+                return GestureDetector(
+                  onTap: () => setState(() {
+                    if (selected) {
+                      _selectedDays.remove(day);
+                    } else {
+                      _selectedDays.add(day);
+                    }
+                  }),
+                  child: Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: selected ? const Color(0xFF68B92E) : Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: selected
+                            ? const Color(0xFF68B92E)
+                            : Colors.grey.shade300,
+                      ),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(short,
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: selected ? Colors.white : Colors.black87)),
+                  ),
+                );
+              }).toList(),
+            ),
+            if (_selectedDays.isEmpty)
+              const Padding(
+                padding: EdgeInsets.only(top: 6),
+                child: Text('Please select at least one day',
+                    style: TextStyle(color: Colors.red, fontSize: 12)),
+              ),
+          ],
           const SizedBox(height: 24),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -350,7 +439,40 @@ class _SubscriptionConfigDrawerState extends State<SubscriptionConfigDrawer> {
               ),
             ],
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 24),
+          // Start Date Picker
+          const Text('Start Date',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          const SizedBox(height: 8),
+          GestureDetector(
+            onTap: _pickDate,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                color: const Color(0xFF68B92E).withOpacity(0.05),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF68B92E)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.event_outlined,
+                      color: Color(0xFF68B92E), size: 20),
+                  const SizedBox(width: 12),
+                  Text(
+                    '${_startDate.day.toString().padLeft(2, '0')} / ${_startDate.month.toString().padLeft(2, '0')} / ${_startDate.year}',
+                    style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF2E7D32)),
+                  ),
+                  const Spacer(),
+                  const Text('Tap to change',
+                      style: TextStyle(fontSize: 11, color: Colors.grey)),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 28),
           Consumer(builder: (context, ref, child) {
             return ElevatedButton(
               onPressed: () async {
@@ -361,7 +483,8 @@ class _SubscriptionConfigDrawerState extends State<SubscriptionConfigDrawer> {
                   productId: widget.product.id,
                   frequency: _frequency,
                   quantity: _quantity,
-                  customDays: _frequency == 'Custom' ? _days : [],
+                  customDays: _frequency == 'Weekly' ? _selectedDays : [],
+                  startDate: _startDate,
                 );
                 if (mounted) {
                   navigator.pop();

@@ -83,7 +83,7 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
           ref.invalidate(riderOrdersProvider);
         }
 
-      // ── Going OFFLINE ───────────────────────────────────────────────────
+        // ── Going OFFLINE ───────────────────────────────────────────────────
       } else {
         // NOTE: Active delivery block disabled for testing — re-enable in production
         // final ordersAsyncValue = ref.read(riderOrdersProvider);
@@ -122,7 +122,8 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
 
   void _showSnack(String message, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(message, style: const TextStyle(fontWeight: FontWeight.w500)),
+      content:
+          Text(message, style: const TextStyle(fontWeight: FontWeight.w500)),
       backgroundColor: isError ? Colors.redAccent : AppColors.accentGreen,
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -229,7 +230,8 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
           ),
           backgroundColor: isSuccess ? AppColors.accentGreen : Colors.redAccent,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           duration: const Duration(seconds: 3),
         ),
       );
@@ -371,7 +373,8 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
                                   activeTrackColor: AppColors.accentGreen
                                       .withValues(alpha: 0.5),
                                   activeThumbColor: AppColors.accentGreen,
-                                  onChanged: _isTogglingStatus ? null : _toggleOnline,
+                                  onChanged:
+                                      _isTogglingStatus ? null : _toggleOnline,
                                 ),
                               Text(
                                 _isTogglingStatus
@@ -495,13 +498,14 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
   }
 
   Widget _buildOrderCard(dynamic order) {
-    final rawAssignmentStatus = order['riderAssignmentStatus']?.toString() ?? 'Pending';
-    final assignmentStatus = rawAssignmentStatus.toLowerCase();
-    final orderStatus = (order['status']?.toString() ?? 'Pending').toLowerCase();
-    
-    final isPending = assignmentStatus == 'pending';
-    final isAccepted = assignmentStatus == 'accepted';
-    final isDelivered = orderStatus == 'delivered' || orderStatus == 'completed';
+    final assignmentStatus = order['riderAssignmentStatus'];
+    final orderStatus =
+        (order['status']?.toString() ?? 'Pending').toLowerCase();
+
+    final isPending = assignmentStatus == 'Pending';
+    final isAccepted = assignmentStatus == 'Accepted';
+    final isDelivered =
+        orderStatus == 'delivered' || orderStatus == 'completed';
 
     return GestureDetector(
       onTap: () => Navigator.push(
@@ -511,133 +515,189 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
         ),
       ),
       child: Container(
-      margin: const EdgeInsets.only(bottom: 20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
-          ),
-        ],
-        border: Border.all(color: const Color(0xFFF1F4F8)),
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEBFFD7),
-                        borderRadius: BorderRadius.circular(8),
+        margin: const EdgeInsets.only(bottom: 20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 15,
+              offset: const Offset(0, 5),
+            ),
+          ],
+          border: Border.all(color: const Color(0xFFF1F4F8)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEBFFD7),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              '#${(order['orderId']?.toString() ?? '').length >= 6 ? order['orderId'].toString().substring(order['orderId'].toString().length - 6).toUpperCase() : (order['orderId']?.toString() ?? '').toUpperCase()}',
+                              style: const TextStyle(
+                                color: Color(0xFF439462),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ),
+                          if (order['orderType'] == 'Subscription') ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.purple.shade50,
+                                borderRadius: BorderRadius.circular(6),
+                                border:
+                                    Border.all(color: Colors.purple.shade100),
+                              ),
+                              child: Text(
+                                'SUBSCRIPTION',
+                                style: TextStyle(
+                                  color: Colors.purple.shade700,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 9,
+                                ),
+                              ),
+                            ),
+                          ],
+                          if (order['hasExtras'] == true) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.shade50,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: Colors.blue.shade100),
+                              ),
+                              child: Text(
+                                '+ EXTRAS',
+                                style: TextStyle(
+                                  color: Colors.blue.shade700,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 9,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
-                      child: Text(
-                        '#${(order['orderId']?.toString() ?? '').length >= 6 ? order['orderId'].toString().substring(order['orderId'].toString().length - 6).toUpperCase() : (order['orderId']?.toString() ?? '').toUpperCase()}',
-                        style: const TextStyle(
-                          color: Color(0xFF439462),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                          letterSpacing: 0.5,
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF7E6),
+                          borderRadius: BorderRadius.circular(8),
                         ),
+                        child: Text(
+                          (order['status']?.toString() ?? 'UNKNOWN')
+                              .toUpperCase(),
+                          style: const TextStyle(
+                            color: Color(0xFFFFA000),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 10,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  _buildOrderInfoRow(
+                    Icons.location_on_rounded,
+                    'Delivery Address',
+                    (order['deliveryAddress'] is Map)
+                        ? (order['deliveryAddress']['address']?.toString() ??
+                            'No address provided')
+                        : 'No address provided',
+                  ),
+                  const SizedBox(height: 12),
+                  _buildOrderInfoRow(
+                    Icons.person_rounded,
+                    'Customer',
+                    (order['user'] is Map)
+                        ? (order['user']['fullName']?.toString() ??
+                                order['user']['name']?.toString() ??
+                                'Customer')
+                            .toUpperCase()
+                        : 'CUSTOMER',
+                  ),
+                  _buildOrderInfoRow(
+                    Icons.shopping_bag_rounded,
+                    'Order Type',
+                    (order['orderType']?.toString() ??
+                            order['order_type']?.toString() ??
+                            'Regular')
+                        .toUpperCase(),
+                  ),
+                ],
+              ),
+            ),
+            if (isPending)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () =>
+                            _handleResponse(order['orderId'], 'Accepted'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF68B92E),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        child: const Text('Accept Order',
+                            style: TextStyle(fontWeight: FontWeight.bold)),
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFF7E6),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        (order['status']?.toString() ?? 'UNKNOWN').toUpperCase(),
-                        style: const TextStyle(
-                          color: Color(0xFFFFA000),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 10,
-                          letterSpacing: 0.5,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () =>
+                            _handleResponse(order['orderId'], 'Rejected'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red,
+                          side: const BorderSide(color: Colors.red),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
+                        child: const Text('Reject'),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
-                _buildOrderInfoRow(
-                  Icons.location_on_rounded,
-                  'Delivery Address',
-                  order['deliveryAddress']?['address'] ?? 'No address provided',
-                ),
-                const SizedBox(height: 12),
-                _buildOrderInfoRow(
-                  Icons.person_rounded,
-                  'Customer',
-                  (order['user']?['name']?.toString() ?? 'Customer').toUpperCase(),
-                ),
-                _buildOrderInfoRow(
-                  Icons.shopping_bag_rounded,
-                  'Order Type',
-                  (order['order_type']?.toString() ?? 'Regular').toUpperCase(),
-                ),
-              ],
-            ),
-          ),
-          if (isPending)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () =>
-                          _handleResponse(order['orderId'], 'Accepted'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF68B92E),
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                      child: const Text('Accept Order',
-                          style: TextStyle(fontWeight: FontWeight.bold)),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () =>
-                          _handleResponse(order['orderId'], 'Rejected'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.red,
-                        side: const BorderSide(color: Colors.red),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                      child: const Text('Reject'),
-                    ),
-                  ),
-                ],
-              ),
-            )
-          else if (isAccepted && !isDelivered)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-              child: Column(
-                children: [
-                  if (orderStatus == 'pending' || orderStatus == 'preparing' || orderStatus == 'accepted' || orderStatus == 'ready' || orderStatus == 'assigned')
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
+              )
+            else if (isAccepted && !isDelivered)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                child: Row(
+                  children: [
+                    // Left: Out for Delivery
+                    Expanded(
+                      child: OutlinedButton.icon(
                         onPressed: () async {
                           final result = await ref
                               .read(riderServiceProvider)
@@ -647,82 +707,57 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
                               );
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                              content: Text(result['message'] ?? '🚚 Out for Delivery!'),
+                              content: Text(
+                                  result['message'] ?? '🚚 Out for Delivery!'),
                               backgroundColor: AppColors.accentGreen,
                               behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10)),
                             ));
                             ref.invalidate(riderOrdersProvider);
                           }
                         },
-                        icon: const Icon(Icons.delivery_dining_rounded, size: 18),
-                        label: const Text('Start Delivery (Out for Delivery)',
-                            style: TextStyle(fontWeight: FontWeight.bold)),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF68B92E),
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                        ),
-                      ),
-                    )
-                  else if (orderStatus == 'out for delivery' || orderStatus == 'out_for_delivery')
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: () async {
-                          final result = await ref
-                              .read(riderServiceProvider)
-                              .updateDeliveryStatus(
-                                orderId: order['orderId'],
-                                status: 'Arrived',
-                              );
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                              content: Text(result['message'] ?? '📍 You have arrived!'),
-                              backgroundColor: Colors.orange,
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                            ));
-                            ref.invalidate(riderOrdersProvider);
-                          }
-                        },
-                        icon: const Icon(Icons.location_on_rounded, size: 18),
-                        label: const Text('I Have Arrived',
-                            style: TextStyle(fontWeight: FontWeight.bold)),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.orange,
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                        ),
-                      ),
-                    )
-                  else if (orderStatus == 'arrived')
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: () => _markDelivered(order['orderId']),
-                        icon: const Icon(Icons.check_circle_rounded, size: 18),
-                        label: const Text('Mark as Delivered',
-                            style: TextStyle(fontWeight: FontWeight.bold)),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF68B92E),
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        icon:
+                            const Icon(Icons.delivery_dining_rounded, size: 16),
+                        label: const Text('Out for\nDelivery',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                fontSize: 11, fontWeight: FontWeight.bold)),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.accentGreen,
+                          side: BorderSide(color: AppColors.accentGreen),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
                       ),
                     ),
-                ],
+                    const SizedBox(width: 12),
+                    // Right: Mark as Delivered
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () => _markDelivered(order['orderId']),
+                        icon: const Icon(Icons.check_circle_rounded, size: 16),
+                        label: const Text('Mark as\nDelivered',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                fontSize: 11, fontWeight: FontWeight.bold)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF68B92E),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
-    ),
     ).animate().fadeIn(duration: 500.ms).slideY(begin: 0.1, end: 0);
   }
 

@@ -3,6 +3,7 @@ import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:geolocator/geolocator.dart';
 import 'rider_service.dart';
 import '../network/api_client.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 @pragma('vm:entry-point')
 void startCallback() {
@@ -14,6 +15,11 @@ class LocationTaskHandler extends TaskHandler {
 
   @override
   Future<void> onStart(DateTime timestamp, TaskStarter taskStarter) async {
+    // Since this runs in a separate entry-point isolate, we must ensure dotenv is loaded
+    // to allow ApiClient to read the BASE_URL.
+    if (!dotenv.isInitialized) {
+      await dotenv.load();
+    }
     final apiClient = ApiClient();
     _riderService = RiderService(apiClient);
   }

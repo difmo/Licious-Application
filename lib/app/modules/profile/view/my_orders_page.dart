@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/services/order_service.dart';
+import '../../orders/view/order_tracking_page.dart';
 
 // Live order data provider
 final myOrdersProvider = FutureProvider.autoDispose<List<dynamic>>((ref) async {
@@ -29,7 +30,7 @@ class MyOrdersPage extends ConsumerWidget {
               icon: Container(
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.8),
+                  color: Colors.white.withOpacity(0.8),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.arrow_back_ios_new,
@@ -216,7 +217,7 @@ class _OrderCardState extends State<_OrderCard>
             border: Border.all(color: const Color(0xFFEEEEEE), width: 1.5),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF2D3436).withValues(alpha: 0.05),
+                color: const Color(0xFF2D3436).withOpacity(0.05),
                 blurRadius: 15,
                 offset: const Offset(0, 5),
               ),
@@ -268,10 +269,10 @@ class _OrderCardState extends State<_OrderCard>
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: _statusColor().withValues(alpha: 0.1),
+                              color: _statusColor().withOpacity(0.1),
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
-                                  color: _statusColor().withValues(alpha: 0.4)),
+                                  color: _statusColor().withOpacity(0.4)),
                             ),
                             child: Text(
                               _orderStatus(),
@@ -319,20 +320,32 @@ class _OrderCardState extends State<_OrderCard>
                             ],
                           ),
                           if (!_isDelivered())
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                    color: const Color(0xFFE67E22), width: 1.5),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: const Text(
-                                'Track Order',
-                                style: TextStyle(
-                                  color: Color(0xFF2D3436),
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
+                            GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        OrderTrackingPage(order: widget.order),
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                      color: const Color(0xFFE67E22),
+                                      width: 1.5),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: const Text(
+                                  'Track Order',
+                                  style: TextStyle(
+                                    color: Color(0xFF2D3436),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
                                 ),
                               ),
                             )
