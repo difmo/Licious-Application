@@ -19,4 +19,7 @@ class AppRoutes {
   static const String riderHome = '/rider-home';
   static const String topUp = '/top-up';
   static const String walletStatement = '/wallet-statement';
+  static const String activeOrders = '/active-orders';
+  static const String trackOrder = '/track-order';
+  static const String locationPicker = '/location-picker';
 }

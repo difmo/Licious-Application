@@ -1,18 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-// import 'package:geolocator/geolocator.dart'; // disabled for testing
 import '../../auth/provider/auth_provider.dart';
 import '../../../data/services/rider_service.dart';
-// import '../../../data/services/location_tracking_service.dart'; // disabled for testing
+import '../../../data/services/socket_service.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../routes/app_routes.dart';
 import 'rider_order_details_page.dart';
+import 'rider_history_page.dart'; // to invalidate deliveryHistoryProvider
 
 final riderOrdersProvider =
     FutureProvider.autoDispose<List<dynamic>>((ref) async {
   final riderService = ref.watch(riderServiceProvider);
-  return riderService.getAssignedOrders();
+  final all = await riderService.getAssignedOrders();
+  // Only show orders that are actively assigned (not delivered/cancelled/rejected)
+  const doneStatuses = {'delivered', 'cancelled', 'rejected', 'completed'};
+  return all.where((o) {
+    final s = (o['status']?.toString() ?? '').toLowerCase();
+    return !doneStatuses.contains(s);
+  }).toList();
 });
 
 class RiderHomePage extends ConsumerStatefulWidget {
@@ -26,14 +32,68 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
   bool _isOnline = false;
   bool _isTogglingStatus = false;
 
-  // NOTE: _activeStatuses, _ensureLocationPermission, _checkLocationPermission,
-  // and _hasActiveDelivery are all disabled for testing. Re-enable in production.
-  // static const _activeStatuses = {'assigned', 'out_for_delivery', 'arrived'};
-
   @override
   void initState() {
     super.initState();
-    // _checkLocationPermission(); // disabled for testing
+    WidgetsBinding.instance.addPostFrameCallback((_) => _initSocket());
+  }
+
+  void _initSocket() {
+    final authState = ref.read(authProvider);
+    if (authState is! AuthAuthenticated) return;
+
+    final socket = ref.read(socketServiceProvider);
+    final userId = authState.user.id;
+    final riderId = userId; // rider ID == user ID for riders
+
+    // Join the rider's personal room to receive new order assignments
+    socket.joinRiderRoom(riderId);
+    // Also join user room for generic order updates
+    socket.joinUserRoom(userId);
+
+    // 🔔 New order dispatched to this rider
+    socket.onNewOrderAssigned((data) {
+      if (!mounted) return;
+      ref.invalidate(riderOrdersProvider);
+      _showNewOrderBanner(data);
+    });
+
+    // 🔄 Any order status changed (accept/pickup/deliver)
+    socket.onOrderUpdate((data) {
+      if (!mounted) return;
+      ref.invalidate(riderOrdersProvider);
+    });
+  }
+
+  void _showNewOrderBanner(dynamic data) {
+    final orderId = data?['orderId']?.toString() ?? '';
+    final shortId = orderId.length >= 6 ? orderId.substring(orderId.length - 6).toUpperCase() : orderId.toUpperCase();
+    final customer = data?['customerName']?.toString() ?? 'A customer';
+    final address = (data?['deliveryAddress'] is Map)
+        ? data['deliveryAddress']['address']?.toString() ?? ''
+        : data?['deliveryAddress']?.toString() ?? '';
+
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 6),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        content: _NewOrderBanner(
+          shortId: shortId,
+          customer: customer,
+          address: address,
+        ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    final socket = ref.read(socketServiceProvider);
+    socket.offNewOrderAssigned();
+    socket.offOrderUpdate();
+    super.dispose();
   }
 
   /*  ── Location helpers (re-enable for production) ──────────────────────────
@@ -236,7 +296,9 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
         ),
       );
       if (isSuccess) {
+        // Refresh assigned orders (removes this order) AND history tab
         ref.invalidate(riderOrdersProvider);
+        ref.invalidate(deliveryHistoryProvider);
       }
     }
   }
@@ -834,5 +896,122 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
         ],
       ),
     ).animate().fadeIn();
+  }
+}
+
+// ── New Order Banner ──────────────────────────────────────────────────────────
+
+/// Shown inside a SnackBar when `newOrderAssigned` arrives via Socket.IO.
+class _NewOrderBanner extends StatelessWidget {
+  final String shortId;
+  final String customer;
+  final String address;
+
+  const _NewOrderBanner({
+    required this.shortId,
+    required this.customer,
+    required this.address,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF439462), Color(0xFF68B92E)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF68B92E).withValues(alpha: 0.4),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // Pulsing bell icon
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.notifications_active_rounded,
+                color: Colors.white, size: 26),
+          )
+              .animate(onPlay: (c) => c.repeat(reverse: true))
+              .scaleXY(begin: 1.0, end: 1.15, duration: 700.ms),
+
+          const SizedBox(width: 14),
+
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    const Text(
+                      '🛵  New Order!',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 15,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.25),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '#$shortId',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                if (customer.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 3),
+                    child: Text(
+                      customer,
+                      style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.9),
+                          fontSize: 12),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                if (address.isNotEmpty)
+                  Text(
+                    address,
+                    style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.75),
+                        fontSize: 11),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    )
+        .animate()
+        .slideY(begin: -0.5, end: 0, duration: 400.ms, curve: Curves.easeOut)
+        .fadeIn(duration: 300.ms);
   }
 }

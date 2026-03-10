@@ -105,7 +105,6 @@ class _ProductGrid extends StatelessWidget {
               ),
             );
           },
-          onFavorite: () => cart.toggleFavorite(product.id),
         )
             .animate(delay: (50 * index).ms)
             .fadeIn(duration: 300.ms)

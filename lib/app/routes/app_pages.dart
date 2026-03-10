@@ -19,6 +19,9 @@ import '../modules/rider/view/rider_main_page.dart';
 
 import '../modules/wallet/view/top_up_page.dart';
 import '../modules/wallet/view/wallet_statement_screen.dart';
+import '../modules/orders/view/active_orders_page.dart';
+import '../modules/orders/view/track_order_page.dart';
+import '../modules/location/view/location_picker_screen.dart';
 
 class AppPages {
   static Map<String, WidgetBuilder> get routes => {
@@ -40,5 +43,15 @@ class AppPages {
         AppRoutes.riderHome: (context) => const RiderMainPage(),
         AppRoutes.topUp: (context) => const TopUpPage(),
         AppRoutes.walletStatement: (context) => const WalletStatementScreen(),
+        AppRoutes.activeOrders: (context) => const ActiveOrdersPage(),
+        AppRoutes.trackOrder: (context) {
+          final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+          return TrackOrderPage(
+            orderId: args?['orderId'] ?? '',
+            deliveryAddress: args?['address'],
+            status: args?['status'],
+          );
+        },
+        AppRoutes.locationPicker: (context) => const LocationPickerScreen(),
       };
 }

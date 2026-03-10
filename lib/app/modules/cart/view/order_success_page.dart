@@ -3,7 +3,8 @@ import '../../home/controller/main_controller.dart';
 import 'order_tracking_page.dart';
 
 class OrderSuccessPage extends StatelessWidget {
-  const OrderSuccessPage({super.key});
+  final Map<String, dynamic>? order;
+  const OrderSuccessPage({super.key, this.order});
 
   @override
   Widget build(BuildContext context) {
@@ -75,7 +76,7 @@ class OrderSuccessPage extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const OrderTrackingPage(),
+                      builder: (context) => OrderTrackingPage(order: order),
                     ),
                   );
                 },

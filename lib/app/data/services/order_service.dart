@@ -114,6 +114,33 @@ class OrderService {
       };
     }
   }
+  Future<List<dynamic>> getActiveOrders() async {
+    try {
+      final response = await _apiClient.get(
+        '${ApiClient.baseUrl}/orders/active',
+        requiresAuth: true,
+      );
+      
+      if (response is List) {
+        return response;
+      }
+      
+      if (response is Map) {
+        final directList = response['orders'] ?? response['data'] ?? response['activeOrders'] ?? response['items'];
+        if (directList is List) return directList;
+        
+        if (response['data'] is Map) {
+          final nestedList = response['data']['orders'] ?? response['data']['activeOrders'];
+          if (nestedList is List) return nestedList;
+        }
+      }
+      
+      return [];
+    } catch (e) {
+      debugPrint('Error fetching active orders: $e');
+      return [];
+    }
+  }
 }
 
 final orderServiceProvider = Provider<OrderService>((ref) {
@@ -122,4 +149,8 @@ final orderServiceProvider = Provider<OrderService>((ref) {
 
 final myOrdersProvider = FutureProvider.autoDispose<List<dynamic>>((ref) {
   return ref.watch(orderServiceProvider).getMyOrders();
+});
+
+final activeOrdersProvider = FutureProvider.autoDispose<List<dynamic>>((ref) {
+  return ref.watch(orderServiceProvider).getActiveOrders();
 });

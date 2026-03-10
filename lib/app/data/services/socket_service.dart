@@ -1,78 +1,153 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
-import '../../core/utils/app_logger.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../../../core/api/api_provider.dart';
+import '../../../core/storage/secure_storage_service.dart';
 
+/// Singleton Socket.IO wrapper — connects once per session.
+/// Uses the auth token in headers so the server can authenticate the client.
 class SocketService {
-  late io.Socket socket;
+  static const String _orderUpdateEvent = 'orderUpdate';
+  static const String _riderAssignedEvent = 'riderAssigned';
+  static const String _newOrderEvent = 'newOrderAssigned'; // rider receives new order
 
-  SocketService() {
-    _initSocket();
+  io.Socket? _socket;
+  bool _initialized = false;
+
+  // ── Connection ─────────────────────────────────────────────────────────────
+
+  Future<void> connect(SecureStorageService storage) async {
+    if (_initialized && (_socket?.connected ?? false)) return;
+
+    final token = await storage.getAccessToken();
+    final baseUrl = dotenv.maybeGet('SOCKET_URL') ??
+        'https://shrimpbite-socket-server.onrender.com';
+
+    _socket?.disconnect();
+
+    final Map<String, dynamic> headers = token != null
+        ? {'Authorization': 'Bearer $token'}
+        : {};
+
+    _socket = io.io(
+      baseUrl,
+      <String, dynamic>{
+        'transports': ['websocket'],
+        'autoConnect': false,
+        'extraHeaders': headers,
+      },
+    );
+
+    _socket!.onConnect((_) => debugPrint('✅ SocketService connected'));
+    _socket!.onDisconnect((_) => debugPrint('🔌 SocketService disconnected'));
+    _socket!.onConnectError((err) => debugPrint('⚠️ SocketService connect error: $err'));
+    _socket!.onError((err) => debugPrint('💥 SocketService error: $err'));
+
+    _socket!.connect();
+    _initialized = true;
   }
 
-  void _initSocket() {
-    AppLogger.info('🔌 Initializing Socket Connection...');
-    socket = io.io(
-        // "https://shrimpbite-socket-server.onrender.com",
-        "http://localhost:5001",
-        <String, dynamic>{
-          'transports': ['websocket'],
-          'autoConnect': true,
-        });
-
-    socket.onConnect((_) {
-      AppLogger.info('✅ Socket Connected successfully');
-    });
-
-    socket.onDisconnect((_) {
-      AppLogger.warning('❌ Socket Disconnected');
-    });
-
-    socket.onConnectError(
-        (err) => AppLogger.error('⚠️ Socket Connection Error', err));
-    socket.onError((err) => AppLogger.error('💥 Socket Error', err));
+  void disconnect() {
+    _socket?.disconnect();
+    _initialized = false;
   }
 
-  // ── Order room ────────────────────────────────────
+  bool get isConnected => _socket?.connected ?? false;
+
+  // ── Room Management ───────────────────────────────────────────────────────
+
+  /// JOIN user room — call immediately after login for all-orders updates.
+  /// `socket.emit("join", "user_{userId}")`
+  void joinUserRoom(String userId) {
+    _emit('join', 'user_$userId');
+    debugPrint('👤 Joined user room: user_$userId');
+  }
+
+  /// JOIN rider room — rider receives new order assignments here.
+  /// `socket.emit("join", "rider_{riderId}")`
+  void joinRiderRoom(String riderId) {
+    _emit('join', 'rider_$riderId');
+    debugPrint('🛵 Joined rider room: rider_$riderId');
+  }
+
+  /// JOIN specific order room — for real-time status during tracking.
+  /// `socket.emit("join", "order_{orderId}")`
   void joinOrderRoom(String orderId) {
-    socket.emit('join', 'order_$orderId');
-    AppLogger.info('📦 Joined order room: order_$orderId');
+    _emit('join', 'order_$orderId');
+    debugPrint('📦 Joined order room: order_$orderId');
   }
 
   void leaveOrderRoom(String orderId) {
-    socket.emit('leave', 'order_$orderId');
+    _emit('leave', 'order_$orderId');
   }
 
-  // ── User personal room (for rider-assigned popup) ─
-  void joinUserRoom(String userId) {
-    socket.emit('join', 'user_$userId');
-    AppLogger.info('👤 Joined user room: user_$userId');
+  // ── Rider location broadcasting ──────────────────────────────────────────
+
+  /// Rider emits their GPS coordinates during active delivery.
+  void emitRiderLocation({
+    required String orderId,
+    required double lat,
+    required double lng,
+  }) {
+    _emit('riderLocation', {'orderId': orderId, 'lat': lat, 'lng': lng});
   }
 
-  // ── Rider room ────────────────────────────────────
-  void joinRiderRoom(String riderId) {
-    socket.emit('join', 'rider_$riderId');
-    AppLogger.info('🛵 Joined rider room: rider_$riderId');
+  // ── Listeners ─────────────────────────────────────────────────────────────
+
+  /// `orderUpdate` — fires on every status change.
+  /// Payload: `{ status: "Out for Delivery", orderId: "ORD-...", data: {...} }`
+  void onOrderUpdate(void Function(dynamic) callback) {
+    _socket?.on(_orderUpdateEvent, callback);
   }
 
-  // ── Event listeners ───────────────────────────────
-  void onOrderUpdate(Function(dynamic) callback) {
-    socket.on('orderUpdate', callback);
+  void offOrderUpdate() => _socket?.off(_orderUpdateEvent);
+
+  /// `riderAssigned` — fires when a rider is assigned to a user's order.
+  /// Payload: `{ riderId, riderName, riderPhone, orderId }`
+  void onRiderAssigned(void Function(dynamic) callback) {
+    _socket?.on(_riderAssignedEvent, callback);
   }
 
-  /// Fires when a rider accepts an order — shows popup + sound for user
-  void onRiderAssigned(Function(dynamic) callback) {
-    socket.on('riderAssigned', callback);
+  void offRiderAssigned() => _socket?.off(_riderAssignedEvent);
+
+  /// `newOrderAssigned` — fires on the RIDER side when a new order is dispatched.
+  /// Payload: `{ orderId, customerName, deliveryAddress, ... }`
+  void onNewOrderAssigned(void Function(dynamic) callback) {
+    _socket?.on(_newOrderEvent, callback);
   }
 
-  void offEvent(String event) {
-    socket.off(event);
+  void offNewOrderAssigned() => _socket?.off(_newOrderEvent);
+
+  /// Generic remove listener.
+  void offEvent(String event) => _socket?.off(event);
+
+  // ── Internal ──────────────────────────────────────────────────────────────
+
+  void _emit(String event, dynamic data) {
+    if (_socket == null || !isConnected) {
+      debugPrint('⚠️ SocketService._emit skipped — not connected ($event)');
+      return;
+    }
+    _socket!.emit('emit', {'event': event, 'data': data});
   }
 
   void dispose() {
-    socket.dispose();
+    _socket?.dispose();
+    _socket = null;
+    _initialized = false;
   }
 }
 
+// ── Provider ──────────────────────────────────────────────────────────────────
+
 final socketServiceProvider = Provider<SocketService>((ref) {
-  return SocketService();
+  final service = SocketService();
+
+  // Connect when the provider is first read
+  final storage = ref.read(storageServiceProvider);
+  service.connect(storage);
+
+  ref.onDispose(service.dispose);
+  return service;
 });

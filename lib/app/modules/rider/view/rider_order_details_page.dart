@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:url_launcher/url_launcher.dart';
-
 import '../../../core/constants/app_colors.dart';
 import '../../../data/services/rider_service.dart';
+import '../../../data/services/socket_service.dart';
 import 'rider_home_page.dart';
 
 final orderDetailsProvider = FutureProvider.autoDispose
@@ -25,6 +25,56 @@ class RiderOrderDetailsPage extends ConsumerStatefulWidget {
 
 class _RiderOrderDetailsPageState extends ConsumerState<RiderOrderDetailsPage> {
   bool _isLoading = false;
+  /// Live-updated status from Socket.IO (falls back to the initial order status)
+  late String _liveStatus;
+
+  @override
+  void initState() {
+    super.initState();
+    _liveStatus = widget.order['status']?.toString() ?? '';
+    WidgetsBinding.instance.addPostFrameCallback((_) => _initSocket());
+  }
+
+  void _initSocket() {
+    final orderId = widget.order['orderId']?.toString() ?? '';
+    if (orderId.isEmpty) return;
+
+    final socket = ref.read(socketServiceProvider);
+    // Join the order-specific room for real-time updates
+    socket.joinOrderRoom(orderId);
+
+    // Listen for status changes emitted by the server
+    socket.onOrderUpdate((data) {
+      if (!mounted) return;
+      final incomingId = data?['orderId']?.toString() ?? '';
+      if (incomingId != orderId && incomingId.isNotEmpty) return; // not our order
+
+      final newStatus = data?['status']?.toString() ?? '';
+      if (newStatus.isNotEmpty && newStatus != _liveStatus) {
+        setState(() => _liveStatus = newStatus);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('📍 Status updated: $newStatus'),
+          backgroundColor: AppColors.accentGreen,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          duration: const Duration(seconds: 2),
+        ));
+      }
+
+      // Also refresh the home list so it stays in sync
+      ref.invalidate(riderOrdersProvider);
+    });
+  }
+
+  @override
+  void dispose() {
+    final orderId = widget.order['orderId']?.toString() ?? '';
+    if (orderId.isNotEmpty) {
+      ref.read(socketServiceProvider).leaveOrderRoom(orderId);
+      ref.read(socketServiceProvider).offOrderUpdate();
+    }
+    super.dispose();
+  }
 
   Future<void> _updateStatus(String status) async {
     setState(() => _isLoading = true);
@@ -94,7 +144,10 @@ class _RiderOrderDetailsPageState extends ConsumerState<RiderOrderDetailsPage> {
     final deliveryAddress = (deliveryAddressMap is Map)
         ? (deliveryAddressMap['address']?.toString() ?? 'N/A')
         : 'N/A';
-    final status = order['status']?.toString() ?? '';
+    // Use live status from socket, falls back to initial order status
+    final status = _liveStatus.isNotEmpty
+        ? _liveStatus
+        : (order['status']?.toString() ?? '');
     final orderId = order['orderId']?.toString() ?? '';
     final shortId = orderId.length >= 6
         ? orderId.substring(orderId.length - 6).toUpperCase()

@@ -444,7 +444,7 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
                               cartProvider.clearCart();
                               navigator.pushAndRemoveUntil(
                                   MaterialPageRoute(
-                                      builder: (_) => const OrderSuccessPage()),
+                                      builder: (_) => OrderSuccessPage(order: response['order'])),
                                   (route) => route.isFirst);
                             } else {
                               throw Exception(response['message'] ??

@@ -4,6 +4,7 @@ import './profile_detail_page.dart';
 import './edit_profile_page.dart';
 import '../../../data/services/db_service.dart';
 import '../../../data/services/order_service.dart';
+import '../../../data/services/favorites_service.dart';
 import './my_orders_page.dart';
 import './transactions_page.dart';
 import './saved_cards_page.dart';
@@ -52,7 +53,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               ),
               const SizedBox(height: 30),
               const _ActiveOrdersAndSubscriptions(),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
               const _WalletSection(),
               const SizedBox(height: 24),
               const Text(
@@ -150,7 +151,9 @@ class _ActiveOrdersAndSubscriptions extends ConsumerWidget {
   const _ActiveOrdersAndSubscriptions();
 
   void _navigateToDetail(BuildContext context, String title) {
-    if (title == 'My Orders' || title == 'Active Orders') {
+    if (title == 'Active Orders') {
+      Navigator.pushNamed(context, AppRoutes.activeOrders);
+    } else if (title == 'My Orders') {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const MyOrdersPage()),
@@ -172,14 +175,11 @@ class _ActiveOrdersAndSubscriptions extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final ordersAsync = ref.watch(myOrdersProvider);
+    final activeOrdersAsync = ref.watch(activeOrdersProvider);
     
-    // Count only active orders (not delivered or cancelled)
-    final activeOrdersCount = ordersAsync.maybeWhen(
-      data: (orders) => orders.where((o) {
-        final status = o['status']?.toString().toLowerCase() ?? '';
-        return status != 'delivered' && status != 'cancelled';
-      }).length,
+    // Count active orders from the dedicated provider
+    final activeOrdersCount = activeOrdersAsync.maybeWhen(
+      data: (orders) => orders.length,
       orElse: () => 0,
     );
 
@@ -383,17 +383,25 @@ class _WalletSection extends StatelessWidget {
   }
 }
 
-class _QuickActionsRow extends StatelessWidget {
+class _QuickActionsRow extends ConsumerWidget {
   const _QuickActionsRow();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final favCount = ref.watch(favoriteProductsProvider).maybeWhen(
+      data: (list) => list.length,
+      orElse: () => 0,
+    );
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: const [
-        _QuickActionBtn(title: 'Reorder\nFavorite', navigateTo: 'My Favorites'),
-        _QuickActionBtn(title: 'View All\nOrders', navigateTo: 'My Orders'),
-        _QuickActionBtn(title: 'Edit\nAddress', navigateTo: 'My Address'),
+      children: [
+        _QuickActionBtn(
+          title: 'Favorite\nProducts',
+          navigateTo: 'My Favorites',
+          badgeCount: favCount,
+        ),
+        const _QuickActionBtn(title: 'View All\nOrders', navigateTo: 'My Orders'),
+        const _QuickActionBtn(title: 'Edit\nAddress', navigateTo: 'My Address'),
       ],
     );
   }
@@ -402,11 +410,18 @@ class _QuickActionsRow extends StatelessWidget {
 class _QuickActionBtn extends StatelessWidget {
   final String title;
   final String navigateTo;
+  final int badgeCount;
 
-  const _QuickActionBtn({required this.title, required this.navigateTo});
+  const _QuickActionBtn({
+    required this.title,
+    required this.navigateTo,
+    this.badgeCount = 0,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final bool isFavBtn = navigateTo == 'My Favorites';
+
     return GestureDetector(
       onTap: () {
         if (navigateTo == 'My Orders') {
@@ -414,7 +429,7 @@ class _QuickActionBtn extends StatelessWidget {
             context,
             MaterialPageRoute(builder: (context) => const MyOrdersPage()),
           );
-        } else if (navigateTo == 'My Favorites') {
+        } else if (isFavBtn) {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const FavoritesPage()),
@@ -452,14 +467,46 @@ class _QuickActionBtn extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              navigateTo == 'My Favorites' || navigateTo == 'Reorder Favorite'
-                  ? Icons.favorite_rounded
-                  : navigateTo == 'My Orders'
-                      ? Icons.receipt_long_rounded
-                      : Icons.location_on_rounded,
-              color: const Color(0xFF114F3B),
-              size: 20,
+            // Icon with optional badge
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Icon(
+                  isFavBtn
+                      ? (badgeCount > 0
+                          ? Icons.favorite_rounded
+                          : Icons.favorite_border_rounded)
+                      : navigateTo == 'My Orders'
+                          ? Icons.receipt_long_rounded
+                          : Icons.location_on_rounded,
+                  color: isFavBtn && badgeCount > 0
+                      ? Colors.red
+                      : const Color(0xFF114F3B),
+                  size: 20,
+                ),
+                if (badgeCount > 0)
+                  Positioned(
+                    top: -6,
+                    right: -8,
+                    child: Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                      constraints:
+                          const BoxConstraints(minWidth: 16, minHeight: 16),
+                      child: Text(
+                        '$badgeCount',
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 8,
+                            fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: 4),
             Text(

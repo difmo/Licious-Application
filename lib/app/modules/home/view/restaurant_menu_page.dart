@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/shop_product_model.dart';
 import '../../../data/models/product_model.dart';
 import '../../../data/services/db_service.dart';
+import '../../../data/services/favorites_service.dart';
 import '../provider/shop_provider.dart';
 import '../widgets/cart_summary_bar.dart';
 import '../widgets/quantity_selector.dart';
@@ -341,7 +342,6 @@ class _ProductCard extends ConsumerStatefulWidget {
 }
 
 class _ProductCardState extends ConsumerState<_ProductCard> {
-  bool _isFavorite = false;
 
   @override
   Widget build(BuildContext context) {
@@ -380,25 +380,11 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
                       )
                     : _imagePlaceholder(),
               ),
-              // Favorite button
+              // Favorite button — wired to backend
               Positioned(
                 top: 6,
                 right: 6,
-                child: GestureDetector(
-                  onTap: () => setState(() => _isFavorite = !_isFavorite),
-                  child: Container(
-                    padding: const EdgeInsets.all(5),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.9),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      _isFavorite ? Icons.favorite : Icons.favorite_border,
-                      size: 14,
-                      color: _isFavorite ? Colors.red : Colors.grey,
-                    ),
-                  ),
-                ),
+                child: _FavoriteHeart(productId: p.id),
               ),
               // Out of stock badge
               if (!p.isAvailable)
@@ -567,6 +553,109 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
     );
   }
 }
+
+// ── Favorite Heart Button ─────────────────────────────────────────────────────
+
+/// Standalone heart-toggle widget.
+///  - Seeds its local `_isFav` from [favoritesProvider] once loaded.
+///  - Responds to taps IMMEDIATELY (no wait for provider loading).
+///  - Calls [FavoritesNotifier.toggle] which does: optimistic update → API → invalidate products list.
+class _FavoriteHeart extends ConsumerStatefulWidget {
+  final String productId;
+  const _FavoriteHeart({required this.productId});
+
+  @override
+  ConsumerState<_FavoriteHeart> createState() => _FavoriteHeartState();
+}
+
+class _FavoriteHeartState extends ConsumerState<_FavoriteHeart>
+    with SingleTickerProviderStateMixin {
+  bool? _localFav; // null = not yet seeded
+  late AnimationController _bounce;
+  late Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _bounce = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 150),
+      reverseDuration: const Duration(milliseconds: 150),
+    );
+    _scale = Tween<double>(begin: 1.0, end: 1.35)
+        .chain(CurveTween(curve: Curves.easeOut))
+        .animate(_bounce);
+  }
+
+  @override
+  void dispose() {
+    _bounce.dispose();
+    super.dispose();
+  }
+
+  void _onTap() async {
+    // Animate the heart
+    await _bounce.forward();
+    _bounce.reverse();
+
+    // Flip local state immediately (instant visual feedback)
+    setState(() => _localFav = !(_localFav ?? false));
+
+    // Delegate the actual API call + provider update
+    await ref.read(favoritesProvider.notifier).toggle(widget.productId);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Sync local state from provider once it's loaded
+    final favsValue = ref.watch(favoritesProvider);
+    favsValue.whenData((ids) {
+      final fromProvider = ids.contains(widget.productId);
+      if (_localFav == null) {
+        // First time data is ready — seed local state
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) setState(() => _localFav = fromProvider);
+        });
+      }
+    });
+
+    // Use local state if seeded, else fall back to provider (or false while loading)
+    final bool isFav = _localFav ??
+        (favsValue.asData?.value.contains(widget.productId) ?? false);
+
+    return GestureDetector(
+      onTap: _onTap,
+      child: ScaleTransition(
+        scale: _scale,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: isFav
+                ? Colors.red.shade50.withValues(alpha: 0.95)
+                : Colors.white.withValues(alpha: 0.9),
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: isFav
+                    ? Colors.red.withValues(alpha: 0.3)
+                    : Colors.black.withValues(alpha: 0.08),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Icon(
+            isFav ? Icons.favorite : Icons.favorite_border,
+            size: 15,
+            color: isFav ? Colors.red : Colors.grey.shade500,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 
 // ── Products Loading Grid ─────────────────────────────────────────────────────
 
