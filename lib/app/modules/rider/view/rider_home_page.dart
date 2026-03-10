@@ -495,11 +495,12 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
   }
 
   Widget _buildOrderCard(dynamic order) {
-    final assignmentStatus = order['riderAssignmentStatus'];
+    final rawAssignmentStatus = order['riderAssignmentStatus']?.toString() ?? 'Pending';
+    final assignmentStatus = rawAssignmentStatus.toLowerCase();
     final orderStatus = (order['status']?.toString() ?? 'Pending').toLowerCase();
     
-    final isPending = assignmentStatus == 'Pending';
-    final isAccepted = assignmentStatus == 'Accepted';
+    final isPending = assignmentStatus == 'pending';
+    final isAccepted = assignmentStatus == 'accepted';
     final isDelivered = orderStatus == 'delivered' || orderStatus == 'completed';
 
     return GestureDetector(
@@ -631,64 +632,91 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
           else if (isAccepted && !isDelivered)
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-              child: Row(
+              child: Column(
                 children: [
-                  // Left: Out for Delivery
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () async {
-                        final result = await ref
-                            .read(riderServiceProvider)
-                            .updateDeliveryStatus(
-                              orderId: order['orderId'],
-                              status: 'Out for Delivery',
-                            );
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                            content: Text(result['message'] ??
-                                '🚚 Out for Delivery!'),
-                            backgroundColor: AppColors.accentGreen,
-                            behavior: SnackBarBehavior.floating,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10)),
-                          ));
-                          ref.invalidate(riderOrdersProvider);
-                        }
-                      },
-                      icon: const Icon(Icons.delivery_dining_rounded, size: 16),
-                      label: const Text('Out for\nDelivery',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                              fontSize: 11, fontWeight: FontWeight.bold)),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.accentGreen,
-                        side: BorderSide(color: AppColors.accentGreen),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                  if (orderStatus == 'pending' || orderStatus == 'preparing' || orderStatus == 'accepted' || orderStatus == 'ready' || orderStatus == 'assigned')
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          final result = await ref
+                              .read(riderServiceProvider)
+                              .updateDeliveryStatus(
+                                orderId: order['orderId'],
+                                status: 'Out for Delivery',
+                              );
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                              content: Text(result['message'] ?? '🚚 Out for Delivery!'),
+                              backgroundColor: AppColors.accentGreen,
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ));
+                            ref.invalidate(riderOrdersProvider);
+                          }
+                        },
+                        icon: const Icon(Icons.delivery_dining_rounded, size: 18),
+                        label: const Text('Start Delivery (Out for Delivery)',
+                            style: TextStyle(fontWeight: FontWeight.bold)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF68B92E),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                      ),
+                    )
+                  else if (orderStatus == 'out for delivery' || orderStatus == 'out_for_delivery')
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          final result = await ref
+                              .read(riderServiceProvider)
+                              .updateDeliveryStatus(
+                                orderId: order['orderId'],
+                                status: 'Arrived',
+                              );
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                              content: Text(result['message'] ?? '📍 You have arrived!'),
+                              backgroundColor: Colors.orange,
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ));
+                            ref.invalidate(riderOrdersProvider);
+                          }
+                        },
+                        icon: const Icon(Icons.location_on_rounded, size: 18),
+                        label: const Text('I Have Arrived',
+                            style: TextStyle(fontWeight: FontWeight.bold)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                      ),
+                    )
+                  else if (orderStatus == 'arrived')
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () => _markDelivered(order['orderId']),
+                        icon: const Icon(Icons.check_circle_rounded, size: 18),
+                        label: const Text('Mark as Delivered',
+                            style: TextStyle(fontWeight: FontWeight.bold)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF68B92E),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  // Right: Mark as Delivered
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () => _markDelivered(order['orderId']),
-                      icon: const Icon(Icons.check_circle_rounded, size: 16),
-                      label: const Text('Mark as\nDelivered',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                              fontSize: 11, fontWeight: FontWeight.bold)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF68B92E),
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ),

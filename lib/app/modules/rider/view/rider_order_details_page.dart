@@ -211,7 +211,7 @@ class _RiderOrderDetailsPageState extends ConsumerState<RiderOrderDetailsPage> {
                         ),
                       ),
                     )
-                  else if (status.toLowerCase() == 'out for delivery')
+                  else if (status.toLowerCase() == 'out for delivery' || status.toLowerCase() == 'out_for_delivery')
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
