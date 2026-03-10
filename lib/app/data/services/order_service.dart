@@ -39,13 +39,50 @@ class OrderService {
   Future<List<dynamic>> getMyOrders() async {
     try {
       final response = await _apiClient.get(
-        '${ApiClient.baseUrl}/orders/my-orders',
+        '${ApiClient.baseUrl}/orders/history',
         requiresAuth: true,
       );
-      // The backend returns { "success": true, "orders": [...] }
-      return response['orders'] ?? response['data'] ?? [];
-    } catch (e) {
-      debugPrint('Error fetching orders: $e');
+      
+      debugPrint('OrderHistory Response Type: ${response.runtimeType}');
+      
+      if (response is List) {
+        return response;
+      }
+      
+      if (response is Map) {
+        debugPrint('OrderHistory Keys: ${response.keys.toList()}');
+        
+        // Check various common keys
+        final directList = response['orders'] ?? response['data'] ?? response['history'] ?? response['items'];
+        if (directList is List) return directList;
+        
+        // Handle nested data: { "data": { "orders": [...] } }
+        if (response['data'] is Map) {
+          final nestedList = response['data']['orders'] ?? response['data']['history'] ?? response['data']['items'];
+          if (nestedList is List) return nestedList;
+        }
+        
+        // If the map itself looks like a single order or doesn't have list keys
+        return [];
+      }
+      
+      return [];
+    } catch (e, stack) {
+      debugPrint('Error fetching orders from /orders/history: $e');
+      debugPrint('Stack trace: $stack');
+      
+      // Attempt fallback to /orders/my if /orders/history failed or was empty
+      try {
+        final fallback = await _apiClient.get(
+          '${ApiClient.baseUrl}/orders/my',
+          requiresAuth: true,
+        );
+        if (fallback is List) return fallback;
+        if (fallback is Map) return fallback['orders'] ?? fallback['data'] ?? fallback['history'] ?? [];
+      } catch (e2) {
+        debugPrint('Fallback /orders/my also failed: $e2');
+      }
+      
       return [];
     }
   }
@@ -81,4 +118,8 @@ class OrderService {
 
 final orderServiceProvider = Provider<OrderService>((ref) {
   return OrderService(ref.watch(apiClientProvider));
+});
+
+final myOrdersProvider = FutureProvider.autoDispose<List<dynamic>>((ref) {
+  return ref.watch(orderServiceProvider).getMyOrders();
 });

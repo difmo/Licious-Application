@@ -314,7 +314,7 @@ class _OrderTrackingPageState extends ConsumerState<OrderTrackingPage> {
                   width: 38,
                   height: 38,
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.12),
+                    color: color.withValues(alpha: 0.12),
                     shape: BoxShape.circle,
                     border: Border.all(color: color, width: 2),
                   ),
@@ -373,7 +373,7 @@ class _OrderTrackingPageState extends ConsumerState<OrderTrackingPage> {
                   height: 38,
                   decoration: BoxDecoration(
                     color: isDone
-                        ? const Color(0xFF114F3B).withOpacity(0.1)
+                        ? const Color(0xFF114F3B).withValues(alpha: 0.1)
                         : Colors.grey.shade100,
                     shape: BoxShape.circle,
                     border: Border.all(color: color, width: 2),
@@ -422,7 +422,7 @@ class _OrderTrackingPageState extends ConsumerState<OrderTrackingPage> {
         border: Border.all(color: Colors.grey.shade100),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.03),
+              color: Colors.black.withValues(alpha: 0.03),
               blurRadius: 8,
               offset: const Offset(0, 2))
         ],
@@ -432,7 +432,7 @@ class _OrderTrackingPageState extends ConsumerState<OrderTrackingPage> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, color: color, size: 22),

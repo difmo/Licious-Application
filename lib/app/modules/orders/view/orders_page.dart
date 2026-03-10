@@ -5,9 +5,8 @@ import '../../../data/services/order_service.dart';
 import '../../../data/services/socket_service.dart';
 import '../../auth/provider/auth_provider.dart';
 
-final liveOrdersProvider = FutureProvider.autoDispose<List<dynamic>>((ref) {
-  return ref.read(orderServiceProvider).getMyOrders();
-});
+// Local provider removed, using shared provider from order_service.dart
+
 
 class _HeaderDelegate extends SliverPersistentHeaderDelegate {
   final double expandedHeight;
@@ -44,8 +43,8 @@ class _HeaderDelegate extends SliverPersistentHeaderDelegate {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Colors.black.withOpacity(0.2),
-                    Colors.black.withOpacity(0.7),
+                    Colors.black.withValues(alpha: 0.2),
+                    Colors.black.withValues(alpha: 0.7),
                   ],
                 ),
               ),
@@ -128,7 +127,7 @@ class _OrdersPageState extends ConsumerState<OrdersPage> {
               Container(
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF114F3B).withOpacity(0.08),
+                  color: const Color(0xFF114F3B).withValues(alpha: 0.08),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.delivery_dining,
@@ -199,12 +198,12 @@ class _OrdersPageState extends ConsumerState<OrdersPage> {
     );
 
     // Refresh orders list
-    ref.invalidate(liveOrdersProvider);
+    ref.invalidate(myOrdersProvider);
   }
 
   @override
   Widget build(BuildContext context) {
-    final ordersAsync = ref.watch(liveOrdersProvider);
+    final ordersAsync = ref.watch(myOrdersProvider);
 
     return MediaQuery.removePadding(
       context: context,
@@ -228,7 +227,7 @@ class _OrdersPageState extends ConsumerState<OrdersPage> {
                   padding: const EdgeInsets.only(right: 16, top: 8),
                   child: IconButton(
                     icon: const Icon(Icons.refresh, color: Color(0xFF114F3B)),
-                    onPressed: () => ref.invalidate(liveOrdersProvider),
+                    onPressed: () => ref.invalidate(myOrdersProvider),
                   ),
                 ),
               ),

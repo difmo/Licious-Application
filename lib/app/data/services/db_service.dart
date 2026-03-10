@@ -121,7 +121,10 @@ class CartProvider extends ChangeNotifier {
   }
 
   List<UserAddress> _addresses = [];
+  bool _isAddressesLoading = false;
   int _selectedAddressIndex = 0;
+
+  bool get isAddressesLoading => _isAddressesLoading;
 
   int get selectedAddressIndex => _selectedAddressIndex;
 
@@ -571,9 +574,16 @@ class CartProvider extends ChangeNotifier {
 
   Future<void> loadAddresses() async {
     if (_addressService == null) return;
+    _isAddressesLoading = true;
+    notifyListeners();
+    
     try {
       final token = await ApiClient.getToken();
-      if (token == null || token.isEmpty) return;
+      if (token == null || token.isEmpty) {
+        _isAddressesLoading = false;
+        notifyListeners();
+        return;
+      }
 
       final result = await _addressService!.getAddresses();
       if (result['success']) {
@@ -596,11 +606,12 @@ class CartProvider extends ChangeNotifier {
         } else if (_addresses.isNotEmpty) {
           _selectedAddressIndex = 0;
         }
-
-        notifyListeners();
       }
     } catch (e) {
       debugPrint('Error loading addresses: $e');
+    } finally {
+      _isAddressesLoading = false;
+      notifyListeners();
     }
   }
 

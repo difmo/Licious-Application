@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 import '../../../core/api/auth_interceptor.dart';
+import '../../../core/api/api_provider.dart';
 import '../../../core/storage/secure_storage_service.dart';
 
 /// Thrown when the server returns a non-2xx status or an error occurs.
@@ -30,7 +31,7 @@ final apiClientProvider = Provider<ApiClient>((ref) {
     contentType: Headers.jsonContentType,
   ));
 
-  final storage = SecureStorageService();
+  final storage = ref.watch(storageServiceProvider);
   dio.interceptors.addAll([
     AuthInterceptor(dio, storage),
     PrettyDioLogger(

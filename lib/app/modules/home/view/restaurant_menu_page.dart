@@ -5,6 +5,9 @@ import '../../../data/models/shop_product_model.dart';
 import '../../../data/models/product_model.dart';
 import '../../../data/services/db_service.dart';
 import '../provider/shop_provider.dart';
+import '../widgets/cart_summary_bar.dart';
+import '../widgets/quantity_selector.dart';
+import '../controller/main_controller.dart';
 
 class RestaurantMenuPage extends ConsumerWidget {
   final ShopModel shop;
@@ -43,12 +46,15 @@ class RestaurantMenuPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final productsAsync = ref.watch(shopProductsProvider(shop.id));
+    final cart = CartProviderScope.of(context);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
-      body: CustomScrollView(
-        physics: const BouncingScrollPhysics(),
-        slivers: [
+      body: Stack(
+        children: [
+          CustomScrollView(
+            physics: const BouncingScrollPhysics(),
+            slivers: [
           // ── Hero App Bar ──────────────────────────────────────────────────
           SliverAppBar(
             expandedHeight: 220,
@@ -269,8 +275,28 @@ class RestaurantMenuPage extends ConsumerWidget {
           const SliverPadding(padding: EdgeInsets.only(bottom: 120)),
         ],
       ),
-    );
-  }
+      if (cart.itemCount > 0)
+        Positioned(
+          bottom: 30, // Positioned near bottom since this page doesn't have a persistent bottom bar like MainPage
+          left: 0,
+          right: 0,
+          child: CartSummaryBar(
+            cart: cart,
+            onTap: () {
+              try {
+                final controller = MainControllerScope.of(context);
+                controller.changePage(2);
+                Navigator.popUntil(context, (route) => route.isFirst);
+              } catch (e) {
+                Navigator.popUntil(context, (route) => route.isFirst);
+              }
+            },
+          ),
+        ),
+    ],
+  ),
+);
+}
 
   Widget _buildHeroBanner() {
     final networkUrl = shop.image;
@@ -523,36 +549,11 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
       );
     }
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF7F8FA),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFF68B92E), width: 0.5),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          GestureDetector(
-            onTap: () => cart.decrement(p.name),
-            child: const Icon(Icons.remove, size: 16, color: Color(0xFF1A1A1A)),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            '${cartItem.quantity}',
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF1A1A1A),
-            ),
-          ),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: () => cart.increment(p.name),
-            child: const Icon(Icons.add, size: 16, color: Color(0xFF68B92E)),
-          ),
-        ],
-      ),
+    return QuantitySelector(
+      quantity: cartItem.quantity,
+      onIncrement: () => cart.increment(p.name),
+      onDecrement: () => cart.decrement(p.name),
+      size: 32, // Compact size for grid card
     );
   }
 

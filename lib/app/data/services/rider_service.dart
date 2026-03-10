@@ -174,7 +174,16 @@ class RiderService {
         '${ApiClient.riderBaseUrl}/history',
         requiresAuth: true,
       );
-      return response['data'] ?? [];
+      
+      if (response is List) {
+        return response;
+      }
+      
+      if (response is Map) {
+        return response['data'] ?? response['orders'] ?? response['history'] ?? [];
+      }
+      
+      return [];
     } catch (e) {
       return [];
     }

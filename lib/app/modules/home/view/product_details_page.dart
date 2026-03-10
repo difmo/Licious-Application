@@ -4,6 +4,9 @@ import '../../../data/models/food_models.dart';
 import '../../../data/services/db_service.dart';
 import '../../../data/models/product_model.dart';
 import '../../../data/services/subscription_service.dart';
+import '../controller/main_controller.dart';
+import '../widgets/cart_summary_bar.dart';
+import '../widgets/quantity_selector.dart';
 
 class ProductDetailsPage extends ConsumerWidget {
   final Product product;
@@ -170,6 +173,27 @@ class ProductDetailsPage extends ConsumerWidget {
               ),
             ],
           ),
+          // Cart Summary Overlay
+          if (cart.itemCount > 0)
+            Positioned(
+              bottom: 154, // Positioned above the bottom action bar
+              left: 0,
+              right: 0,
+              child: CartSummaryBar(
+                cart: cart,
+                onTap: () {
+                  // Navigate to cart tab and pop details page
+                  try {
+                    final controller = MainControllerScope.of(context);
+                    controller.changePage(2);
+                    Navigator.popUntil(context, (route) => route.isFirst);
+                  } catch (e) {
+                    // Fallback
+                    Navigator.popUntil(context, (route) => route.isFirst);
+                  }
+                },
+              ),
+            ),
           Positioned(
             bottom: 0,
             left: 0,
@@ -228,30 +252,21 @@ class ProductDetailsPage extends ConsumerWidget {
                               color: const Color(0xFFF7F8FA),
                               borderRadius: BorderRadius.circular(16),
                               border:
-                                  Border.all(color: const Color(0xFF68B92E))),
+                                  Border.all(color: const Color(0xFF68B92E).withValues(alpha:  0.2))),
                           child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              const Text('Item in Cart',
+                               const Text('Selected Quantity',
                                   style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold,
                                       color: Color(0xFF1A1A1A))),
-                              const Spacer(),
-                              IconButton(
-                                  onPressed: () => cart.decrement(product.name),
-                                  icon:
-                                      const Icon(Icons.remove_circle_outline)),
-                              Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 12),
-                                  child: Text('${cartItem.quantity}',
-                                      style: const TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold))),
-                              IconButton(
-                                  onPressed: () => cart.increment(product.name),
-                                  icon: const Icon(Icons.add_circle,
-                                      color: Color(0xFF68B92E))),
+                              QuantitySelector(
+                                quantity: cartItem.quantity,
+                                onIncrement: () => cart.increment(product.name),
+                                onDecrement: () => cart.decrement(product.name),
+                                size: 40,
+                              ),
                             ],
                           ),
                         ),
@@ -449,7 +464,7 @@ class _SubscriptionConfigDrawerState extends State<SubscriptionConfigDrawer> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               decoration: BoxDecoration(
-                color: const Color(0xFF68B92E).withOpacity(0.05),
+                color: const Color(0xFF68B92E).withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: const Color(0xFF68B92E)),
               ),

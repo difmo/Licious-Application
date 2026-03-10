@@ -6,6 +6,7 @@ import '../../subscription/subscription_page.dart';
 import '../../wallet/view/wallet_page.dart';
 import '../controller/main_controller.dart';
 import '../../../data/services/db_service.dart';
+import '../widgets/cart_summary_bar.dart';
 
 class MainPage extends StatefulWidget {
   const MainPage({super.key});
@@ -60,82 +61,13 @@ class _MainPageState extends State<MainPage> {
             if (showSummary)
               Positioned(
                 bottom: 110, // Just above the custom bottom bar (height ~100)
-                left: 16,
-                right: 16,
-                child: _buildCartSummaryBar(cart),
+                left: 0,
+                right: 0,
+                child: CartSummaryBar(cart: cart),
               ),
           ],
         ),
         bottomNavigationBar: _buildCustomBottomBar(),
-      ),
-    );
-  }
-
-  Widget _buildCartSummaryBar(CartProvider cart) {
-    return GestureDetector(
-      onTap: () => _controller.changePage(2),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1A1A1A), // Dark premium bar
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: const Color(0xFF68B92E).withValues(alpha: 0.2),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.shopping_basket_rounded,
-                color: Color(0xFF68B92E),
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '${cart.itemCount} ITEM${cart.itemCount > 1 ? 'S' : ''}',
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                Text(
-                  '₹${cart.total.toStringAsFixed(0)}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ],
-            ),
-            const Spacer(),
-            const Text(
-              'VIEW CART',
-              style: TextStyle(
-                color: Color(0xFF68B92E),
-                fontSize: 12,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 1,
-              ),
-            ),
-            const SizedBox(width: 4),
-            const Icon(
-              Icons.arrow_forward_ios_rounded,
-              color: Color(0xFF68B92E),
-              size: 14,
-            ),
-          ],
-        ),
       ),
     );
   }

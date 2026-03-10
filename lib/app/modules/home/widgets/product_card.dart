@@ -4,6 +4,7 @@ import '../../../data/models/food_models.dart';
 import '../../../data/services/db_service.dart';
 import '../../../data/models/product_model.dart';
 import '../view/product_details_page.dart';
+import '../widgets/quantity_selector.dart';
 import '../../../widgets/bounce_widget.dart';
 
 class ProductCard extends StatelessWidget {
@@ -136,51 +137,11 @@ class ProductCard extends StatelessWidget {
                               ),
                             )
                           else
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 4,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF7F8FA),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: const Color(0xFF68B92E),
-                                  width: 0.5,
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  BounceWidget(
-                                    onTap: () => cart.decrement(product.name),
-                                    scaleFactor: 0.8,
-                                    child: const Icon(
-                                      Icons.remove,
-                                      size: 14,
-                                      color: Color(0xFF1A1A1A),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    '${cartItem.quantity}',
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFF1A1A1A),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  BounceWidget(
-                                    onTap: () => cart.increment(product.name),
-                                    scaleFactor: 0.8,
-                                    child: const Icon(
-                                      Icons.add,
-                                      size: 14,
-                                      color: Color(0xFF68B92E),
-                                    ),
-                                  ),
-                                ],
-                              ),
+                            QuantitySelector(
+                              quantity: cartItem.quantity,
+                              onIncrement: () => cart.increment(product.name),
+                              onDecrement: () => cart.decrement(product.name),
+                              size: 32, // Compact size for grid card
                             ),
                         ],
                       ),

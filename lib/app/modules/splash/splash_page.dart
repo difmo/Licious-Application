@@ -36,6 +36,9 @@ class _SplashPageState extends ConsumerState<SplashPage>
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
 
     _controller.forward();
+    
+    // Explicitly trigger session restoration
+    ref.read(authProvider.notifier).init();
 
     // Start checking auth state after the splash animation begins.
     // We poll every 300ms so we react as soon as session restore completes.

@@ -35,6 +35,16 @@ class _ShippingAddressPageState extends ConsumerState<ShippingAddressPage> {
   bool _showAddForm = false;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        CartProviderScope.of(context).loadAddresses();
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _fullAddressCtrl.dispose();
     _cityCtrl.dispose();
@@ -99,8 +109,8 @@ class _ShippingAddressPageState extends ConsumerState<ShippingAddressPage> {
     final cart = CartProviderScope.of(context);
     final addresses = cart.addresses;
 
-    // Auto-show form if no addresses exist
-    if (addresses.isEmpty && !_showAddForm && !cart.isOrdersLoading) {
+    // Auto-show form if no addresses exist and loading has finished
+    if (addresses.isEmpty && !_showAddForm && !cart.isAddressesLoading) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) setState(() => _showAddForm = true);
       });
@@ -152,9 +162,13 @@ class _ShippingAddressPageState extends ConsumerState<ShippingAddressPage> {
                   child: child,
                 ),
               ),
-              child: _showAddForm
-                  ? _buildAddAddressView()
-                  : _buildAddressListView(cart),
+              child: cart.isAddressesLoading
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                          color: AppColors.accentGreen))
+                  : _showAddForm
+                      ? _buildAddAddressView()
+                      : _buildAddressListView(cart),
             ),
           ),
           if (!_showAddForm && addresses.isNotEmpty) _buildBottomAction(cart),

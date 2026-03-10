@@ -1,17 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/auth_models.dart';
-import '../../../data/network/api_client.dart';
-import '../../../data/services/auth_service.dart';
-import '../../../../core/storage/secure_storage_service.dart';
+import '../../../../core/state/auth_store.dart' as core;
 
-// ── Provider for AuthService ───────────────────────────────────────────────
-final authServiceProvider = Provider<AuthService>((ref) {
-  return AuthService(client: ref.watch(apiClientProvider));
-});
+// Expose the core providers for convenience
+final authServiceProvider = core.authServiceProvider;
+final secureStorageProvider = core.secureStorageProvider;
 
-final secureStorageProvider = Provider((ref) => SecureStorageService());
-
-// ── Auth State ─────────────────────────────────────────────────────────────
+// ── Auth State (Preserving for UI compatibility) ──────────────────────────
 
 sealed class AuthState {
   const AuthState();
@@ -27,7 +22,7 @@ class AuthLoading extends AuthState {
 
 class AuthAuthenticated extends AuthState {
   final UserModel user;
-  final String token;
+  final String token; // Token should ideally come from core or storage
 
   const AuthAuthenticated({required this.user, required this.token});
 }
@@ -49,37 +44,40 @@ class AuthError extends AuthState {
   const AuthError(this.message);
 }
 
-// ── Notifier ───────────────────────────────────────────────────────────────
+// ── Bridge Notifier ───────────────────────────────────────────────────────
 
 class AuthNotifier extends Notifier<AuthState> {
   @override
   AuthState build() {
-    _restoreSession();
-    return const AuthLoading();
+    // Listen to core AuthStore and map to feature state
+    final coreState = ref.watch(core.authStoreProvider);
+    
+    switch (coreState.status) {
+      case core.AuthStatus.initial:
+        if (coreState.successMessage != null) {
+          return AuthSuccess(message: coreState.successMessage!, otp: coreState.otp);
+        }
+        return const AuthInitial();
+      case core.AuthStatus.loading:
+        return const AuthLoading();
+      case core.AuthStatus.authenticated:
+        return AuthAuthenticated(user: coreState.user!, token: ''); // token hidden in storage
+      case core.AuthStatus.unauthenticated:
+        if (coreState.successMessage != null) {
+          return AuthSuccess(message: coreState.successMessage!);
+        }
+        if (coreState.error != null) {
+          return AuthError(coreState.error!);
+        }
+        return const AuthUnauthenticated();
+    }
   }
 
-  Future<void> _restoreSession() async {
-    try {
-      final storage = ref.read(secureStorageProvider);
-      final token = await storage.getAccessToken();
-
-      if (token != null && token.isNotEmpty) {
-        final response = await ref.read(authServiceProvider).getProfile();
-        
-        if (response.success && response.data != null) {
-          state = AuthAuthenticated(
-            user: response.data!,
-            token: token,
-          );
-        } else {
-          await logout();
-        }
-      } else {
-        state = const AuthUnauthenticated();
-      }
-    } catch (e) {
-      state = const AuthUnauthenticated();
-    }
+  Future<void> login({
+    required String phoneNumber,
+    required String password,
+  }) async {
+     await ref.read(core.authStoreProvider.notifier).login(phone: phoneNumber, password: password);
   }
 
   Future<void> register({
@@ -89,101 +87,52 @@ class AuthNotifier extends Notifier<AuthState> {
     required String password,
     required String confirmPassword,
   }) async {
-    state = const AuthLoading();
-    final response = await ref.read(authServiceProvider).register(
+    await ref.read(core.authStoreProvider.notifier).register(
       fullName: fullName,
       email: email,
       phoneNumber: phoneNumber,
       password: password,
       confirmPassword: confirmPassword,
     );
-    if (response.success) {
-      state = AuthSuccess(message: response.message);
-    } else {
-      state = AuthError(response.message);
-    }
-  }
-
-  Future<void> login({
-    required String phoneNumber,
-    required String password,
-  }) async {
-    state = const AuthLoading();
-    final response = await ref.read(authServiceProvider).login(
-      phoneNumber: phoneNumber,
-      password: password,
-    );
-    
-    if (response.success && response.data != null && response.token != null) {
-      await ref.read(secureStorageProvider).saveTokens(
-        access: response.token!,
-        refresh: response.refreshToken ?? '', // Backend should provide this
-      );
-      
-      state = AuthAuthenticated(
-        user: response.data!,
-        token: response.token!,
-      );
-    } else {
-      state = AuthError(response.message);
-    }
   }
 
   Future<void> sendOtp({required String phoneNumber}) async {
-    state = const AuthLoading();
-    final response = await ref.read(authServiceProvider).sendOtp(phoneNumber: phoneNumber);
-    if (response.success) {
-      state = AuthSuccess(message: response.message, otp: response.otp);
-    } else {
-      state = AuthError(response.message);
-    }
+    await ref.read(core.authStoreProvider.notifier).sendOtp(phoneNumber: phoneNumber);
   }
 
   Future<void> verifyOtp({
     required String phoneNumber,
     required String otp,
   }) async {
-    state = const AuthLoading();
-    final response = await ref.read(authServiceProvider).verifyOtp(
-      phoneNumber: phoneNumber,
-      otp: otp,
-    );
-    if (response.success) {
-      state = AuthSuccess(message: response.message);
-    } else {
-      state = AuthError(response.message);
-    }
+    await ref.read(core.authStoreProvider.notifier).verifyOtp(
+          phoneNumber: phoneNumber,
+          otp: otp,
+        );
   }
 
   Future<void> forgotPassword({required String email}) async {
-    state = const AuthLoading();
-    final response = await ref.read(authServiceProvider).forgotPassword(email: email);
-    if (response.success) {
-      state = AuthSuccess(message: response.message);
-    } else {
-      state = AuthError(response.message);
-    }
+    await ref.read(core.authStoreProvider.notifier).forgotPassword(email: email);
   }
 
   Future<void> logout() async {
-    await ref.read(authServiceProvider).logout();
-    await ref.read(secureStorageProvider).clearAll();
-    state = const AuthUnauthenticated();
+    await ref.read(core.authStoreProvider.notifier).logout();
   }
 
-  void reset() => state = const AuthInitial();
+  Future<void> init() async {
+     await ref.read(core.authStoreProvider.notifier).init();
+  }
+  
+  void reset() => ref.invalidate(core.authStoreProvider);
 }
 
 final authProvider = NotifierProvider<AuthNotifier, AuthState>(() {
   return AuthNotifier();
 });
 
-// ── Convenience selector providers ────────────────────────────────────────
-final isAuthenticatedProvider = Provider<bool>((ref) {
-  return ref.watch(authProvider) is AuthAuthenticated;
+// Alias existing providers
+final isAuthenticatedProvider = core.isAuthenticatedProvider;
+final currentUserProvider = Provider<UserModel?>((ref) {
+  final coreState = ref.watch(core.authStoreProvider);
+  return coreState.user;
 });
 
-final currentUserProvider = Provider<UserModel?>((ref) {
-  final authState = ref.watch(authProvider);
-  return authState is AuthAuthenticated ? authState.user : null;
-});

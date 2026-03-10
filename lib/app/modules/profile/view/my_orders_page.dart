@@ -4,10 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/services/order_service.dart';
 import '../../orders/view/order_tracking_page.dart';
 
-// Live order data provider
-final myOrdersProvider = FutureProvider.autoDispose<List<dynamic>>((ref) async {
-  return ref.read(orderServiceProvider).getMyOrders();
-});
+// Local provider removed, using shared provider from order_service.dart
+
 
 class MyOrdersPage extends ConsumerWidget {
   const MyOrdersPage({super.key});
@@ -30,7 +28,7 @@ class MyOrdersPage extends ConsumerWidget {
               icon: Container(
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.8),
+                  color: Colors.white.withValues(alpha: 0.8),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.arrow_back_ios_new,
@@ -217,7 +215,7 @@ class _OrderCardState extends State<_OrderCard>
             border: Border.all(color: const Color(0xFFEEEEEE), width: 1.5),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF2D3436).withOpacity(0.05),
+                color: const Color(0xFF2D3436).withValues(alpha: 0.05),
                 blurRadius: 15,
                 offset: const Offset(0, 5),
               ),
@@ -269,10 +267,10 @@ class _OrderCardState extends State<_OrderCard>
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: _statusColor().withOpacity(0.1),
+                              color: _statusColor().withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
-                                  color: _statusColor().withOpacity(0.4)),
+                                  color: _statusColor().withValues(alpha: 0.4)),
                             ),
                             child: Text(
                               _orderStatus(),

@@ -120,10 +120,10 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF439462).withOpacity(0.1),
+                      color: const Color(0xFF439462).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                          color: const Color(0xFF439462).withOpacity(0.3)),
+                          color: const Color(0xFF439462).withValues(alpha: 0.3)),
                     ),
                     child: Row(
                       children: [
@@ -167,7 +167,7 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.grey.withOpacity(0.1)),
+                      border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
                     ),
                     child: Column(
                       children: [

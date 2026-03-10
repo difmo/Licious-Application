@@ -93,7 +93,11 @@ class AuthService {
         '${ApiClient.otpBaseUrl}/verify',
         data: {'phoneNumber': phoneNumber, 'otp': otp},
       );
-      return AuthResponseModel.fromJson(data);
+      final response = AuthResponseModel.fromJson(data);
+      if (response.success && response.token != null && response.token!.isNotEmpty) {
+        await ApiClient.saveToken(response.token!);
+      }
+      return response;
     } on ApiException catch (e) {
       return AuthResponseModel(success: false, message: e.message);
     } catch (e) {

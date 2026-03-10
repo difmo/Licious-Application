@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import './profile_detail_page.dart';
 import './edit_profile_page.dart';
 import '../../../data/services/db_service.dart';
+import '../../../data/services/order_service.dart';
 import './my_orders_page.dart';
 import './transactions_page.dart';
 import './saved_cards_page.dart';
@@ -145,7 +146,7 @@ class _ProfileHeader extends StatelessWidget {
   }
 }
 
-class _ActiveOrdersAndSubscriptions extends StatelessWidget {
+class _ActiveOrdersAndSubscriptions extends ConsumerWidget {
   const _ActiveOrdersAndSubscriptions();
 
   void _navigateToDetail(BuildContext context, String title) {
@@ -170,7 +171,18 @@ class _ActiveOrdersAndSubscriptions extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ordersAsync = ref.watch(myOrdersProvider);
+    
+    // Count only active orders (not delivered or cancelled)
+    final activeOrdersCount = ordersAsync.maybeWhen(
+      data: (orders) => orders.where((o) {
+        final status = o['status']?.toString().toLowerCase() ?? '';
+        return status != 'delivered' && status != 'cancelled';
+      }).length,
+      orElse: () => 0,
+    );
+
     return Row(
       children: [
         Expanded(
@@ -203,35 +215,38 @@ class _ActiveOrdersAndSubscriptions extends StatelessWidget {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const Text(
-                    '1 Active Order',
-                    style: TextStyle(
+                  Text(
+                    activeOrdersCount > 0 
+                      ? '$activeOrdersCount Active Order${activeOrdersCount > 1 ? 's' : ''}'
+                      : 'No Active Orders',
+                    style: const TextStyle(
                       color: Color(0xFF114F3B),
                       fontSize: 12,
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(20),
+                  if (activeOrdersCount > 0)
+                    Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.location_on,
+                              size: 10, color: Color(0xFF114F3B)),
+                          const SizedBox(width: 4),
+                          const Text('Live Tracking ON',
+                              style: TextStyle(
+                                  color: Color(0xFF114F3B),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w500)),
+                        ],
+                      ),
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.location_on,
-                            size: 10, color: Color(0xFF114F3B)),
-                        const SizedBox(width: 4),
-                        const Text('Live Tracking ON',
-                            style: TextStyle(
-                                color: Color(0xFF114F3B),
-                                fontSize: 10,
-                                fontWeight: FontWeight.w500)),
-                      ],
-                    ),
-                  ),
                 ],
               ),
             ),
