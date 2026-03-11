@@ -96,14 +96,60 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
       final result = await riderService.completeOrder(orderId: orderId);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message'] ?? 'Delivery completed'),
-            backgroundColor: AppColors.accentGreen,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-        ref.invalidate(riderOrdersProvider);
+        final isSuccess = result['success'] == true;
+
+        // Build a clean message — hide raw "ApiException(400):" prefix
+        String rawMsg = result['message']?.toString() ?? '';
+        String displayMsg;
+        if (!isSuccess && rawMsg.toLowerCase().contains('already')) {
+          displayMsg = 'This order has already been delivered.';
+        } else if (isSuccess) {
+          displayMsg = 'Order marked as Delivered! ✅';
+        } else {
+          // Strip "ApiException(4xx):" prefix if present
+          displayMsg =
+              rawMsg.replaceAll(RegExp(r'ApiException\(\d+\):\s*'), '');
+          if (displayMsg.isEmpty)
+            displayMsg = 'Something went wrong. Try again.';
+        }
+
+        ScaffoldMessenger.of(context)
+          ..clearSnackBars()
+          ..showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Icon(
+                    isSuccess ? Icons.check_circle : Icons.error_rounded,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      displayMsg,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: isSuccess
+                  ? const Color(0xFF27AE60) // green
+                  : const Color(0xFFE74C3C), // red
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              margin: const EdgeInsets.all(16),
+              duration: const Duration(seconds: 4),
+            ),
+          );
+
+        if (isSuccess) {
+          ref.invalidate(riderOrdersProvider);
+        }
       }
     } finally {
       if (mounted) {
@@ -223,11 +269,19 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
                   data: (orders) {
                     final activeOrders =
                         List<dynamic>.from(orders).where((order) {
-                      final status = order['riderAssignmentStatus'] ??
-                          order['status'] ??
-                          'Pending';
-                      final st = status.toString().toLowerCase();
-                      return st != 'delivered' && st != 'completed';
+                      // Check all possible status fields
+                      final st1 = (order['riderAssignmentStatus'] ?? '')
+                          .toString()
+                          .toLowerCase();
+                      final st2 =
+                          (order['orderStatus'] ?? '').toString().toLowerCase();
+                      final st3 =
+                          (order['status'] ?? '').toString().toLowerCase();
+                      final isTerminal =
+                          (s) => s == 'delivered' || s == 'completed';
+                      return !isTerminal(st1) &&
+                          !isTerminal(st2) &&
+                          !isTerminal(st3);
                     }).toList();
 
                     final sortedOrders = List<dynamic>.from(activeOrders);
@@ -400,7 +454,26 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
                             return _buildStat(
                                 'Completed', count, Icons.delivery_dining);
                           }),
-                          _buildStat('Rating', '4.8', Icons.star_rounded),
+                          Consumer(builder: (context, ref, child) {
+                            final profile = ref.watch(riderProfileProvider);
+                            final rating = profile.maybeWhen(
+                              data: (data) {
+                                // Try rating from profile endpoint first
+                                final r = data['rating'] ??
+                                    data['avgRating'] ??
+                                    data['averageRating'];
+                                if (r != null) {
+                                  final val =
+                                      double.tryParse(r.toString()) ?? 0.0;
+                                  return val > 0 ? val.toStringAsFixed(1) : '—';
+                                }
+                                return '—';
+                              },
+                              orElse: () => '...',
+                            );
+                            return _buildStat(
+                                'Rating', rating, Icons.star_rounded);
+                          }),
                           Consumer(builder: (context, ref, child) {
                             final history = ref.watch(riderHistoryProvider);
                             final earnings = history.maybeWhen(

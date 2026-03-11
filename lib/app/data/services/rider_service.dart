@@ -109,8 +109,26 @@ class RiderService {
       return [];
     }
   }
+
+  Future<Map<String, dynamic>> getProfile() async {
+    try {
+      final response = await _apiClient.get(
+        '${ApiClient.riderBaseUrl}/profile',
+        requiresAuth: true,
+      );
+      // Backend may return { success, data: { rating, totalDeliveries, ... } }
+      // or { success, rider: { ... } }
+      return response['data'] ?? response['rider'] ?? response;
+    } catch (e) {
+      return {};
+    }
+  }
 }
 
 final riderServiceProvider = Provider<RiderService>((ref) {
   return RiderService(ref.watch(apiClientProvider));
+});
+
+final riderProfileProvider = FutureProvider<Map<String, dynamic>>((ref) async {
+  return ref.read(riderServiceProvider).getProfile();
 });
