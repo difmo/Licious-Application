@@ -2,23 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import './profile_detail_page.dart';
 import './edit_profile_page.dart';
-import '../../../data/services/db_service.dart';
 import './my_orders_page.dart';
 import './transactions_page.dart';
 import './saved_cards_page.dart';
 import '../../auth/provider/auth_provider.dart';
 import '../../home/controller/main_controller.dart';
-import '../../../data/models/food_models.dart';
 import '../../subscriptions/view/subscription_dashboard_page.dart';
 import '../../../routes/app_routes.dart';
+import '../../wallet/view/wallet_page.dart' show walletBalanceProvider;
 
-class ProfilePage extends StatelessWidget {
+class ProfilePage extends ConsumerWidget {
   const ProfilePage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final provider = CartProviderScope.of(context);
-    final profile = provider.userProfile;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authProvider);
+    final user = authState is AuthAuthenticated ? authState.user : null;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF0F4EC),
@@ -29,9 +28,7 @@ class ProfilePage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _ProfileHeader(
-                profile: profile,
-              ),
+              _ProfileHeader(user: user),
               const SizedBox(height: 30),
               const _ActiveOrdersAndSubscriptions(),
               const SizedBox(height: 20),
@@ -60,41 +57,56 @@ class ProfilePage extends StatelessWidget {
 }
 
 class _ProfileHeader extends StatelessWidget {
-  final UserProfile profile;
+  final dynamic user; // UserModel or null
 
-  const _ProfileHeader({required this.profile});
+  const _ProfileHeader({required this.user});
 
   @override
   Widget build(BuildContext context) {
+    final name = user?.fullName ?? 'Guest';
+    final email = user?.email ?? '';
+    final phone = user?.phoneNumber ?? '';
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Profile Dashboard',
-              style: TextStyle(
-                color: Colors.black54,
-                fontSize: 14,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Profile Dashboard',
+                style: TextStyle(
+                  color: Colors.black54,
+                  fontSize: 14,
+                ),
               ),
-            ),
-            Text(
-              'Hello, ${profile.name.split(' ').first}!',
-              style: const TextStyle(
-                color: Color(0xFF114F3B),
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
+              Text(
+                'Hello, ${name.split(' ').first}!',
+                style: const TextStyle(
+                  color: Color(0xFF114F3B),
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
-            Text(
-              profile.email,
-              style: const TextStyle(
-                color: Colors.black45,
-                fontSize: 14,
-              ),
-            ),
-          ],
+              if (email.isNotEmpty)
+                Text(
+                  email,
+                  style: const TextStyle(
+                    color: Colors.black45,
+                    fontSize: 13,
+                  ),
+                ),
+              if (phone.isNotEmpty)
+                Text(
+                  phone,
+                  style: const TextStyle(
+                    color: Colors.black38,
+                    fontSize: 12,
+                  ),
+                ),
+            ],
+          ),
         ),
         GestureDetector(
           onTap: () {
@@ -116,9 +128,17 @@ class _ProfileHeader extends StatelessWidget {
                   offset: const Offset(0, 5),
                 ),
               ],
-              image: DecorationImage(
-                image: AssetImage(profile.profileImage),
-                fit: BoxFit.cover,
+            ),
+            child: CircleAvatar(
+              backgroundColor: const Color(0xFFEBFFD7),
+              radius: 40,
+              child: Text(
+                name.isNotEmpty ? name[0].toUpperCase() : 'U',
+                style: const TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF114F3B),
+                ),
               ),
             ),
           ),
@@ -128,7 +148,7 @@ class _ProfileHeader extends StatelessWidget {
   }
 }
 
-class _ActiveOrdersAndSubscriptions extends StatelessWidget {
+class _ActiveOrdersAndSubscriptions extends ConsumerWidget {
   const _ActiveOrdersAndSubscriptions();
 
   void _navigateToDetail(BuildContext context, String title) {
@@ -153,7 +173,19 @@ class _ActiveOrdersAndSubscriptions extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ordersAsync = ref.watch(myOrdersProvider);
+
+    // Count active (non-delivered) orders
+    final activeCount = ordersAsync.maybeWhen(
+      data: (orders) => orders.where((o) {
+        final s =
+            (o['orderStatus'] ?? o['status'] ?? '').toString().toLowerCase();
+        return s != 'delivered' && s != 'completed' && s != 'cancelled';
+      }).length,
+      orElse: () => null,
+    );
+
     return Row(
       children: [
         Expanded(
@@ -186,26 +218,45 @@ class _ActiveOrdersAndSubscriptions extends StatelessWidget {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const Text(
-                    '1 Active Order',
-                    style: TextStyle(
-                      color: Color(0xFF114F3B),
-                      fontSize: 12,
+                  // Dynamic count from backend
+                  ordersAsync.when(
+                    data: (_) => Text(
+                      activeCount == 0
+                          ? 'No Active Orders'
+                          : '$activeCount Active Order${activeCount! > 1 ? 's' : ''}',
+                      style: const TextStyle(
+                        color: Color(0xFF114F3B),
+                        fontSize: 12,
+                      ),
                     ),
+                    loading: () => const SizedBox(
+                      height: 12,
+                      width: 80,
+                      child: LinearProgressIndicator(
+                        backgroundColor: Color(0xFF7BAE87),
+                        color: Color(0xFF114F3B),
+                      ),
+                    ),
+                    error: (_, __) => const Text('—',
+                        style:
+                            TextStyle(color: Color(0xFF114F3B), fontSize: 12)),
                   ),
                   const SizedBox(height: 8),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(20),
+                  GestureDetector(
+                    onTap: () => _navigateToDetail(context, 'Active Orders'),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Text('View All Orders',
+                          style: TextStyle(
+                              color: Color(0xFF114F3B),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500)),
                     ),
-                    child: const Text('Arriving in 15 mins',
-                        style: TextStyle(
-                            color: Color(0xFF114F3B),
-                            fontSize: 10,
-                            fontWeight: FontWeight.w500)),
                   ),
                 ],
               ),
@@ -244,7 +295,7 @@ class _ActiveOrdersAndSubscriptions extends StatelessWidget {
                     ),
                   ),
                   const Text(
-                    '2 Active Plans',
+                    'View your plans',
                     style: TextStyle(
                       color: Color(0xFFA5C9AD),
                       fontSize: 12,
@@ -255,10 +306,10 @@ class _ActiveOrdersAndSubscriptions extends StatelessWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Colors.transparent,
+                      color: const Color(0xFFA5C9AD).withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const Text('Renewal Jun 11, 2023',
+                    child: const Text('Manage Plans',
                         style:
                             TextStyle(color: Color(0xFFA5C9AD), fontSize: 10)),
                   ),
@@ -272,18 +323,16 @@ class _ActiveOrdersAndSubscriptions extends StatelessWidget {
   }
 }
 
-class _WalletSection extends StatelessWidget {
+class _WalletSection extends ConsumerWidget {
   const _WalletSection();
 
   @override
-  Widget build(BuildContext context) {
-    final provider = CartProviderScope.of(context);
-    final balance = provider.walletBalance;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final balanceAsync = ref.watch(walletBalanceProvider);
 
     return GestureDetector(
       onTap: () {
-        MainControllerScope.of(context)
-            .changePage(3); // Index 3 is Wallet in MainPage
+        MainControllerScope.of(context).changePage(3);
       },
       child: Container(
         padding: const EdgeInsets.all(16),
@@ -319,7 +368,7 @@ class _WalletSection extends StatelessWidget {
                           color: Color(0xFF114F3B),
                           fontSize: 16,
                           fontWeight: FontWeight.bold)),
-                  Text('Credit Cards | Transactions',
+                  Text('Tap to view transactions',
                       style: TextStyle(color: Colors.black54, fontSize: 12)),
                 ],
               ),
@@ -327,15 +376,36 @@ class _WalletSection extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                const Text('Balance:',
+                const Text('Balance',
                     style: TextStyle(color: Colors.black54, fontSize: 12)),
-                Text('₹${balance.toStringAsFixed(2)}',
+                balanceAsync.when(
+                  data: (balance) => Text(
+                    '₹${balance.toStringAsFixed(2)}',
                     style: const TextStyle(
                         color: Color(0xFF114F3B),
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold)),
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold),
+                  ),
+                  loading: () => const SizedBox(
+                    width: 70,
+                    height: 18,
+                    child: LinearProgressIndicator(
+                      backgroundColor: Color(0xFFDEEDD4),
+                      color: Color(0xFF114F3B),
+                      borderRadius: BorderRadius.all(Radius.circular(4)),
+                    ),
+                  ),
+                  error: (_, __) => const Text('—',
+                      style: TextStyle(
+                          color: Colors.grey,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold)),
+                ),
               ],
             ),
+            const SizedBox(width: 4),
+            const Icon(Icons.arrow_forward_ios_rounded,
+                color: Color(0xFFA5C9AD), size: 14),
           ],
         ),
       ),
@@ -530,7 +600,6 @@ class _SignOutButton extends ConsumerWidget {
         onTap: () async {
           await ref.read(authProvider.notifier).logout();
           if (context.mounted) {
-            CartProviderScope.of(context).clearSession();
             Navigator.pushNamedAndRemoveUntil(
               context,
               AppRoutes.login,
