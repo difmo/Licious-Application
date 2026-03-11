@@ -7,6 +7,7 @@ import '../view/product_details_page.dart';
 import '../../../widgets/bounce_widget.dart';
 import '../../../widgets/adaptive_image.dart';
 
+// sdfd
 class ProductCard extends StatelessWidget {
   final Product product;
   final VoidCallback onAdd;
