@@ -84,7 +84,25 @@ class ProductDetailsPage extends ConsumerWidget {
                 flexibleSpace: FlexibleSpaceBar(
                   background: Hero(
                     tag: 'product_${product.id}',
-                    child: Image.asset(product.image, fit: BoxFit.cover),
+                    child: product.image.isEmpty
+                        ? const Center(
+                            child: Icon(Icons.set_meal_outlined,
+                                size: 64, color: Colors.grey))
+                        : product.image.startsWith('http')
+                            ? Image.network(
+                                product.image,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => const Center(
+                                    child: Icon(Icons.set_meal_outlined,
+                                        size: 64, color: Colors.grey)),
+                              )
+                            : Image.asset(
+                                product.image,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => const Center(
+                                    child: Icon(Icons.set_meal_outlined,
+                                        size: 64, color: Colors.grey)),
+                              ),
                   ),
                 ),
               ),
@@ -251,12 +269,13 @@ class ProductDetailsPage extends ConsumerWidget {
                           decoration: BoxDecoration(
                               color: const Color(0xFFF7F8FA),
                               borderRadius: BorderRadius.circular(16),
-                              border:
-                                  Border.all(color: const Color(0xFF68B92E).withValues(alpha:  0.2))),
+                              border: Border.all(
+                                  color: const Color(0xFF68B92E)
+                                      .withValues(alpha: 0.2))),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                               const Text('Selected Quantity',
+                              const Text('Selected Quantity',
                                   style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold,

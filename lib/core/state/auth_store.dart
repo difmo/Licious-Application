@@ -22,12 +22,19 @@ class AuthState {
   final String? successMessage;
   final String? otp;
 
-  AuthState({required this.status, this.user, this.error, this.successMessage, this.otp});
+  AuthState(
+      {required this.status,
+      this.user,
+      this.error,
+      this.successMessage,
+      this.otp});
 
   factory AuthState.initial() => AuthState(status: AuthStatus.initial);
   factory AuthState.loading() => AuthState(status: AuthStatus.loading);
-  factory AuthState.authenticated(UserModel user) => AuthState(status: AuthStatus.authenticated, user: user);
-  factory AuthState.unauthenticated({String? error}) => AuthState(status: AuthStatus.unauthenticated, error: error);
+  factory AuthState.authenticated(UserModel user) =>
+      AuthState(status: AuthStatus.authenticated, user: user);
+  factory AuthState.unauthenticated({String? error}) =>
+      AuthState(status: AuthStatus.unauthenticated, error: error);
 
   AuthState copyWith({
     AuthStatus? status,
@@ -53,11 +60,11 @@ class AuthStore extends Notifier<AuthState> {
   @override
   AuthState build() {
     _storage = ref.watch(secureStorageProvider);
-    
+
     // Listen for force logout events from the interceptor
     _logoutSubscription?.cancel();
     _logoutSubscription = AuthInterceptor.onForceLogoutStream.listen((reason) {
-       setUnauthenticated(error: reason);
+      setUnauthenticated(error: reason);
     });
 
     ref.onDispose(() {
@@ -75,17 +82,17 @@ class AuthStore extends Notifier<AuthState> {
       final String? refreshToken = await _storage.getRefreshToken();
 
       if (token != null && token.isNotEmpty) {
-         // Validate by fetching profile
-         final response = await ref.read(authServiceProvider).getProfile();
-         if (response.success && response.data != null) {
-           state = AuthState.authenticated(response.data!);
-         } else if (refreshToken != null && refreshToken.isNotEmpty) {
-            // Profile failed but we have refresh token - attempt explicit refresh if interceptor hasn't yet
-            // Normally interceptor handles 401, but for initial load:
-            state = AuthState.unauthenticated(error: "Session expired");
-         } else {
-           await logout();
-         }
+        // Validate by fetching profile
+        final response = await ref.read(authServiceProvider).getProfile();
+        if (response.success && response.data != null) {
+          state = AuthState.authenticated(response.data!);
+        } else if (refreshToken != null && refreshToken.isNotEmpty) {
+          // Profile failed but we have refresh token - attempt explicit refresh if interceptor hasn't yet
+          // Normally interceptor handles 401, but for initial load:
+          state = AuthState.unauthenticated(error: "Session expired");
+        } else {
+          await logout();
+        }
       } else {
         state = AuthState.unauthenticated();
       }
@@ -98,9 +105,9 @@ class AuthStore extends Notifier<AuthState> {
     state = AuthState.loading();
     try {
       final response = await ref.read(authServiceProvider).login(
-        phoneNumber: phone,
-        password: password,
-      );
+            phoneNumber: phone,
+            password: password,
+          );
 
       if (response.success && response.data != null && response.token != null) {
         // Save tokens securely
@@ -120,15 +127,16 @@ class AuthStore extends Notifier<AuthState> {
   Future<void> sendOtp({required String phoneNumber}) async {
     state = AuthState.loading();
     try {
-      final response = await ref.read(authServiceProvider).sendOtp(phoneNumber: phoneNumber);
+      final response =
+          await ref.read(authServiceProvider).sendOtp(phoneNumber: phoneNumber);
       if (!response.success) {
         state = AuthState.unauthenticated(error: response.message);
       } else {
-         state = state.copyWith(
-           status: AuthStatus.initial,
-           successMessage: response.message,
-           otp: response.otp,
-         );
+        state = state.copyWith(
+          status: AuthStatus.initial,
+          successMessage: response.message,
+          otp: response.otp,
+        );
       }
     } catch (e) {
       state = AuthState.unauthenticated(error: e.toString());
@@ -145,12 +153,12 @@ class AuthStore extends Notifier<AuthState> {
     state = AuthState.loading();
     try {
       final response = await ref.read(authServiceProvider).register(
-        fullName: fullName,
-        email: email,
-        phoneNumber: phoneNumber,
-        password: password,
-        confirmPassword: confirmPassword,
-      );
+            fullName: fullName,
+            email: email,
+            phoneNumber: phoneNumber,
+            password: password,
+            confirmPassword: confirmPassword,
+          );
       if (response.success) {
         state = state.copyWith(
           status: AuthStatus.unauthenticated,
@@ -164,17 +172,20 @@ class AuthStore extends Notifier<AuthState> {
     }
   }
 
-  Future<void> verifyOtp({required String phoneNumber, required String otp}) async {
+  Future<void> verifyOtp(
+      {required String phoneNumber, required String otp}) async {
     state = AuthState.loading();
     try {
       final response = await ref.read(authServiceProvider).verifyOtp(
-        phoneNumber: phoneNumber,
-        otp: otp,
-      );
+            phoneNumber: phoneNumber,
+            otp: otp,
+          );
       if (!response.success) {
         state = AuthState.unauthenticated(error: response.message);
       } else {
-        if (response.token != null && response.data != null && response.token!.isNotEmpty) {
+        if (response.token != null &&
+            response.data != null &&
+            response.token!.isNotEmpty) {
           // Instant Auto-Login route
           await _storage.saveTokens(
             access: response.token!,
@@ -197,7 +208,8 @@ class AuthStore extends Notifier<AuthState> {
   Future<void> forgotPassword({required String email}) async {
     state = AuthState.loading();
     try {
-      final response = await ref.read(authServiceProvider).forgotPassword(email: email);
+      final response =
+          await ref.read(authServiceProvider).forgotPassword(email: email);
       if (!response.success) {
         state = AuthState.unauthenticated(error: response.message);
       } else {

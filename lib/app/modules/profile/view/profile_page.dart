@@ -2,12 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import './profile_detail_page.dart';
 import './edit_profile_page.dart';
-<<<<<<< HEAD
-=======
 import '../../../data/services/db_service.dart';
 import '../../../data/services/order_service.dart';
 import '../../../data/services/favorites_service.dart';
->>>>>>> 066c625f65b6e7ec1abaf08af1fe9ce369c8b3d4
 import './my_orders_page.dart';
 import './transactions_page.dart';
 import './saved_cards_page.dart';
@@ -18,15 +15,6 @@ import '../../home/view/favorites_page.dart';
 import '../../../routes/app_routes.dart';
 import '../../wallet/view/wallet_page.dart' show walletBalanceProvider;
 
-<<<<<<< HEAD
-class ProfilePage extends ConsumerWidget {
-  const ProfilePage({super.key});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final authState = ref.watch(authProvider);
-    final user = authState is AuthAuthenticated ? authState.user : null;
-=======
 class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
 
@@ -50,7 +38,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   Widget build(BuildContext context) {
     final provider = CartProviderScope.of(context);
     final profile = provider.userProfile;
->>>>>>> 066c625f65b6e7ec1abaf08af1fe9ce369c8b3d4
 
     return Scaffold(
       backgroundColor: const Color(0xFFF0F4EC),
@@ -61,7 +48,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _ProfileHeader(user: user),
+              _ProfileHeader(user: profile),
               const SizedBox(height: 30),
               const _ActiveOrdersAndSubscriptions(),
               const SizedBox(height: 24),
@@ -96,9 +83,9 @@ class _ProfileHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = user?.fullName ?? 'Guest';
+    final name = user?.name ?? 'Guest';
     final email = user?.email ?? '';
-    final phone = user?.phoneNumber ?? '';
+    final phone = user?.phone ?? '';
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -210,7 +197,7 @@ class _ActiveOrdersAndSubscriptions extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final activeOrdersAsync = ref.watch(activeOrdersProvider);
-    
+
     // Count active orders from the dedicated provider
     final activeOrdersCount = activeOrdersAsync.maybeWhen(
       data: (orders) => orders.length,
@@ -250,30 +237,30 @@ class _ActiveOrdersAndSubscriptions extends ConsumerWidget {
                     ),
                   ),
                   Text(
-                    activeOrdersCount > 0 
-                      ? '$activeOrdersCount Active Order${activeOrdersCount > 1 ? 's' : ''}'
-                      : 'No Active Orders',
+                    activeOrdersCount > 0
+                        ? '$activeOrdersCount Active Order${activeOrdersCount > 1 ? 's' : ''}'
+                        : 'No Active Orders',
                     style: const TextStyle(
                       color: Color(0xFF114F3B),
                       fontSize: 12,
                     ),
-                    loading: () => const SizedBox(
-                      height: 12,
-                      width: 80,
-                      child: LinearProgressIndicator(
-                        backgroundColor: Color(0xFF7BAE87),
-                        color: Color(0xFF114F3B),
-                      ),
-                    ),
-                    error: (_, __) => const Text('—',
-                        style:
-                            TextStyle(color: Color(0xFF114F3B), fontSize: 12)),
+                    // loading: () => const SizedBox(
+                    //   height: 12,
+                    //   width: 80,
+                    //   child: LinearProgressIndicator(
+                    //     backgroundColor: Color(0xFF7BAE87),
+                    //     color: Color(0xFF114F3B),
+                    //   ),
+                    // ),
+                    // error: (_, __) => const Text('—',
+                    //     style:
+                    //         TextStyle(color: Color(0xFF114F3B), fontSize: 12)),
                   ),
                   const SizedBox(height: 8),
                   if (activeOrdersCount > 0)
                     Container(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.5),
                         borderRadius: BorderRadius.circular(20),
@@ -453,9 +440,9 @@ class _QuickActionsRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final favCount = ref.watch(favoriteProductsProvider).maybeWhen(
-      data: (list) => list.length,
-      orElse: () => 0,
-    );
+          data: (list) => list.length,
+          orElse: () => 0,
+        );
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -464,7 +451,8 @@ class _QuickActionsRow extends ConsumerWidget {
           navigateTo: 'My Favorites',
           badgeCount: favCount,
         ),
-        const _QuickActionBtn(title: 'View All\nOrders', navigateTo: 'My Orders'),
+        const _QuickActionBtn(
+            title: 'View All\nOrders', navigateTo: 'My Orders'),
         const _QuickActionBtn(title: 'Edit\nAddress', navigateTo: 'My Address'),
       ],
     );

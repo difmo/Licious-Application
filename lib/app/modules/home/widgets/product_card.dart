@@ -22,7 +22,7 @@ class ProductCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cart = CartProviderScope.of(context);
-    
+
     final cartItem = cart.items.firstWhere(
       (item) => item.title == product.name,
       orElse: () => CartItem(
@@ -66,12 +66,12 @@ class ProductCard extends ConsumerWidget {
                     ),
                     child: Image.asset(
                       product.image,
-                      height: 110,
+                      height: 100,
                       width: double.infinity,
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) {
                         return Container(
-                          height: 110,
+                          height: 100,
                           color: Colors.grey.shade200,
                           child: const Center(
                             child: Icon(Icons.broken_image, color: Colors.grey),
@@ -186,7 +186,8 @@ class ProductCard extends ConsumerWidget {
           ],
         ),
       ),
-    ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.05, end: 0, duration: 400.ms, curve: Curves.easeOutQuad);
+    ).animate().fadeIn(duration: 400.ms).slideY(
+        begin: 0.05, end: 0, duration: 400.ms, curve: Curves.easeOutQuad);
   }
 }
 
@@ -198,7 +199,8 @@ class _ProductHeart extends ConsumerStatefulWidget {
   ConsumerState<_ProductHeart> createState() => _ProductHeartState();
 }
 
-class _ProductHeartState extends ConsumerState<_ProductHeart> with SingleTickerProviderStateMixin {
+class _ProductHeartState extends ConsumerState<_ProductHeart>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scale;
   bool? _localFav;
@@ -208,8 +210,8 @@ class _ProductHeartState extends ConsumerState<_ProductHeart> with SingleTickerP
     super.initState();
     _controller = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 150));
-    _scale = Tween<double>(begin: 1.0, end: 1.4).animate(
-        CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+    _scale = Tween<double>(begin: 1.0, end: 1.4)
+        .animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
@@ -220,15 +222,16 @@ class _ProductHeartState extends ConsumerState<_ProductHeart> with SingleTickerP
 
   Future<void> _onTap() async {
     final notifier = ref.read(favoritesProvider.notifier);
-    
+
     // Optimistic toggle
     final isFav = _localFav ??
-        (ref.read(favoritesProvider).asData?.value.contains(widget.productId) ?? false);
-    
+        (ref.read(favoritesProvider).asData?.value.contains(widget.productId) ??
+            false);
+
     setState(() => _localFav = !isFav);
 
     _controller.forward().then((_) => _controller.reverse());
-    
+
     try {
       await notifier.toggle(widget.productId);
     } catch (e) {
@@ -239,7 +242,7 @@ class _ProductHeartState extends ConsumerState<_ProductHeart> with SingleTickerP
   @override
   Widget build(BuildContext context) {
     final favsValue = ref.watch(favoritesProvider);
-    
+
     // Sync local state once loaded
     favsValue.whenData((ids) {
       final fromProvider = ids.contains(widget.productId);
@@ -280,5 +283,3 @@ class _ProductHeartState extends ConsumerState<_ProductHeart> with SingleTickerP
     );
   }
 }
-
-

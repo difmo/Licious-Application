@@ -56,104 +56,158 @@ class RestaurantMenuPage extends ConsumerWidget {
           CustomScrollView(
             physics: const BouncingScrollPhysics(),
             slivers: [
-          // ── Hero App Bar ──────────────────────────────────────────────────
-          SliverAppBar(
-            expandedHeight: 220,
-            pinned: true,
-            backgroundColor: Colors.white,
-            elevation: 0,
-            leading: Padding(
-              padding: const EdgeInsets.only(left: 12),
-              child: CircleAvatar(
-                backgroundColor: Colors.white.withValues(alpha: 0.9),
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_back,
-                      color: Colors.black87, size: 20),
-                  onPressed: () => Navigator.pop(context),
+              // ── Hero App Bar ──────────────────────────────────────────────────
+              SliverAppBar(
+                expandedHeight: 220,
+                pinned: true,
+                backgroundColor: Colors.white,
+                elevation: 0,
+                leading: Padding(
+                  padding: const EdgeInsets.only(left: 12),
+                  child: CircleAvatar(
+                    backgroundColor: Colors.white.withValues(alpha: 0.9),
+                    child: IconButton(
+                      icon: const Icon(Icons.arrow_back,
+                          color: Colors.black87, size: 20),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ),
                 ),
-              ),
-            ),
-            actions: [
-              Padding(
-                padding: const EdgeInsets.only(right: 12),
-                child: CircleAvatar(
-                  backgroundColor: Colors.white.withValues(alpha: 0.9),
-                  child: const Icon(Icons.bookmark_border,
-                      color: Colors.black87, size: 20),
-                ),
-              ),
-            ],
-            flexibleSpace: FlexibleSpaceBar(
-              background: _buildHeroBanner(),
-            ),
-          ),
-
-          // ── Restaurant Info Card ────────────────────────────────────────
-          SliverToBoxAdapter(
-            child: Container(
-              margin: const EdgeInsets.all(16),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.grey.shade100),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
+                actions: [
+                  Padding(
+                    padding: const EdgeInsets.only(right: 12),
+                    child: CircleAvatar(
+                      backgroundColor: Colors.white.withValues(alpha: 0.9),
+                      child: const Icon(Icons.bookmark_border,
+                          color: Colors.black87, size: 20),
+                    ),
                   ),
                 ],
+                flexibleSpace: FlexibleSpaceBar(
+                  background: _buildHeroBanner(),
+                ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              shop.deliveryTime.isNotEmpty ? shop.deliveryTime : _deliveryTime,
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF1A1A1A),
-                              ),
-                            ),
-                            if (shop.location.isNotEmpty) ...[
-                              const SizedBox(height: 3),
-                              Text(
-                                shop.location,
-                                style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey.shade600),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ],
-                        ),
+
+              // ── Restaurant Info Card ────────────────────────────────────────
+              SliverToBoxAdapter(
+                child: Container(
+                  margin: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.grey.shade100),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
                       ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  shop.deliveryTime.isNotEmpty
+                                      ? shop.deliveryTime
+                                      : _deliveryTime,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF1A1A1A),
+                                  ),
+                                ),
+                                if (shop.location.isNotEmpty) ...[
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    shop.location,
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey.shade600),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF68B92E),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.star,
+                                    size: 14, color: Colors.white),
+                                const SizedBox(width: 4),
+                                Text(
+                                  shop.rating > 0
+                                      ? shop.rating.toStringAsFixed(1)
+                                      : _rating.toStringAsFixed(1),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      // Delivery meta chips
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
+                        children: [
+                          _MetaChip(
+                            icon: Icons.bolt,
+                            label: _deliveryTime,
+                            iconColor: const Color(0xFF68B92E),
+                          ),
+                          _MetaChip(
+                            icon: Icons.location_on_outlined,
+                            label: '${_distance.toStringAsFixed(1)} km',
+                            iconColor: Colors.grey,
+                          ),
+                          _MetaChip(
+                            icon: Icons.delivery_dining_outlined,
+                            label: 'Free delivery',
+                            iconColor: Colors.grey,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      // Offer banner
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 6),
+                            horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF68B92E),
+                          color: const Color(0xFFEBFFD7),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.star,
-                                size: 14, color: Colors.white),
-                            const SizedBox(width: 4),
+                            const Icon(Icons.local_offer,
+                                size: 14, color: Color(0xFF439462)),
+                            const SizedBox(width: 8),
                             Text(
-                              shop.rating > 0 ? shop.rating.toStringAsFixed(1) : _rating.toStringAsFixed(1),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
+                              shop.location,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFF439462),
                               ),
                             ),
                           ],
@@ -161,143 +215,94 @@ class RestaurantMenuPage extends ConsumerWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  // Delivery meta chips
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 6,
-                    children: [
-                      _MetaChip(
-                        icon: Icons.bolt,
-                        label: _deliveryTime,
-                        iconColor: const Color(0xFF68B92E),
-                      ),
-                      _MetaChip(
-                        icon: Icons.location_on_outlined,
-                        label: '${_distance.toStringAsFixed(1)} km',
-                        iconColor: Colors.grey,
-                      ),
-                      _MetaChip(
-                        icon: Icons.delivery_dining_outlined,
-                        label: 'Free delivery',
-                        iconColor: Colors.grey,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  // Offer banner
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEBFFD7),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.local_offer,
-                            size: 14, color: Color(0xFF439462)),
-                        const SizedBox(width: 8),
-                        Text(
-                          shop.location,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFF439462),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // ── Products Section Header ────────────────────────────────────
-          const SliverPadding(
-            padding: EdgeInsets.fromLTRB(16, 4, 16, 12),
-            sliver: SliverToBoxAdapter(
-              child: Text(
-                'SHRIMP VARIETIES',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1.5,
-                  color: Colors.grey,
                 ),
               ),
-            ),
-          ),
 
-          // ── Products Grid ─────────────────────────────────────────────
-          productsAsync.when(
-            loading: () => const SliverToBoxAdapter(
-              child: _ProductsLoadingGrid(),
-            ),
-            error: (err, _) => SliverToBoxAdapter(
-              child: _ProductsErrorState(
-                message: err.toString(),
-                onRetry: () =>
-                    ref.invalidate(shopProductsProvider(shop.id)),
-              ),
-            ),
-            data: (products) {
-              if (products.isEmpty) {
-                return const SliverToBoxAdapter(
-                    child: _ProductsEmptyState());
-              }
-              return SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                sliver: SliverGrid(
-                  gridDelegate:
-                      const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    childAspectRatio: 0.78,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                  ),
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final product = products[index];
-                      return _ProductCard(
-                        product: product,
-                        index: index,
-                        shopId: shop.id,
-                      );
-                    },
-                    childCount: products.length,
+              // ── Products Section Header ────────────────────────────────────
+              const SliverPadding(
+                padding: EdgeInsets.fromLTRB(16, 4, 16, 12),
+                sliver: SliverToBoxAdapter(
+                  child: Text(
+                    'SHRIMP VARIETIES',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.5,
+                      color: Colors.grey,
+                    ),
                   ),
                 ),
-              );
-            },
-          ),
+              ),
 
-          const SliverPadding(padding: EdgeInsets.only(bottom: 120)),
+              // ── Products Grid ─────────────────────────────────────────────
+              productsAsync.when(
+                loading: () => const SliverToBoxAdapter(
+                  child: _ProductsLoadingGrid(),
+                ),
+                error: (err, _) => SliverToBoxAdapter(
+                  child: _ProductsErrorState(
+                    message: err.toString(),
+                    onRetry: () =>
+                        ref.invalidate(shopProductsProvider(shop.id)),
+                  ),
+                ),
+                data: (products) {
+                  if (products.isEmpty) {
+                    return const SliverToBoxAdapter(
+                        child: _ProductsEmptyState());
+                  }
+                  return SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    sliver: SliverGrid(
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        childAspectRatio: 0.78,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                      ),
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          final product = products[index];
+                          return _ProductCard(
+                            product: product,
+                            index: index,
+                            shopId: shop.id,
+                          );
+                        },
+                        childCount: products.length,
+                      ),
+                    ),
+                  );
+                },
+              ),
+
+              const SliverPadding(padding: EdgeInsets.only(bottom: 120)),
+            ],
+          ),
+          if (cart.itemCount > 0)
+            Positioned(
+              bottom:
+                  30, // Positioned near bottom since this page doesn't have a persistent bottom bar like MainPage
+              left: 0,
+              right: 0,
+              child: CartSummaryBar(
+                cart: cart,
+                onTap: () {
+                  try {
+                    final controller = MainControllerScope.of(context);
+                    controller.changePage(2);
+                    Navigator.popUntil(context, (route) => route.isFirst);
+                  } catch (e) {
+                    Navigator.popUntil(context, (route) => route.isFirst);
+                  }
+                },
+              ),
+            ),
         ],
       ),
-      if (cart.itemCount > 0)
-        Positioned(
-          bottom: 30, // Positioned near bottom since this page doesn't have a persistent bottom bar like MainPage
-          left: 0,
-          right: 0,
-          child: CartSummaryBar(
-            cart: cart,
-            onTap: () {
-              try {
-                final controller = MainControllerScope.of(context);
-                controller.changePage(2);
-                Navigator.popUntil(context, (route) => route.isFirst);
-              } catch (e) {
-                Navigator.popUntil(context, (route) => route.isFirst);
-              }
-            },
-          ),
-        ),
-    ],
-  ),
-);
-}
+    );
+  }
 
   Widget _buildHeroBanner() {
     final networkUrl = shop.image;
@@ -342,7 +347,6 @@ class _ProductCard extends ConsumerStatefulWidget {
 }
 
 class _ProductCardState extends ConsumerState<_ProductCard> {
-
   @override
   Widget build(BuildContext context) {
     final cart = CartProviderScope.of(context);
@@ -373,7 +377,7 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
                 child: p.primaryImage.isNotEmpty
                     ? Image.network(
                         p.primaryImage,
-                        height: 120,
+                        height: 110,
                         width: double.infinity,
                         fit: BoxFit.cover,
                         errorBuilder: (_, __, ___) => _imagePlaceholder(),
@@ -390,8 +394,8 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
               if (!p.isAvailable)
                 Positioned.fill(
                   child: ClipRRect(
-                    borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(16)),
+                    borderRadius:
+                        const BorderRadius.vertical(top: Radius.circular(16)),
                     child: Container(
                       color: Colors.black.withValues(alpha: 0.45),
                       child: const Center(
@@ -437,8 +441,7 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
                 if (p.description.isNotEmpty)
                   Text(
                     p.description,
-                    style: TextStyle(
-                        fontSize: 10, color: Colors.grey.shade500),
+                    style: TextStyle(fontSize: 10, color: Colors.grey.shade500),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -545,7 +548,7 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
 
   Widget _imagePlaceholder() {
     return Container(
-      height: 120,
+      height: 110,
       color: Colors.grey.shade100,
       child: const Center(
         child: Icon(Icons.set_meal_outlined, size: 36, color: Colors.grey),
@@ -656,7 +659,6 @@ class _FavoriteHeartState extends ConsumerState<_FavoriteHeart>
   }
 }
 
-
 // ── Products Loading Grid ─────────────────────────────────────────────────────
 
 class _ProductsLoadingGrid extends StatelessWidget {
@@ -700,8 +702,8 @@ class _ProductShimmerCardState extends State<_ProductShimmerCard>
     _ctrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 1200))
       ..repeat(reverse: true);
-    _anim = Tween<double>(begin: 0.4, end: 0.8).animate(
-        CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
+    _anim = Tween<double>(begin: 0.4, end: 0.8)
+        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut));
   }
 
   @override
@@ -723,7 +725,7 @@ class _ProductShimmerCardState extends State<_ProductShimmerCard>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              height: 120,
+              height: 110,
               decoration: BoxDecoration(
                 color: Colors.grey.withValues(alpha: _anim.value),
                 borderRadius:
@@ -743,8 +745,7 @@ class _ProductShimmerCardState extends State<_ProductShimmerCard>
                   Container(
                       height: 10,
                       width: 70,
-                      color: Colors.grey
-                          .withValues(alpha: _anim.value * 0.7)),
+                      color: Colors.grey.withValues(alpha: _anim.value * 0.7)),
                 ],
               ),
             ),
@@ -761,8 +762,7 @@ class _ProductsErrorState extends StatelessWidget {
   final String message;
   final VoidCallback onRetry;
 
-  const _ProductsErrorState(
-      {required this.message, required this.onRetry});
+  const _ProductsErrorState({required this.message, required this.onRetry});
 
   @override
   Widget build(BuildContext context) {

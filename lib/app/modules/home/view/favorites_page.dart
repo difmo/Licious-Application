@@ -96,15 +96,13 @@ class FavoritesPage extends ConsumerWidget {
           ),
           const SizedBox(height: 32),
           ElevatedButton.icon(
-            onPressed: () =>
-                MainControllerScope.of(context).changePage(0),
+            onPressed: () => MainControllerScope.of(context).changePage(0),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF439462),
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16)),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
               elevation: 0,
             ),
             icon: const Icon(Icons.storefront_outlined),
@@ -198,7 +196,7 @@ class _FavProductCard extends ConsumerWidget {
                 child: p.primaryImage.isNotEmpty
                     ? Image.network(
                         p.primaryImage,
-                        height: 130,
+                        height: 120,
                         width: double.infinity,
                         fit: BoxFit.cover,
                         errorBuilder: (_, __, ___) => _placeholder(),
@@ -264,8 +262,8 @@ class _FavProductCard extends ConsumerWidget {
                   Padding(
                     padding: const EdgeInsets.only(top: 2),
                     child: Text(p.category!.name,
-                        style: const TextStyle(
-                            fontSize: 10, color: Colors.grey)),
+                        style:
+                            const TextStyle(fontSize: 10, color: Colors.grey)),
                   ),
               ],
             ),
@@ -314,8 +312,8 @@ class _FavProductCard extends ConsumerWidget {
                         color: const Color(0xFF68B92E),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Icon(Icons.add,
-                          color: Colors.white, size: 18),
+                      child:
+                          const Icon(Icons.add, color: Colors.white, size: 18),
                     ),
                   )
                 else
@@ -334,7 +332,7 @@ class _FavProductCard extends ConsumerWidget {
   }
 
   Widget _placeholder() => Container(
-        height: 130,
+        height: 120,
         color: Colors.grey.shade100,
         child: const Center(
           child: Icon(Icons.set_meal_outlined, size: 36, color: Colors.grey),

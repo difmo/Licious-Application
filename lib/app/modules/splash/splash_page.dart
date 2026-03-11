@@ -19,6 +19,9 @@ class _SplashPageState extends ConsumerState<SplashPage>
   late Animation<double> _fadeAnim;
   late Animation<double> _scaleAnim;
   bool _navigated = false;
+  int _retryCount = 0;
+  static const int _maxRetries =
+      10; // 10 × 200ms = 2s max retry after initial 2s delay
 
   @override
   void initState() {
@@ -36,7 +39,7 @@ class _SplashPageState extends ConsumerState<SplashPage>
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
 
     _controller.forward();
-    
+
     // Explicitly trigger session restoration
     ref.read(authProvider.notifier).init();
 
@@ -62,7 +65,17 @@ class _SplashPageState extends ConsumerState<SplashPage>
       }
     } else if (authState is AuthLoading || authState is AuthInitial) {
       // Session is still being restored — check again shortly
-      Future.delayed(const Duration(milliseconds: 300), _checkAuthAndNavigate);
+      _retryCount++;
+      if (_retryCount <= _maxRetries) {
+        Future.delayed(
+            const Duration(milliseconds: 200), _checkAuthAndNavigate);
+      } else {
+        // Hard timeout: 4 seconds total (2s initial + 2s retries), force navigate
+        _navigated = true;
+        if (mounted) {
+          Navigator.pushReplacementNamed(context, AppRoutes.initialRoute);
+        }
+      }
     }
   }
 

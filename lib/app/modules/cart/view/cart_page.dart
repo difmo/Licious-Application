@@ -167,15 +167,27 @@ class CartPage extends StatelessWidget {
                   width: 80,
                   height: 80,
                   color: const Color(0xFFF7F8FA),
-                  child: Image.asset(
-                    item.image,
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) => const Icon(
-                      Icons.image_not_supported,
-                      color: Colors.grey,
-                      size: 30,
-                    ),
-                  ),
+                  child: item.image.startsWith('http')
+                      ? Image.network(
+                          item.image,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              const Icon(
+                            Icons.set_meal_outlined,
+                            color: Colors.grey,
+                            size: 30,
+                          ),
+                        )
+                      : Image.asset(
+                          item.image,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              const Icon(
+                            Icons.set_meal_outlined,
+                            color: Colors.grey,
+                            size: 30,
+                          ),
+                        ),
                 ),
               ),
               const SizedBox(width: 16),
