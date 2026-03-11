@@ -26,6 +26,16 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final cartProvider = CartProviderScope.of(context);
+      cartProvider.syncWallet();
+      cartProvider.loadCartFromApi();
+    });
+  }
+
+  @override
   void dispose() {
     super.dispose();
   }

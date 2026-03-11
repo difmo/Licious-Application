@@ -8,6 +8,9 @@ class CartItem {
   final String image;
   final String category;
   int quantity;
+  final String? shopId;
+  final String? shopName;
+  final String? shopLocation;
 
   CartItem({
     required this.id,
@@ -17,6 +20,9 @@ class CartItem {
     required this.image,
     required this.category,
     this.quantity = 1,
+    this.shopId,
+    this.shopName,
+    this.shopLocation,
   });
 
   factory CartItem.fromProduct(Product product) {
@@ -27,6 +33,9 @@ class CartItem {
       subtitle: product.weight,
       image: product.image,
       category: product.category,
+      shopId: product.shopId,
+      shopName: product.shopName,
+      shopLocation: product.shopLocation,
     );
   }
 

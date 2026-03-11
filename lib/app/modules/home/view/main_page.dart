@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'home_page.dart';
 import '../../cart/view/cart_page.dart';
 import '../../profile/view/profile_page.dart';
@@ -6,15 +7,17 @@ import '../../subscription/subscription_page.dart';
 import '../../wallet/view/wallet_page.dart';
 import '../controller/main_controller.dart';
 import '../../../data/services/db_service.dart';
+import '../../../data/services/socket_service.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class MainPage extends StatefulWidget {
+class MainPage extends ConsumerStatefulWidget {
   const MainPage({super.key});
 
   @override
-  State<MainPage> createState() => _MainPageState();
+  ConsumerState<MainPage> createState() => _MainPageState();
 }
 
-class _MainPageState extends State<MainPage> {
+class _MainPageState extends ConsumerState<MainPage> {
   final MainController _controller = MainController();
 
   final List<Widget> _pages = [
@@ -35,6 +38,21 @@ class _MainPageState extends State<MainPage> {
     // Initial cart sync from API
     WidgetsBinding.instance.addPostFrameCallback((_) {
       CartProviderScope.of(context).loadCartFromApi();
+
+      // Initialize real-time updates for tracking and rider popups globally
+      ref.read(socketServiceProvider).connect(
+        onRiderAssigned: (data) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                  'A Rider is on the way! ${data['data']?['riderName'] ?? ''}'),
+              duration: const Duration(seconds: 5),
+              backgroundColor: const Color(0xFF439462),
+            ),
+          );
+        },
+      );
     });
   }
 
@@ -52,22 +70,36 @@ class _MainPageState extends State<MainPage> {
 
     return MainControllerScope(
       controller: _controller,
-      child: Scaffold(
-        backgroundColor: const Color(0xFFEBFFD7),
-        extendBody: true,
-        body: Stack(
-          children: [
-            Positioned.fill(child: _pages[_controller.currentIndex]),
-            if (showSummary)
-              Positioned(
-                bottom: 110, // Just above the custom bottom bar (height ~100)
-                left: 16,
-                right: 16,
-                child: _buildCartSummaryBar(cart),
-              ),
-          ],
+      child: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, result) {
+          if (didPop) return;
+          if (_controller.currentIndex != 0) {
+            _controller.changePage(0);
+          } else {
+            // If already on Home tab, we can allow popping to exit the app
+            // However, since we set canPop: false above, we need to manually pop
+            // if we really want to exit. A better way in modern Flutter is:
+            SystemNavigator.pop();
+          }
+        },
+        child: Scaffold(
+          backgroundColor: const Color(0xFFEBFFD7),
+          extendBody: true,
+          body: Stack(
+            children: [
+              Positioned.fill(child: _pages[_controller.currentIndex]),
+              if (showSummary)
+                Positioned(
+                  bottom: 110, // Just above the custom bottom bar (height ~100)
+                  left: 16,
+                  right: 16,
+                  child: _buildCartSummaryBar(cart),
+                ),
+            ],
+          ),
+          bottomNavigationBar: _buildCustomBottomBar(),
         ),
-        bottomNavigationBar: _buildCustomBottomBar(),
       ),
     );
   }

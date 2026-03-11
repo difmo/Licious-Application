@@ -16,6 +16,7 @@ import '../modules/cart/view/payment_method_page.dart';
 import '../modules/subscription/subscription_page.dart';
 import '../modules/wallet/view/wallet_page.dart';
 import '../modules/rider/view/rider_home_page.dart';
+import '../modules/rider/view/rider_history_page.dart';
 
 import '../modules/wallet/view/top_up_page.dart';
 
@@ -38,5 +39,6 @@ class AppPages {
         AppRoutes.paymentMethod: (context) => const PaymentMethodPage(),
         AppRoutes.riderHome: (context) => const RiderHomePage(),
         AppRoutes.topUp: (context) => const TopUpPage(),
+        AppRoutes.riderHistory: (context) => const RiderHistoryPage(),
       };
 }

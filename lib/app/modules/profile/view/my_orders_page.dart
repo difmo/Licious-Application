@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/services/order_service.dart';
+import '../../cart/view/order_tracking_page.dart';
 
 // Live order data provider
-final myOrdersProvider = FutureProvider.autoDispose<List<dynamic>>((ref) async {
+final myOrdersProvider = FutureProvider<List<dynamic>>((ref) async {
   return ref.read(orderServiceProvider).getMyOrders();
 });
 
@@ -57,12 +58,16 @@ class MyOrdersPage extends ConsumerWidget {
           ),
           ordersAsync.when(
             data: (orders) => orders.isEmpty
-                ? const SliverFillRemaining(child: _EmptyOrdersView())
+                ? SliverFillRemaining(
+                    child: _EmptyOrdersView(
+                    onRefresh: () => ref.invalidate(myOrdersProvider),
+                  ))
                 : SliverPadding(
                     padding: const EdgeInsets.all(20),
                     sliver: SliverList(
                       delegate: SliverChildBuilderDelegate(
-                        (context, index) => _OrderCard(order: orders[index]),
+                        (context, index) => _OrderCard(
+                            order: orders[index] as Map<String, dynamic>),
                         childCount: orders.length,
                       ),
                     ),
@@ -73,7 +78,38 @@ class MyOrdersPage extends ConsumerWidget {
               ),
             ),
             error: (err, _) => SliverFillRemaining(
-              child: Center(child: Text('Failed to load orders: $err')),
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.wifi_off, size: 64, color: Colors.grey),
+                      const SizedBox(height: 16),
+                      const Text('Failed to load orders',
+                          style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey)),
+                      const SizedBox(height: 8),
+                      Text(err.toString(),
+                          textAlign: TextAlign.center,
+                          style:
+                              const TextStyle(color: Colors.red, fontSize: 12)),
+                      const SizedBox(height: 24),
+                      ElevatedButton.icon(
+                        onPressed: () => ref.invalidate(myOrdersProvider),
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Try Again'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF114F3B),
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
           const SliverToBoxAdapter(child: SizedBox(height: 100)),
@@ -84,7 +120,8 @@ class MyOrdersPage extends ConsumerWidget {
 }
 
 class _EmptyOrdersView extends StatelessWidget {
-  const _EmptyOrdersView();
+  final VoidCallback? onRefresh;
+  const _EmptyOrdersView({this.onRefresh});
 
   @override
   Widget build(BuildContext context) {
@@ -99,7 +136,21 @@ class _EmptyOrdersView extends StatelessWidget {
                 fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey)),
         const SizedBox(height: 8),
         const Text('Your orders will appear here after you place one.',
-            style: TextStyle(color: Colors.grey)),
+            textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
+        if (onRefresh != null) ...[
+          const SizedBox(height: 24),
+          OutlinedButton.icon(
+            onPressed: onRefresh,
+            icon: const Icon(Icons.refresh, color: Color(0xFF114F3B)),
+            label: const Text('Refresh',
+                style: TextStyle(color: Color(0xFF114F3B))),
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: Color(0xFF114F3B)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -168,18 +219,31 @@ class _OrderCardState extends State<_OrderCard>
     return total;
   }
 
-  String _orderStatus() => widget.order['status']?.toString() ?? 'Pending';
+  String _orderStatus() {
+    return widget.order['orderStatus']?.toString() ??
+        widget.order['status']?.toString() ??
+        'Pending';
+  }
 
-  bool _isDelivered() => _orderStatus().toLowerCase() == 'delivered';
+  bool _isDelivered() {
+    final s = _orderStatus().toLowerCase();
+    return s == 'delivered' || s == 'completed';
+  }
 
   Color _statusColor() {
     switch (_orderStatus().toLowerCase()) {
       case 'delivered':
-        return const Color(0xFFE67E22);
+      case 'completed':
+        return const Color(0xFF27AE60);
       case 'pending':
-        return Colors.orange;
+        return const Color(0xFFE67E22);
+      case 'processing':
+      case 'accepted':
+        return const Color(0xFF2980B9);
       case 'cancelled':
         return Colors.red;
+      case 'out for delivery':
+        return const Color(0xFF8E44AD);
       default:
         return const Color(0xFF114F3B);
     }
@@ -319,20 +383,54 @@ class _OrderCardState extends State<_OrderCard>
                             ],
                           ),
                           if (!_isDelivered())
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                    color: const Color(0xFFE67E22), width: 1.5),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: const Text(
-                                'Track Order',
-                                style: TextStyle(
-                                  color: Color(0xFF2D3436),
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
+                            GestureDetector(
+                              onTap: () {
+                                HapticFeedback.mediumImpact();
+                                final orderId =
+                                    widget.order['orderId']?.toString() ??
+                                        widget.order['_id']?.toString() ??
+                                        '';
+                                if (orderId.isNotEmpty) {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          OrderTrackingPage(orderId: orderId),
+                                    ),
+                                  );
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                        content: Text('Order ID not found')),
+                                  );
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF1A73E8)
+                                      .withValues(alpha: 0.1),
+                                  border: Border.all(
+                                      color: const Color(0xFF1A73E8),
+                                      width: 1.5),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.location_on,
+                                        size: 12, color: Color(0xFF1A73E8)),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'Track Order',
+                                      style: TextStyle(
+                                        color: Color(0xFF1A73E8),
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             )

@@ -4,6 +4,7 @@ import '../../../data/models/food_models.dart';
 import '../../../data/services/db_service.dart';
 import '../../../data/models/product_model.dart';
 import '../../../data/services/subscription_service.dart';
+import '../../../widgets/adaptive_image.dart';
 
 class ProductDetailsPage extends ConsumerWidget {
   final Product product;
@@ -16,6 +17,105 @@ class ProductDetailsPage extends ConsumerWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => SubscriptionConfigDrawer(product: product),
+    );
+  }
+
+  void _handleAddToCart(BuildContext context, CartProvider cart) {
+    final currentShopId = cart.currentShopId;
+
+    if (currentShopId != null &&
+        currentShopId != 'global' &&
+        currentShopId != product.shopId) {
+      _showReplaceCartDialog(context, cart);
+    } else {
+      cart.addToCart(CartItem.fromProduct(product));
+    }
+  }
+
+  void _showReplaceCartDialog(BuildContext context, CartProvider cart) {
+    final oldShopName = cart.currentShopName ?? 'another shop';
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        contentPadding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
+        title: const Text(
+          'Replace cart item?',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w800,
+            color: Color(0xFF1A1A1A),
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Your cart contains dishes from $oldShopName. Do you want to discard the selection and add dishes from Shrimpbite Retailer?',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey.shade600,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 50,
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: TextButton.styleFrom(
+                        backgroundColor: const Color(0xFFFFF1F1),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: const Text(
+                        'No',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: SizedBox(
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        cart.clearCart();
+                        cart.addToCart(CartItem.fromProduct(product));
+                        Navigator.pop(context);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFFF5200),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: const Text(
+                        'Replace',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -34,6 +134,9 @@ class ProductDetailsPage extends ConsumerWidget {
         image: product.image,
         category: product.category,
         quantity: 0,
+        shopId: product.shopId,
+        shopName: product.shopName,
+        shopLocation: product.shopLocation,
       ),
     );
     final isInCart = cartItem.quantity > 0;
@@ -81,7 +184,10 @@ class ProductDetailsPage extends ConsumerWidget {
                 flexibleSpace: FlexibleSpaceBar(
                   background: Hero(
                     tag: 'product_${product.id}',
-                    child: Image.asset(product.image, fit: BoxFit.cover),
+                    child: AdaptiveImage(
+                      imagePath: product.image,
+                      fit: BoxFit.cover,
+                    ),
                   ),
                 ),
               ),
@@ -207,8 +313,7 @@ class ProductDetailsPage extends ConsumerWidget {
                   const SizedBox(height: 12),
                   !isInCart
                       ? ElevatedButton(
-                          onPressed: () =>
-                              cart.addToCart(CartItem.fromProduct(product)),
+                          onPressed: () => _handleAddToCart(context, cart),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF68B92E),
                             foregroundColor: Colors.white,

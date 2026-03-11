@@ -3,7 +3,8 @@ import '../../home/controller/main_controller.dart';
 import 'order_tracking_page.dart';
 
 class OrderSuccessPage extends StatelessWidget {
-  const OrderSuccessPage({super.key});
+  final String? orderId;
+  const OrderSuccessPage({super.key, this.orderId});
 
   @override
   Widget build(BuildContext context) {
@@ -75,7 +76,9 @@ class OrderSuccessPage extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const OrderTrackingPage(),
+                      builder: (context) => orderId != null
+                          ? OrderTrackingPage(orderId: orderId!)
+                          : const OrderTrackingPage(orderId: 'Unknown'),
                     ),
                   );
                 },

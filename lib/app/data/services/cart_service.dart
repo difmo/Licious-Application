@@ -90,16 +90,45 @@ class CartService {
 
   // ── Mapper ───────────────────────────────────────────────────────────────
   CartItem _mapToCartItem(Map<String, dynamic> json) {
-    // Assuming the backend returns something that can be mapped to our CartItem
-    // Adjust mapping based on actual API response keys
+    final product = json['product'] as Map<String, dynamic>?;
+    final retailer = json['retailer'] as Map<String, dynamic>?;
+
+    final id = json['productId'] ??
+        json['id'] ??
+        product?['_id'] ??
+        product?['id'] ??
+        '';
+    final name = json['name'] ??
+        json['productName'] ??
+        product?['name'] ??
+        product?['title'] ??
+        'Unknown Product';
+    final price = (json['price'] as num?)?.toDouble() ??
+        (product?['price'] as num?)?.toDouble() ??
+        0.0;
+    final qty = (json['quantity'] as num?)?.toInt() ?? 1;
+    final image =
+        json['image'] ?? product?['image'] ?? product?['imageUrl'] ?? '';
+    final category = json['category'] ?? product?['category'] ?? 'standard';
+
+    final rId = retailer?['_id'] ?? retailer?['id'] ?? json['shopId'];
+    final rName = retailer?['businessDetails']?['storeDisplayName'] ??
+        retailer?['businessName'] ??
+        json['shopName'];
+    final rLocation = retailer?['businessDetails']?['location']?['address'] ??
+        json['shopLocation'];
+
     return CartItem(
-      id: (json['productId'] ?? json['id'] ?? '').toString(),
-      title: (json['name'] ?? json['productName'] ?? '').toString(),
-      unitPrice: (json['price'] as num?)?.toDouble() ?? 0.0,
-      quantity: (json['quantity'] as num?)?.toInt() ?? 1,
-      subtitle: (json['category'] ?? '').toString(),
-      image: (json['image'] ?? '').toString(),
-      category: (json['type'] ?? 'standard').toString(),
+      id: id.toString(),
+      title: name.toString(),
+      unitPrice: price,
+      quantity: qty,
+      subtitle: category.toString(),
+      image: image.toString(),
+      category: category.toString(),
+      shopId: rId?.toString(),
+      shopName: rName?.toString(),
+      shopLocation: rLocation?.toString(),
     );
   }
 }

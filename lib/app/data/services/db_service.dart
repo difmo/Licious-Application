@@ -21,6 +21,7 @@ class CartProvider extends ChangeNotifier {
         _addressService = addressService {
     loadAddresses();
     syncWallet();
+    loadCartFromApi();
   }
 
   AddressService? get addressService => _addressService;
@@ -476,6 +477,8 @@ class CartProvider extends ChangeNotifier {
     );
     _items.clear();
     _favoriteIds.clear();
+    _walletBalance = 0.0;
+    _transactions = [];
     notifyListeners();
   }
 
@@ -633,6 +636,12 @@ class CartProvider extends ChangeNotifier {
   double get shippingCharges => _items.isEmpty ? 0.0 : 1.6;
 
   double get total => subtotal + shippingCharges;
+
+  String? get currentShopId => _items.isNotEmpty ? _items.first.shopId : null;
+  String? get currentShopName =>
+      _items.isNotEmpty ? _items.first.shopName : null;
+  String? get currentShopLocation =>
+      _items.isNotEmpty ? _items.first.shopLocation : null;
 
   bool isInCart(String title) {
     return _items.any((item) => item.title == title);

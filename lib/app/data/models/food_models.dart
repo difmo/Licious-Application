@@ -18,7 +18,9 @@ class FoodCategory {
       id: json['id']?.toString() ?? '',
       name: json['name']?.toString() ?? '',
       image: json['image']?.toString() ?? '',
-      colorValue: json['colorValue'] != null ? int.tryParse(json['colorValue'].toString()) ?? 0xFFF7F8FA : 0xFFF7F8FA,
+      colorValue: json['colorValue'] != null
+          ? int.tryParse(json['colorValue'].toString()) ?? 0xFFF7F8FA
+          : 0xFFF7F8FA,
       iconPath: json['iconPath']?.toString(),
     );
   }
@@ -73,15 +75,22 @@ class UserOrder {
     // Backend returns orderId, createdAt, totalAmount, status, items
     return UserOrder(
       id: json['orderId'] ?? '',
-      restaurantName: 'Shrimpbite Retailer', // Placeholder as it's not directly in Order model top level
-      date: json['createdAt'] != null 
-          ? DateTime.parse(json['createdAt']).toLocal().toString().split('.').first
+      restaurantName:
+          'Shrimpbite Retailer', // Placeholder as it's not directly in Order model top level
+      date: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'])
+              .toLocal()
+              .toString()
+              .split('.')
+              .first
           : '',
       total: double.tryParse(json['totalAmount']?.toString() ?? '0') ?? 0.0,
       status: json['paymentStatus'] == 'Paid' ? 'Accepted' : 'Pending',
-      items: (json['items'] as List<dynamic>?)?.map((item) => 
-          "${item['quantity']}x ${item['product']?['name'] ?? 'Product'}"
-      ).toList() ?? [],
+      items: (json['items'] as List<dynamic>?)
+              ?.map((item) =>
+                  "${item['quantity']}x ${item['product']?['name'] ?? 'Product'}")
+              .toList() ??
+          [],
     );
   }
 }
@@ -155,6 +164,9 @@ class Product {
   final bool isFavorite;
   final String description;
   final List<String> whyChoose;
+  final String shopId;
+  final String shopName;
+  final String shopLocation;
 
   const Product({
     required this.id,
@@ -167,6 +179,9 @@ class Product {
     this.isFavorite = false,
     this.description = '',
     this.whyChoose = const [],
+    this.shopId = 'global',
+    this.shopName = 'Shrimpbite Retailer',
+    this.shopLocation = 'Main Street, City',
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
@@ -180,7 +195,10 @@ class Product {
       badgeText: json['badgeText']?.toString() ?? '',
       isFavorite: json['isFavorite'] == true || json['isFavorite'] == 'true',
       description: json['description']?.toString() ?? '',
-      whyChoose: (json['whyChoose'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? const [],
+      whyChoose: (json['whyChoose'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const [],
     );
   }
 }

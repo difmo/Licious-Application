@@ -4,6 +4,7 @@ import '../../../data/models/food_models.dart';
 import '../../home/view/product_details_page.dart';
 import '../../home/controller/main_controller.dart';
 import 'shipping_address_page.dart';
+import '../../../widgets/adaptive_image.dart';
 
 class CartPage extends StatelessWidget {
   const CartPage({super.key});
@@ -20,10 +21,6 @@ class CartPage extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0.5,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF1A1A1A)),
-          onPressed: () => Navigator.pop(context),
-        ),
         title: const Text(
           'Shopping Cart',
           style: TextStyle(
@@ -38,13 +35,12 @@ class CartPage extends StatelessWidget {
           ? _buildEmptyCart(context)
           : Stack(
               children: [
-                ListView.builder(
+                ListView(
                   padding: const EdgeInsets.fromLTRB(20, 12, 20, 400),
-                  itemCount: items.length,
-                  itemBuilder: (context, index) {
-                    final item = items[index];
-                    return _buildCartItem(context, cart, item);
-                  },
+                  children: [
+                    if (items.isNotEmpty) _buildShopHeader(cart),
+                    ...items.map((item) => _buildCartItem(context, cart, item)),
+                  ],
                 ),
                 Positioned(
                   bottom: 0,
@@ -54,6 +50,81 @@ class CartPage extends StatelessWidget {
                 ),
               ],
             ),
+    );
+  }
+
+  Widget _buildShopHeader(CartProvider cart) {
+    final shopName = cart.currentShopName ?? 'Shrimpbite Retailer';
+    final shopLocation = cart.currentShopLocation ?? 'Main Street, City';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF0F9E8),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.storefront_outlined,
+              color: Color(0xFF68B92E),
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  shopName,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1A1A1A),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.location_on_outlined,
+                      color: Colors.grey,
+                      size: 14,
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        shopLocation,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -166,14 +237,9 @@ class CartPage extends StatelessWidget {
                   width: 80,
                   height: 80,
                   color: const Color(0xFFF7F8FA),
-                  child: Image.asset(
-                    item.image,
+                  child: AdaptiveImage(
+                    imagePath: item.image,
                     fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) => const Icon(
-                      Icons.image_not_supported,
-                      color: Colors.grey,
-                      size: 30,
-                    ),
                   ),
                 ),
               ),

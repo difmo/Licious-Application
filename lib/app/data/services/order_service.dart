@@ -42,11 +42,44 @@ class OrderService {
         '${ApiClient.baseUrl}/orders/my',
         requiresAuth: true,
       );
-      // The backend returns { "success": true, "orders": [...] }
-      return response['orders'] ?? response['data'] ?? [];
-    } catch (e) {
-      debugPrint('Error fetching orders: $e');
+      debugPrint('[OrderService] getMyOrders response: $response');
+
+      // Backend may return:
+      // { "success": true, "orders": [...] }
+      // { "success": true, "data": [...] }
+      // { "success": true, "data": { "orders": [...] } }
+      // { "orders": [...] }   (no success wrapper)
+      if (response['orders'] is List) {
+        return response['orders'] as List;
+      }
+      if (response['data'] is List) {
+        return response['data'] as List;
+      }
+      if (response['data'] is Map) {
+        final inner = (response['data'] as Map);
+        if (inner['orders'] is List) return inner['orders'] as List;
+        if (inner['data'] is List) return inner['data'] as List;
+      }
       return [];
+    } catch (e) {
+      debugPrint('[OrderService] Error fetching orders: $e');
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>?> getOrderDetails(String orderId) async {
+    try {
+      final response = await _apiClient.get(
+        '${ApiClient.baseUrl}/orders/$orderId',
+        requiresAuth: true,
+      );
+      if (response['success'] == true) {
+        return response['data'] ?? response['order'];
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error fetching order $orderId: $e');
+      return null;
     }
   }
 }

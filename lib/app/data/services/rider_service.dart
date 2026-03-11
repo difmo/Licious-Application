@@ -53,18 +53,60 @@ class RiderService {
     }
   }
 
+  /// PATCH /api/rider/status  →  marks order as Delivered
   Future<Map<String, dynamic>> completeOrder({
     required String orderId,
   }) async {
     try {
       final res = await _apiClient.patch(
-        '${ApiClient.riderBaseUrl}/complete',
-        data: {'orderId': orderId},
+        '${ApiClient.riderBaseUrl}/status',
+        data: {
+          'orderId': orderId,
+          'status': 'Delivered',
+        },
         requiresAuth: true,
       );
-      return res;
+      return {
+        'success': res['success'] ?? true,
+        'message': res['message'] ?? 'Marked as Delivered',
+      };
     } catch (e) {
       return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  /// PATCH /api/rider/status  →  generic status update
+  Future<Map<String, dynamic>> updateOrderStatus({
+    required String orderId,
+    required String status,
+  }) async {
+    try {
+      final res = await _apiClient.patch(
+        '${ApiClient.riderBaseUrl}/status',
+        data: {
+          'orderId': orderId,
+          'status': status,
+        },
+        requiresAuth: true,
+      );
+      return {
+        'success': res['success'] ?? true,
+        'message': res['message'] ?? 'Status updated',
+      };
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  Future<List<dynamic>> getOrderHistory() async {
+    try {
+      final response = await _apiClient.get(
+        '${ApiClient.riderBaseUrl}/history',
+        requiresAuth: true,
+      );
+      return response['data'] ?? [];
+    } catch (e) {
+      return [];
     }
   }
 }

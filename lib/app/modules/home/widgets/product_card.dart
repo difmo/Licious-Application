@@ -5,6 +5,7 @@ import '../../../data/services/db_service.dart';
 import '../../../data/models/product_model.dart';
 import '../view/product_details_page.dart';
 import '../../../widgets/bounce_widget.dart';
+import '../../../widgets/adaptive_image.dart';
 
 class ProductCard extends StatelessWidget {
   final Product product;
@@ -31,6 +32,9 @@ class ProductCard extends StatelessWidget {
         image: product.image,
         category: product.category,
         quantity: 0,
+        shopId: product.shopId,
+        shopName: product.shopName,
+        shopLocation: product.shopLocation,
       ),
     );
     final isInCart = cartItem.quantity > 0;
@@ -62,20 +66,11 @@ class ProductCard extends StatelessWidget {
                     borderRadius: const BorderRadius.vertical(
                       top: Radius.circular(16),
                     ),
-                    child: Image.asset(
-                      product.image,
+                    child: AdaptiveImage(
+                      imagePath: product.image,
                       height: 110,
                       width: double.infinity,
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          height: 110,
-                          color: Colors.grey.shade200,
-                          child: const Center(
-                            child: Icon(Icons.broken_image, color: Colors.grey),
-                          ),
-                        );
-                      },
                     ),
                   ),
                 ),
@@ -225,7 +220,7 @@ class ProductCard extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha:  0.9),
+                    color: Colors.white.withValues(alpha: 0.9),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
@@ -239,8 +234,7 @@ class ProductCard extends StatelessWidget {
           ],
         ),
       ),
-    ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.05, end: 0, duration: 400.ms, curve: Curves.easeOutQuad);
+    ).animate().fadeIn(duration: 400.ms).slideY(
+        begin: 0.05, end: 0, duration: 400.ms, curve: Curves.easeOutQuad);
   }
 }
-
-

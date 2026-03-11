@@ -26,19 +26,16 @@ final apiClientProvider = Provider<ApiClient>((ref) {
 
 class ApiClient {
   // ── Base URLs ──────────────────────────────────────────────────────────────
-  // static const String baseUrl = 'https://shrimpbite-backend.vercel.app/api/app';
-  // static const String riderBaseUrl = 'https://shrimpbite-backend.vercel.app/api/rider';
-  // static const String otpBaseUrl =
-  //     'https://shrimpbite-backend.vercel.app/api/otp';
+  static const String _apiBase = 'https://shrimpbite-backend.vercel.app/api';
+  // static const String _apiBase = 'http://localhost:5000/api';
 
-  static const String baseUrl = 'http://localhost:5000/api/app';
-  static const String riderBaseUrl = 'http://localhost:5000/api/rider';
-  static const String otpBaseUrl = 'http://localhost:5000/api/otp';
-  static const String walletBaseUrl = 'http://localhost:5000/api/wallet';
-  static const String paymentBaseUrl = 'http://localhost:5000/api/payment';
-  static const String subscriptionBaseUrl =
-      'http://localhost:5000/api/subscription';
-  static const String reviewBaseUrl = 'http://localhost:5000/api/reviews';
+  static const String baseUrl = '$_apiBase/app';
+  static const String riderBaseUrl = '$_apiBase/rider';
+  static const String otpBaseUrl = '$_apiBase/otp';
+  static const String walletBaseUrl = '$_apiBase/wallet';
+  static const String paymentBaseUrl = '$_apiBase/payment';
+  static const String subscriptionBaseUrl = '$_apiBase/subscription';
+  static const String reviewBaseUrl = '$_apiBase/reviews';
 
   late Dio _dio;
 

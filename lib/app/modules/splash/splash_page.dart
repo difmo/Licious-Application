@@ -54,7 +54,8 @@ class _SplashPageState extends ConsumerState<SplashPage>
       // Session restoration ended or terminal state reached → navigate to Login/Onboarding
       _navigated = true;
       if (mounted) {
-        Navigator.pushReplacementNamed(context, AppRoutes.initialRoute);
+        Navigator.pushNamedAndRemoveUntil(
+            context, AppRoutes.initialRoute, (route) => false);
       }
     } else if (authState is AuthLoading || authState is AuthInitial) {
       // Session is still being restored — check again shortly
@@ -74,9 +75,11 @@ class _SplashPageState extends ConsumerState<SplashPage>
     );
 
     if (auth.user.role == 'rider') {
-      Navigator.pushReplacementNamed(context, AppRoutes.riderHome);
+      Navigator.pushNamedAndRemoveUntil(
+          context, AppRoutes.riderHome, (route) => false);
     } else {
-      Navigator.pushReplacementNamed(context, AppRoutes.home);
+      Navigator.pushNamedAndRemoveUntil(
+          context, AppRoutes.home, (route) => false);
     }
   }
 
