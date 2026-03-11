@@ -2,11 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/services/order_service.dart';
+import '../../orders/view/order_tracking_page.dart';
 
-// Live order data provider
-final myOrdersProvider = FutureProvider.autoDispose<List<dynamic>>((ref) async {
-  return ref.read(orderServiceProvider).getMyOrders();
-});
+// Local provider removed, using shared provider from order_service.dart
+
 
 class MyOrdersPage extends ConsumerWidget {
   const MyOrdersPage({super.key});
@@ -319,20 +318,32 @@ class _OrderCardState extends State<_OrderCard>
                             ],
                           ),
                           if (!_isDelivered())
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                    color: const Color(0xFFE67E22), width: 1.5),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: const Text(
-                                'Track Order',
-                                style: TextStyle(
-                                  color: Color(0xFF2D3436),
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
+                            GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        OrderTrackingPage(order: widget.order),
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                      color: const Color(0xFFE67E22),
+                                      width: 1.5),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: const Text(
+                                  'Track Order',
+                                  style: TextStyle(
+                                    color: Color(0xFF2D3436),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
                                 ),
                               ),
                             )

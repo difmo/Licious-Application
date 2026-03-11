@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../widgets/common_button.dart';
 import 'provider/auth_provider.dart';
+import '../../data/models/food_models.dart';
+import '../../data/services/db_service.dart';
+import '../../routes/app_routes.dart';
 
 class OtpVerificationPage extends ConsumerStatefulWidget {
   final String phoneNumber;
@@ -112,9 +115,31 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
       ref.read(authProvider.notifier).reset();
       Navigator.pushReplacementNamed(
         context,
-        '/login',
+        AppRoutes.login,
         arguments: {'verified': true},
       );
+    } else if (authState is AuthAuthenticated) {
+      debugPrint('[OTP] Instant login successful!');
+      
+      // Update legacy CartProvider profile (kept for rest of UI compatibility)
+      try {
+        CartProviderScope.of(context).updateUserProfile(
+          UserProfile(
+            name: authState.user.fullName,
+            email: authState.user.email,
+            phone: authState.user.phoneNumber,
+            profileImage: 'assets/images/image copy 2.png',
+          ),
+        );
+      } catch (e) {
+        debugPrint('Failed to update CartProvider profile: $e');
+      }
+
+      if (authState.user.role == 'rider') {
+        Navigator.pushNamedAndRemoveUntil(context, AppRoutes.riderHome, (route) => false);
+      } else {
+        Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (route) => false);
+      }
     } else if (authState is AuthError) {
       debugPrint('[OTP] Verification failed: ${authState.message}');
       _showSnackBar(authState.message, backgroundColor: Colors.red);

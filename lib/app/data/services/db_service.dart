@@ -121,7 +121,10 @@ class CartProvider extends ChangeNotifier {
   }
 
   List<UserAddress> _addresses = [];
+  bool _isAddressesLoading = false;
   int _selectedAddressIndex = 0;
+
+  bool get isAddressesLoading => _isAddressesLoading;
 
   int get selectedAddressIndex => _selectedAddressIndex;
 
@@ -480,17 +483,14 @@ class CartProvider extends ChangeNotifier {
   }
 
   // ── API Integration ───────────────────────────────────────────────────────
-
   /// Syncs the local cart with the backend.
   Future<void> loadCartFromApi() async {
     if (_service == null) return;
     try {
       final remoteItems = await _service!.getCart();
-      if (remoteItems.isNotEmpty) {
-        _items.clear();
-        _items.addAll(remoteItems);
-        notifyListeners();
-      }
+      _items.clear();
+      _items.addAll(remoteItems);
+      notifyListeners();
     } catch (e) {
       debugPrint('Error loading cart from API: $e');
     }
@@ -503,9 +503,12 @@ class CartProvider extends ChangeNotifier {
     for (var id in _favoriteIds) {
       final r = _restaurants.firstWhere((res) => res.id == id,
           orElse: () => _restaurants.first);
-      if (!_favoriteIds.contains(r.id))
+      if (!_favoriteIds.contains(r.id)) {
         continue; // Double check but it should be fine
-      if (!favs.contains(r)) favs.add(r);
+      }
+      if (!favs.contains(r)) {
+        favs.add(r);
+      }
     }
     // Correct way: map ids to restaurants in order
     return _favoriteIds
@@ -569,9 +572,16 @@ class CartProvider extends ChangeNotifier {
 
   Future<void> loadAddresses() async {
     if (_addressService == null) return;
+    _isAddressesLoading = true;
+    notifyListeners();
+
     try {
       final token = await ApiClient.getToken();
-      if (token == null || token.isEmpty) return;
+      if (token == null || token.isEmpty) {
+        _isAddressesLoading = false;
+        notifyListeners();
+        return;
+      }
 
       final result = await _addressService!.getAddresses();
       if (result['success']) {
@@ -594,11 +604,12 @@ class CartProvider extends ChangeNotifier {
         } else if (_addresses.isNotEmpty) {
           _selectedAddressIndex = 0;
         }
-
-        notifyListeners();
       }
     } catch (e) {
       debugPrint('Error loading addresses: $e');
+    } finally {
+      _isAddressesLoading = false;
+      notifyListeners();
     }
   }
 

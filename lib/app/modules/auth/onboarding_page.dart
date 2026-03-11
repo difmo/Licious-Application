@@ -302,40 +302,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
     );
   }
 
-  // ─── Nav: full-width "Get started" button ─────────────────────────────────
-  Widget _buildGetStartedNav() {
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 36),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildDots(),
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            height: 54,
-            child: ElevatedButton(
-              onPressed: _next,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2E7D32),
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              child: const Text(
-                'Get started',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   // ─── Nav: Skip · dots · Next ──────────────────────────────────────────────
   Widget _buildSkipNextNav() {
     return Container(

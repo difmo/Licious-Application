@@ -3,6 +3,7 @@ import '../../../data/services/db_service.dart';
 import '../../../data/models/food_models.dart';
 import '../../home/view/product_details_page.dart';
 import '../../home/controller/main_controller.dart';
+import '../../home/widgets/quantity_selector.dart';
 import 'shipping_address_page.dart';
 
 class CartPage extends StatelessWidget {
@@ -211,53 +212,13 @@ class CartPage extends StatelessWidget {
                   ],
                 ),
               ),
-              // Quantity controls
-              // Quantity controls
               Column(
                 children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF7F8FA),
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    child: Row(
-                      children: [
-                        IconButton(
-                          onPressed: () => cart.decrement(item.title),
-                          icon: const Icon(
-                            Icons.remove,
-                            size: 18,
-                            color: Color(0xFF1A1A1A),
-                          ),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(
-                            minWidth: 32,
-                            minHeight: 32,
-                          ),
-                        ),
-                        Text(
-                          '${item.quantity}',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                            color: Color(0xFF1A1A1A),
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () => cart.increment(item.title),
-                          icon: const Icon(
-                            Icons.add,
-                            size: 18,
-                            color: Color(0xFF68B92E),
-                          ),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(
-                            minWidth: 32,
-                            minHeight: 32,
-                          ),
-                        ),
-                      ],
-                    ),
+                  QuantitySelector(
+                    quantity: item.quantity,
+                    onIncrement: () => cart.increment(item.title),
+                    onDecrement: () => cart.decrement(item.title),
+                    size: 34, // Slightly smaller for list view
                   ),
                   const SizedBox(height: 8),
                   TextButton(

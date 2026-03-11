@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/services/order_service.dart';
+import '../../../data/services/socket_service.dart';
+import '../../auth/provider/auth_provider.dart';
 
-// Live orders provider for the bottom-nav Orders tab
-final liveOrdersProvider = FutureProvider.autoDispose<List<dynamic>>((ref) {
-  return ref.read(orderServiceProvider).getMyOrders();
-});
+// Local provider removed, using shared provider from order_service.dart
+
 
 class _HeaderDelegate extends SliverPersistentHeaderDelegate {
   final double expandedHeight;
@@ -78,12 +78,132 @@ class _HeaderDelegate extends SliverPersistentHeaderDelegate {
       true;
 }
 
-class OrdersPage extends ConsumerWidget {
+class OrdersPage extends ConsumerStatefulWidget {
   const OrdersPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final ordersAsync = ref.watch(liveOrdersProvider);
+  ConsumerState<OrdersPage> createState() => _OrdersPageState();
+}
+
+class _OrdersPageState extends ConsumerState<OrdersPage> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _setupSocket());
+  }
+
+  void _setupSocket() {
+    final user = ref.read(currentUserProvider);
+    if (user == null) return;
+    final socket = ref.read(socketServiceProvider);
+    socket.joinUserRoom(user.id);
+    socket.onRiderAssigned((data) {
+      if (!mounted) return;
+      HapticFeedback.heavyImpact();
+      _showRiderAssignedPopup(data);
+    });
+  }
+
+  @override
+  void dispose() {
+    ref.read(socketServiceProvider).offEvent('riderAssigned');
+    super.dispose();
+  }
+
+  void _showRiderAssignedPopup(dynamic data) {
+    final riderName = data?['rider']?['name'] ?? 'Your Rider';
+    final riderPhone = data?['rider']?['phone'] ?? '';
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: Padding(
+          padding: const EdgeInsets.all(28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF114F3B).withValues(alpha: 0.08),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.delivery_dining,
+                    size: 48, color: Color(0xFF114F3B)),
+              ),
+              const SizedBox(height: 20),
+              const Text('🎉 Rider Assigned!',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 8),
+              Text('$riderName is on the way to pick up your order.',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.grey, fontSize: 14)),
+              const SizedBox(height: 16),
+              if (riderPhone.isNotEmpty)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.phone, color: Color(0xFF114F3B), size: 18),
+                    const SizedBox(width: 6),
+                    Text(riderPhone,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 16)),
+                  ],
+                ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFF114F3B)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: const Text('OK',
+                          style: TextStyle(color: Color(0xFF114F3B))),
+                    ),
+                  ),
+                  if (riderPhone.isNotEmpty) ...[
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          // Launch phone call
+                          Navigator.pop(context);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF114F3B),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        icon: const Icon(Icons.call,
+                            size: 16, color: Colors.white),
+                        label: const Text('Call',
+                            style: TextStyle(color: Colors.white)),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    // Refresh orders list
+    ref.invalidate(myOrdersProvider);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ordersAsync = ref.watch(myOrdersProvider);
 
     return MediaQuery.removePadding(
       context: context,
@@ -107,7 +227,7 @@ class OrdersPage extends ConsumerWidget {
                   padding: const EdgeInsets.only(right: 16, top: 8),
                   child: IconButton(
                     icon: const Icon(Icons.refresh, color: Color(0xFF114F3B)),
-                    onPressed: () => ref.invalidate(liveOrdersProvider),
+                    onPressed: () => ref.invalidate(myOrdersProvider),
                   ),
                 ),
               ),

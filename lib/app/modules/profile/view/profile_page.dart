@@ -2,15 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import './profile_detail_page.dart';
 import './edit_profile_page.dart';
+<<<<<<< HEAD
+=======
+import '../../../data/services/db_service.dart';
+import '../../../data/services/order_service.dart';
+import '../../../data/services/favorites_service.dart';
+>>>>>>> 066c625f65b6e7ec1abaf08af1fe9ce369c8b3d4
 import './my_orders_page.dart';
 import './transactions_page.dart';
 import './saved_cards_page.dart';
 import '../../auth/provider/auth_provider.dart';
 import '../../home/controller/main_controller.dart';
 import '../../subscriptions/view/subscription_dashboard_page.dart';
+import '../../home/view/favorites_page.dart';
 import '../../../routes/app_routes.dart';
 import '../../wallet/view/wallet_page.dart' show walletBalanceProvider;
 
+<<<<<<< HEAD
 class ProfilePage extends ConsumerWidget {
   const ProfilePage({super.key});
 
@@ -18,6 +26,31 @@ class ProfilePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authProvider);
     final user = authState is AuthAuthenticated ? authState.user : null;
+=======
+class ProfilePage extends ConsumerStatefulWidget {
+  const ProfilePage({super.key});
+
+  @override
+  ConsumerState<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends ConsumerState<ProfilePage> {
+  @override
+  void initState() {
+    super.initState();
+    // Sync wallet balance whenever the profile tab is visited
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        CartProviderScope.of(context).syncWallet();
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = CartProviderScope.of(context);
+    final profile = provider.userProfile;
+>>>>>>> 066c625f65b6e7ec1abaf08af1fe9ce369c8b3d4
 
     return Scaffold(
       backgroundColor: const Color(0xFFF0F4EC),
@@ -31,7 +64,7 @@ class ProfilePage extends ConsumerWidget {
               _ProfileHeader(user: user),
               const SizedBox(height: 30),
               const _ActiveOrdersAndSubscriptions(),
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
               const _WalletSection(),
               const SizedBox(height: 24),
               const Text(
@@ -152,7 +185,9 @@ class _ActiveOrdersAndSubscriptions extends ConsumerWidget {
   const _ActiveOrdersAndSubscriptions();
 
   void _navigateToDetail(BuildContext context, String title) {
-    if (title == 'My Orders' || title == 'Active Orders') {
+    if (title == 'Active Orders') {
+      Navigator.pushNamed(context, AppRoutes.activeOrders);
+    } else if (title == 'My Orders') {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => const MyOrdersPage()),
@@ -174,16 +209,12 @@ class _ActiveOrdersAndSubscriptions extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final ordersAsync = ref.watch(myOrdersProvider);
-
-    // Count active (non-delivered) orders
-    final activeCount = ordersAsync.maybeWhen(
-      data: (orders) => orders.where((o) {
-        final s =
-            (o['orderStatus'] ?? o['status'] ?? '').toString().toLowerCase();
-        return s != 'delivered' && s != 'completed' && s != 'cancelled';
-      }).length,
-      orElse: () => null,
+    final activeOrdersAsync = ref.watch(activeOrdersProvider);
+    
+    // Count active orders from the dedicated provider
+    final activeOrdersCount = activeOrdersAsync.maybeWhen(
+      data: (orders) => orders.length,
+      orElse: () => 0,
     );
 
     return Row(
@@ -218,16 +249,13 @@ class _ActiveOrdersAndSubscriptions extends ConsumerWidget {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  // Dynamic count from backend
-                  ordersAsync.when(
-                    data: (_) => Text(
-                      activeCount == 0
-                          ? 'No Active Orders'
-                          : '$activeCount Active Order${activeCount! > 1 ? 's' : ''}',
-                      style: const TextStyle(
-                        color: Color(0xFF114F3B),
-                        fontSize: 12,
-                      ),
+                  Text(
+                    activeOrdersCount > 0 
+                      ? '$activeOrdersCount Active Order${activeOrdersCount > 1 ? 's' : ''}'
+                      : 'No Active Orders',
+                    style: const TextStyle(
+                      color: Color(0xFF114F3B),
+                      fontSize: 12,
                     ),
                     loading: () => const SizedBox(
                       height: 12,
@@ -242,22 +270,28 @@ class _ActiveOrdersAndSubscriptions extends ConsumerWidget {
                             TextStyle(color: Color(0xFF114F3B), fontSize: 12)),
                   ),
                   const SizedBox(height: 8),
-                  GestureDetector(
-                    onTap: () => _navigateToDetail(context, 'Active Orders'),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
+                  if (activeOrdersCount > 0)
+                    Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.5),
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: const Text('View All Orders',
-                          style: TextStyle(
-                              color: Color(0xFF114F3B),
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500)),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.location_on,
+                              size: 10, color: Color(0xFF114F3B)),
+                          const SizedBox(width: 4),
+                          const Text('Live Tracking ON',
+                              style: TextStyle(
+                                  color: Color(0xFF114F3B),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w500)),
+                        ],
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -368,7 +402,7 @@ class _WalletSection extends ConsumerWidget {
                           color: Color(0xFF114F3B),
                           fontSize: 16,
                           fontWeight: FontWeight.bold)),
-                  Text('Tap to view transactions',
+                  Text('Check balance & statements',
                       style: TextStyle(color: Colors.black54, fontSize: 12)),
                 ],
               ),
@@ -413,17 +447,25 @@ class _WalletSection extends ConsumerWidget {
   }
 }
 
-class _QuickActionsRow extends StatelessWidget {
+class _QuickActionsRow extends ConsumerWidget {
   const _QuickActionsRow();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final favCount = ref.watch(favoriteProductsProvider).maybeWhen(
+      data: (list) => list.length,
+      orElse: () => 0,
+    );
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: const [
-        _QuickActionBtn(title: 'Reorder\nFavorite', navigateTo: 'My Favorites'),
-        _QuickActionBtn(title: 'View All\nOrders', navigateTo: 'My Orders'),
-        _QuickActionBtn(title: 'Edit\nAddress', navigateTo: 'My Address'),
+      children: [
+        _QuickActionBtn(
+          title: 'Favorite\nProducts',
+          navigateTo: 'My Favorites',
+          badgeCount: favCount,
+        ),
+        const _QuickActionBtn(title: 'View All\nOrders', navigateTo: 'My Orders'),
+        const _QuickActionBtn(title: 'Edit\nAddress', navigateTo: 'My Address'),
       ],
     );
   }
@@ -432,11 +474,18 @@ class _QuickActionsRow extends StatelessWidget {
 class _QuickActionBtn extends StatelessWidget {
   final String title;
   final String navigateTo;
+  final int badgeCount;
 
-  const _QuickActionBtn({required this.title, required this.navigateTo});
+  const _QuickActionBtn({
+    required this.title,
+    required this.navigateTo,
+    this.badgeCount = 0,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final bool isFavBtn = navigateTo == 'My Favorites';
+
     return GestureDetector(
       onTap: () {
         if (navigateTo == 'My Orders') {
@@ -444,8 +493,11 @@ class _QuickActionBtn extends StatelessWidget {
             context,
             MaterialPageRoute(builder: (context) => const MyOrdersPage()),
           );
-        } else if (navigateTo == 'My Favorites') {
-          MainControllerScope.of(context).changePage(1);
+        } else if (isFavBtn) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const FavoritesPage()),
+          );
         } else {
           Navigator.push(
             context,
@@ -479,14 +531,46 @@ class _QuickActionBtn extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              navigateTo == 'My Favorites' || navigateTo == 'Reorder Favorite'
-                  ? Icons.favorite_rounded
-                  : navigateTo == 'My Orders'
-                      ? Icons.receipt_long_rounded
-                      : Icons.location_on_rounded,
-              color: const Color(0xFF114F3B),
-              size: 20,
+            // Icon with optional badge
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Icon(
+                  isFavBtn
+                      ? (badgeCount > 0
+                          ? Icons.favorite_rounded
+                          : Icons.favorite_border_rounded)
+                      : navigateTo == 'My Orders'
+                          ? Icons.receipt_long_rounded
+                          : Icons.location_on_rounded,
+                  color: isFavBtn && badgeCount > 0
+                      ? Colors.red
+                      : const Color(0xFF114F3B),
+                  size: 20,
+                ),
+                if (badgeCount > 0)
+                  Positioned(
+                    top: -6,
+                    right: -8,
+                    child: Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                      constraints:
+                          const BoxConstraints(minWidth: 16, minHeight: 16),
+                      child: Text(
+                        '$badgeCount',
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 8,
+                            fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: 4),
             Text(
@@ -512,11 +596,6 @@ class _ListTilesSection extends StatelessWidget {
     return Column(
       children: const [
         _ListTileItem(icon: Icons.notifications_none, title: 'Notifications'),
-        SizedBox(height: 16),
-        _ListTileItem(icon: Icons.access_time, title: 'Transaction History'),
-        SizedBox(height: 16),
-        _ListTileItem(
-            icon: Icons.credit_card_outlined, title: 'Credit/Debit Card'),
       ],
     );
   }

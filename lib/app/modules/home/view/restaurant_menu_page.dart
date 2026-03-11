@@ -4,7 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/shop_product_model.dart';
 import '../../../data/models/product_model.dart';
 import '../../../data/services/db_service.dart';
+import '../../../data/services/favorites_service.dart';
 import '../provider/shop_provider.dart';
+import '../widgets/cart_summary_bar.dart';
+import '../widgets/quantity_selector.dart';
+import '../controller/main_controller.dart';
 
 class RestaurantMenuPage extends ConsumerWidget {
   final ShopModel shop;
@@ -43,12 +47,15 @@ class RestaurantMenuPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final productsAsync = ref.watch(shopProductsProvider(shop.id));
+    final cart = CartProviderScope.of(context);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
-      body: CustomScrollView(
-        physics: const BouncingScrollPhysics(),
-        slivers: [
+      body: Stack(
+        children: [
+          CustomScrollView(
+            physics: const BouncingScrollPhysics(),
+            slivers: [
           // ── Hero App Bar ──────────────────────────────────────────────────
           SliverAppBar(
             expandedHeight: 220,
@@ -269,8 +276,28 @@ class RestaurantMenuPage extends ConsumerWidget {
           const SliverPadding(padding: EdgeInsets.only(bottom: 120)),
         ],
       ),
-    );
-  }
+      if (cart.itemCount > 0)
+        Positioned(
+          bottom: 30, // Positioned near bottom since this page doesn't have a persistent bottom bar like MainPage
+          left: 0,
+          right: 0,
+          child: CartSummaryBar(
+            cart: cart,
+            onTap: () {
+              try {
+                final controller = MainControllerScope.of(context);
+                controller.changePage(2);
+                Navigator.popUntil(context, (route) => route.isFirst);
+              } catch (e) {
+                Navigator.popUntil(context, (route) => route.isFirst);
+              }
+            },
+          ),
+        ),
+    ],
+  ),
+);
+}
 
   Widget _buildHeroBanner() {
     final networkUrl = shop.image;
@@ -315,7 +342,6 @@ class _ProductCard extends ConsumerStatefulWidget {
 }
 
 class _ProductCardState extends ConsumerState<_ProductCard> {
-  bool _isFavorite = false;
 
   @override
   Widget build(BuildContext context) {
@@ -354,25 +380,11 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
                       )
                     : _imagePlaceholder(),
               ),
-              // Favorite button
+              // Favorite button — wired to backend
               Positioned(
                 top: 6,
                 right: 6,
-                child: GestureDetector(
-                  onTap: () => setState(() => _isFavorite = !_isFavorite),
-                  child: Container(
-                    padding: const EdgeInsets.all(5),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.9),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      _isFavorite ? Icons.favorite : Icons.favorite_border,
-                      size: 14,
-                      color: _isFavorite ? Colors.red : Colors.grey,
-                    ),
-                  ),
-                ),
+                child: _FavoriteHeart(productId: p.id),
               ),
               // Out of stock badge
               if (!p.isAvailable)
@@ -450,45 +462,19 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
                     color: Color(0xFF1A1A1A),
                   ),
                 ),
-                GestureDetector(
-                  onTap: p.isAvailable
-                      ? () {
-                          cart.addToCart(CartItem(
-                            id: p.id,
-                            title: p.name,
-                            unitPrice: p.price,
-                            subtitle: p.category?.name ?? 'Shrimp',
-                            image: p.primaryImage,
-                            category: 'restaurant',
-                          ));
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('${p.name} added to cart!'),
-                              duration: const Duration(seconds: 1),
-                              backgroundColor: const Color(0xFF439462),
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10)),
-                            ),
-                          );
-                        }
-                      : null,
-                  child: Container(
+                // Dynamic Cart Controls
+                if (p.isAvailable)
+                  _buildCartControls(context, cart, p)
+                else
+                  Container(
                     width: 32,
                     height: 32,
                     decoration: BoxDecoration(
-                      color: p.isAvailable
-                          ? const Color(0xFF68B92E)
-                          : Colors.grey.shade300,
+                      color: Colors.grey.shade300,
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Icon(
-                      Icons.add,
-                      color: p.isAvailable ? Colors.white : Colors.grey,
-                      size: 18,
-                    ),
+                    child: const Icon(Icons.add, color: Colors.grey, size: 18),
                   ),
-                ),
               ],
             ),
           ),
@@ -498,6 +484,63 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
         .animate(delay: (60 * widget.index).ms)
         .fadeIn(duration: 350.ms)
         .slideY(begin: 0.08, end: 0, duration: 350.ms, curve: Curves.easeOut);
+  }
+
+  Widget _buildCartControls(
+      BuildContext context, CartProvider cart, ShopProduct p) {
+    final cartItem = cart.items.firstWhere(
+      (item) => item.id == p.id,
+      orElse: () => CartItem(
+        id: p.id,
+        title: p.name,
+        unitPrice: p.price,
+        subtitle: p.category?.name ?? 'Shrimp',
+        image: p.primaryImage,
+        category: 'restaurant',
+        quantity: 0,
+      ),
+    );
+
+    if (cartItem.quantity == 0) {
+      return GestureDetector(
+        onTap: () {
+          cart.addToCart(CartItem(
+            id: p.id,
+            title: p.name,
+            unitPrice: p.price,
+            subtitle: p.category?.name ?? 'Shrimp',
+            image: p.primaryImage,
+            category: 'restaurant',
+          ));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${p.name} added to cart!'),
+              duration: const Duration(seconds: 1),
+              backgroundColor: const Color(0xFF439462),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+          );
+        },
+        child: Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: const Color(0xFF68B92E),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Icon(Icons.add, color: Colors.white, size: 18),
+        ),
+      );
+    }
+
+    return QuantitySelector(
+      quantity: cartItem.quantity,
+      onIncrement: () => cart.increment(p.name),
+      onDecrement: () => cart.decrement(p.name),
+      size: 32, // Compact size for grid card
+    );
   }
 
   Widget _imagePlaceholder() {
@@ -510,6 +553,109 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
     );
   }
 }
+
+// ── Favorite Heart Button ─────────────────────────────────────────────────────
+
+/// Standalone heart-toggle widget.
+///  - Seeds its local `_isFav` from [favoritesProvider] once loaded.
+///  - Responds to taps IMMEDIATELY (no wait for provider loading).
+///  - Calls [FavoritesNotifier.toggle] which does: optimistic update → API → invalidate products list.
+class _FavoriteHeart extends ConsumerStatefulWidget {
+  final String productId;
+  const _FavoriteHeart({required this.productId});
+
+  @override
+  ConsumerState<_FavoriteHeart> createState() => _FavoriteHeartState();
+}
+
+class _FavoriteHeartState extends ConsumerState<_FavoriteHeart>
+    with SingleTickerProviderStateMixin {
+  bool? _localFav; // null = not yet seeded
+  late AnimationController _bounce;
+  late Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _bounce = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 150),
+      reverseDuration: const Duration(milliseconds: 150),
+    );
+    _scale = Tween<double>(begin: 1.0, end: 1.35)
+        .chain(CurveTween(curve: Curves.easeOut))
+        .animate(_bounce);
+  }
+
+  @override
+  void dispose() {
+    _bounce.dispose();
+    super.dispose();
+  }
+
+  void _onTap() async {
+    // Animate the heart
+    await _bounce.forward();
+    _bounce.reverse();
+
+    // Flip local state immediately (instant visual feedback)
+    setState(() => _localFav = !(_localFav ?? false));
+
+    // Delegate the actual API call + provider update
+    await ref.read(favoritesProvider.notifier).toggle(widget.productId);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Sync local state from provider once it's loaded
+    final favsValue = ref.watch(favoritesProvider);
+    favsValue.whenData((ids) {
+      final fromProvider = ids.contains(widget.productId);
+      if (_localFav == null) {
+        // First time data is ready — seed local state
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) setState(() => _localFav = fromProvider);
+        });
+      }
+    });
+
+    // Use local state if seeded, else fall back to provider (or false while loading)
+    final bool isFav = _localFav ??
+        (favsValue.asData?.value.contains(widget.productId) ?? false);
+
+    return GestureDetector(
+      onTap: _onTap,
+      child: ScaleTransition(
+        scale: _scale,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: isFav
+                ? Colors.red.shade50.withValues(alpha: 0.95)
+                : Colors.white.withValues(alpha: 0.9),
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: isFav
+                    ? Colors.red.withValues(alpha: 0.3)
+                    : Colors.black.withValues(alpha: 0.08),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Icon(
+            isFav ? Icons.favorite : Icons.favorite_border,
+            size: 15,
+            color: isFav ? Colors.red : Colors.grey.shade500,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 
 // ── Products Loading Grid ─────────────────────────────────────────────────────
 

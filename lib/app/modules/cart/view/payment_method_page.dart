@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:licius_application/app/data/services/db_service.dart';
 import '../../../data/services/order_service.dart';
@@ -17,17 +16,61 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
   bool _isLoading = false;
   int _orderType = 0; // 0: One-time, 1: Scheduled
   String _frequency = 'Daily';
-  final List<String> _days = [];
+  List<String> _selectedDays = [];
+  late DateTime _startDate;
   final List<String> _frequencies = [
     'Daily',
     'Alternate Days',
     'Weekly',
-    'Custom'
   ];
+  final List<String> _weekDays = [
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday'
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    // Default start date = tomorrow
+    _startDate = DateTime.now().add(const Duration(days: 1));
+    
+    // Sync wallet balance when page is opened to reflect latest money
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        CartProviderScope.of(context).syncWallet();
+      }
+    });
+  }
 
   @override
   void dispose() {
     super.dispose();
+  }
+
+  Future<void> _pickDate() async {
+    final tomorrow = DateTime.now().add(const Duration(days: 1));
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _startDate,
+      firstDate: tomorrow,
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (context, child) => Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: const ColorScheme.light(
+            primary: Color(0xFF439462),
+            onPrimary: Colors.white,
+            surface: Colors.white,
+          ),
+        ),
+        child: child!,
+      ),
+    );
+    if (picked != null) setState(() => _startDate = picked);
   }
 
   @override
@@ -80,8 +123,7 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
                       color: const Color(0xFF439462).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                          color:
-                              const Color(0xFF439462).withValues(alpha: 0.3)),
+                          color: const Color(0xFF439462).withValues(alpha: 0.3)),
                     ),
                     child: Row(
                       children: [
@@ -125,8 +167,7 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
-                      border:
-                          Border.all(color: Colors.grey.withValues(alpha: 0.1)),
+                      border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
                     ),
                     child: Column(
                       children: [
@@ -218,7 +259,10 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
                         return ChoiceChip(
                           label: Text(f),
                           selected: isSel,
-                          onSelected: (val) => setState(() => _frequency = f),
+                          onSelected: (_) => setState(() {
+                            _frequency = f;
+                            if (f != 'Weekly') _selectedDays = [];
+                          }),
                           selectedColor: const Color(0xFF439462),
                           labelStyle: TextStyle(
                               color: isSel ? Colors.white : Colors.black,
@@ -226,6 +270,100 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
                                   isSel ? FontWeight.bold : FontWeight.normal),
                         );
                       }).toList(),
+                    ),
+                    if (_frequency == 'Weekly') ...[
+                      const SizedBox(height: 16),
+                      const Text('Select Delivery Days',
+                          style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF1F2937))),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: _weekDays.map((day) {
+                          final short = day.substring(0, 3);
+                          final selected = _selectedDays.contains(day);
+                          return GestureDetector(
+                            onTap: () => setState(() {
+                              if (selected) {
+                                _selectedDays.remove(day);
+                              } else {
+                                _selectedDays.add(day);
+                              }
+                            }),
+                            child: Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: selected
+                                    ? const Color(0xFF439462)
+                                    : Colors.white,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: selected
+                                      ? const Color(0xFF439462)
+                                      : Colors.grey.shade300,
+                                ),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(short,
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: selected
+                                          ? Colors.white
+                                          : Colors.black87)),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                      if (_selectedDays.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.only(top: 8),
+                          child: Text('Please select at least one day',
+                              style:
+                                  TextStyle(color: Colors.red, fontSize: 12)),
+                        ),
+                    ],
+                    const SizedBox(height: 16),
+                    // Start Date Picker
+                    const Text('Start Date',
+                        style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF1F2937))),
+                    const SizedBox(height: 8),
+                    GestureDetector(
+                      onTap: _pickDate,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 14),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFF439462)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.calendar_today_outlined,
+                                color: Color(0xFF439462), size: 20),
+                            const SizedBox(width: 12),
+                            Text(
+                              '${_startDate.day.toString().padLeft(2, '0')} / ${_startDate.month.toString().padLeft(2, '0')} / ${_startDate.year}',
+                              style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF439462)),
+                            ),
+                            const Spacer(),
+                            const Text('Tap to change',
+                                style: TextStyle(
+                                    fontSize: 11, color: Colors.grey)),
+                          ],
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 24),
                   ],
@@ -243,6 +381,8 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
                     ? null
                     : () async {
                         setState(() => _isLoading = true);
+                        final messenger = ScaffoldMessenger.of(context);
+                        final navigator = Navigator.of(context);
                         try {
                           final selectedAddr = cartProvider.selectedAddress;
                           if (selectedAddr == null) {
@@ -277,7 +417,9 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
                                 productId: item.id,
                                 frequency: _frequency,
                                 quantity: item.quantity,
-                                customDays: _frequency == 'Custom' ? _days : [],
+                                customDays:
+                                    _frequency == 'Weekly' ? _selectedDays : [],
+                                startDate: _startDate,
                               );
                               if (res['success'] != true) {
                                 throw Exception(res['message'] ??
@@ -287,9 +429,7 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
                             // Success path for all items
                             await cartProvider.syncWallet();
                             cartProvider.clearCart();
-                            if (!mounted) return;
-                            Navigator.pushAndRemoveUntil(
-                                context,
+                            navigator.pushAndRemoveUntil(
                                 MaterialPageRoute(
                                     builder: (_) => const OrderSuccessPage()),
                                 (route) => route.isFirst);
@@ -302,11 +442,9 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
                             if (response['success'] == true) {
                               await cartProvider.syncWallet();
                               cartProvider.clearCart();
-                              if (!mounted) return;
-                              Navigator.pushAndRemoveUntil(
-                                  context,
+                              navigator.pushAndRemoveUntil(
                                   MaterialPageRoute(
-                                      builder: (_) => const OrderSuccessPage()),
+                                      builder: (_) => OrderSuccessPage(order: response['order'])),
                                   (route) => route.isFirst);
                             } else {
                               throw Exception(response['message'] ??
@@ -314,8 +452,7 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
                             }
                           }
                         } catch (e) {
-                          if (!mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
+                          messenger.showSnackBar(
                               SnackBar(content: Text('Error: $e')));
                         } finally {
                           if (mounted) setState(() => _isLoading = false);

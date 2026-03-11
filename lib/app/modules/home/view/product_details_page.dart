@@ -4,6 +4,9 @@ import '../../../data/models/food_models.dart';
 import '../../../data/services/db_service.dart';
 import '../../../data/models/product_model.dart';
 import '../../../data/services/subscription_service.dart';
+import '../controller/main_controller.dart';
+import '../widgets/cart_summary_bar.dart';
+import '../widgets/quantity_selector.dart';
 
 class ProductDetailsPage extends ConsumerWidget {
   final Product product;
@@ -53,7 +56,7 @@ class ProductDetailsPage extends ConsumerWidget {
                 leading: Padding(
                   padding: const EdgeInsets.only(left: 16),
                   child: CircleAvatar(
-                    backgroundColor: Colors.white.withOpacity(0.9),
+                    backgroundColor: Colors.white.withValues(alpha: 0.9),
                     child: IconButton(
                       icon: const Icon(Icons.arrow_back, color: Colors.black87),
                       onPressed: () => Navigator.pop(context),
@@ -64,7 +67,7 @@ class ProductDetailsPage extends ConsumerWidget {
                   Padding(
                     padding: const EdgeInsets.only(right: 16),
                     child: CircleAvatar(
-                      backgroundColor: Colors.white.withOpacity(0.9),
+                      backgroundColor: Colors.white.withValues(alpha: 0.9),
                       child: IconButton(
                         icon: Icon(
                           product.isFavorite
@@ -170,6 +173,27 @@ class ProductDetailsPage extends ConsumerWidget {
               ),
             ],
           ),
+          // Cart Summary Overlay
+          if (cart.itemCount > 0)
+            Positioned(
+              bottom: 154, // Positioned above the bottom action bar
+              left: 0,
+              right: 0,
+              child: CartSummaryBar(
+                cart: cart,
+                onTap: () {
+                  // Navigate to cart tab and pop details page
+                  try {
+                    final controller = MainControllerScope.of(context);
+                    controller.changePage(2);
+                    Navigator.popUntil(context, (route) => route.isFirst);
+                  } catch (e) {
+                    // Fallback
+                    Navigator.popUntil(context, (route) => route.isFirst);
+                  }
+                },
+              ),
+            ),
           Positioned(
             bottom: 0,
             left: 0,
@@ -180,7 +204,7 @@ class ProductDetailsPage extends ConsumerWidget {
                 color: Colors.white,
                 boxShadow: [
                   BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withValues(alpha: 0.05),
                       blurRadius: 10,
                       offset: const Offset(0, -5))
                 ],
@@ -228,30 +252,21 @@ class ProductDetailsPage extends ConsumerWidget {
                               color: const Color(0xFFF7F8FA),
                               borderRadius: BorderRadius.circular(16),
                               border:
-                                  Border.all(color: const Color(0xFF68B92E))),
+                                  Border.all(color: const Color(0xFF68B92E).withValues(alpha:  0.2))),
                           child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              const Text('Item in Cart',
+                               const Text('Selected Quantity',
                                   style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold,
                                       color: Color(0xFF1A1A1A))),
-                              const Spacer(),
-                              IconButton(
-                                  onPressed: () => cart.decrement(product.name),
-                                  icon:
-                                      const Icon(Icons.remove_circle_outline)),
-                              Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 12),
-                                  child: Text('${cartItem.quantity}',
-                                      style: const TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold))),
-                              IconButton(
-                                  onPressed: () => cart.increment(product.name),
-                                  icon: const Icon(Icons.add_circle,
-                                      color: Color(0xFF68B92E))),
+                              QuantitySelector(
+                                quantity: cartItem.quantity,
+                                onIncrement: () => cart.increment(product.name),
+                                onDecrement: () => cart.decrement(product.name),
+                                size: 40,
+                              ),
                             ],
                           ),
                         ),
@@ -277,7 +292,44 @@ class SubscriptionConfigDrawer extends StatefulWidget {
 class _SubscriptionConfigDrawerState extends State<SubscriptionConfigDrawer> {
   String _frequency = 'Daily';
   int _quantity = 1;
-  final List<String> _days = ['Monday', 'Wednesday', 'Friday'];
+  List<String> _selectedDays = [];
+  late DateTime _startDate;
+  final List<String> _weekDays = [
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday'
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _startDate = DateTime.now().add(const Duration(days: 1));
+  }
+
+  Future<void> _pickDate() async {
+    final tomorrow = DateTime.now().add(const Duration(days: 1));
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _startDate,
+      firstDate: tomorrow,
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (context, child) => Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: const ColorScheme.light(
+            primary: Color(0xFF68B92E),
+            onPrimary: Colors.white,
+            surface: Colors.white,
+          ),
+        ),
+        child: child!,
+      ),
+    );
+    if (picked != null) setState(() => _startDate = picked);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -310,12 +362,16 @@ class _SubscriptionConfigDrawerState extends State<SubscriptionConfigDrawer> {
           const SizedBox(height: 12),
           Wrap(
             spacing: 8,
-            children: ['Daily', 'Alternate Days', 'Weekly', 'Custom']
+            children: ['Daily', 'Alternate Days', 'Weekly']
                 .map((freq) => ChoiceChip(
                       label: Text(freq),
                       selected: _frequency == freq,
-                      onSelected: (val) => setState(() => _frequency = freq),
-                      selectedColor: const Color(0xFF68B92E).withOpacity(0.2),
+                      onSelected: (_) => setState(() {
+                        _frequency = freq;
+                        if (freq != 'Weekly') _selectedDays = [];
+                      }),
+                      selectedColor:
+                          const Color(0xFF68B92E).withValues(alpha: 0.2),
                       labelStyle: TextStyle(
                           color: _frequency == freq
                               ? const Color(0xFF2E7D32)
@@ -326,6 +382,54 @@ class _SubscriptionConfigDrawerState extends State<SubscriptionConfigDrawer> {
                     ))
                 .toList(),
           ),
+          if (_frequency == 'Weekly') ...[
+            const SizedBox(height: 16),
+            const Text('Select Days',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: _weekDays.map((day) {
+                final short = day.substring(0, 3);
+                final selected = _selectedDays.contains(day);
+                return GestureDetector(
+                  onTap: () => setState(() {
+                    if (selected) {
+                      _selectedDays.remove(day);
+                    } else {
+                      _selectedDays.add(day);
+                    }
+                  }),
+                  child: Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: selected ? const Color(0xFF68B92E) : Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: selected
+                            ? const Color(0xFF68B92E)
+                            : Colors.grey.shade300,
+                      ),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(short,
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: selected ? Colors.white : Colors.black87)),
+                  ),
+                );
+              }).toList(),
+            ),
+            if (_selectedDays.isEmpty)
+              const Padding(
+                padding: EdgeInsets.only(top: 6),
+                child: Text('Please select at least one day',
+                    style: TextStyle(color: Colors.red, fontSize: 12)),
+              ),
+          ],
           const SizedBox(height: 24),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -350,20 +454,56 @@ class _SubscriptionConfigDrawerState extends State<SubscriptionConfigDrawer> {
               ),
             ],
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 24),
+          // Start Date Picker
+          const Text('Start Date',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          const SizedBox(height: 8),
+          GestureDetector(
+            onTap: _pickDate,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                color: const Color(0xFF68B92E).withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF68B92E)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.event_outlined,
+                      color: Color(0xFF68B92E), size: 20),
+                  const SizedBox(width: 12),
+                  Text(
+                    '${_startDate.day.toString().padLeft(2, '0')} / ${_startDate.month.toString().padLeft(2, '0')} / ${_startDate.year}',
+                    style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF2E7D32)),
+                  ),
+                  const Spacer(),
+                  const Text('Tap to change',
+                      style: TextStyle(fontSize: 11, color: Colors.grey)),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 28),
           Consumer(builder: (context, ref, child) {
             return ElevatedButton(
               onPressed: () async {
                 final subService = ref.read(subscriptionServiceProvider);
+                final messenger = ScaffoldMessenger.of(context);
+                final navigator = Navigator.of(context);
                 final res = await subService.subscribeToProduct(
                   productId: widget.product.id,
                   frequency: _frequency,
                   quantity: _quantity,
-                  customDays: _frequency == 'Custom' ? _days : [],
+                  customDays: _frequency == 'Weekly' ? _selectedDays : [],
+                  startDate: _startDate,
                 );
                 if (mounted) {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  navigator.pop();
+                  messenger.showSnackBar(SnackBar(
                     content: Text(res['message'] ?? 'Subscribed successfully!'),
                     backgroundColor:
                         res['success'] == true ? Colors.green : Colors.red,

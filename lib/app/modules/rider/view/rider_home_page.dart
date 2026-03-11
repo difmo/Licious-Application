@@ -1,17 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:geolocator/geolocator.dart';
 import '../../auth/provider/auth_provider.dart';
 import '../../../data/services/rider_service.dart';
-import '../../../data/services/location_tracking_service.dart';
+import '../../../data/services/socket_service.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../routes/app_routes.dart';
+import 'rider_order_details_page.dart';
+import 'rider_history_page.dart'; // to invalidate deliveryHistoryProvider
 
 final riderOrdersProvider =
     FutureProvider.autoDispose<List<dynamic>>((ref) async {
   final riderService = ref.watch(riderServiceProvider);
-  return riderService.getAssignedOrders();
+  final all = await riderService.getAssignedOrders();
+  // Only show orders that are actively assigned (not delivered/cancelled/rejected)
+  const doneStatuses = {'delivered', 'cancelled', 'rejected', 'completed'};
+  return all.where((o) {
+    final s = (o['status']?.toString() ?? '').toLowerCase();
+    return !doneStatuses.contains(s);
+  }).toList();
 });
 
 class RiderHomePage extends ConsumerStatefulWidget {
@@ -23,35 +30,215 @@ class RiderHomePage extends ConsumerStatefulWidget {
 
 class _RiderHomePageState extends ConsumerState<RiderHomePage> {
   bool _isOnline = false;
+  bool _isTogglingStatus = false;
 
   @override
   void initState() {
     super.initState();
-    _checkLocationPermission();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _initSocket());
   }
 
-  Future<void> _checkLocationPermission() async {
-    bool serviceEnabled;
-    LocationPermission permission;
+  void _initSocket() {
+    final authState = ref.read(authProvider);
+    if (authState is! AuthAuthenticated) return;
 
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) return;
+    final socket = ref.read(socketServiceProvider);
+    final userId = authState.user.id;
+    final riderId = userId; // rider ID == user ID for riders
 
-    permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) return;
-    }
+    // Join the rider's personal room to receive new order assignments
+    socket.joinRiderRoom(riderId);
+    // Also join user room for generic order updates
+    socket.joinUserRoom(userId);
+
+    // 🔔 New order dispatched to this rider
+    socket.onNewOrderAssigned((data) {
+      if (!mounted) return;
+      ref.invalidate(riderOrdersProvider);
+      _showNewOrderBanner(data);
+    });
+
+    // 🔄 Any order status changed (accept/pickup/deliver)
+    socket.onOrderUpdate((data) {
+      if (!mounted) return;
+      ref.invalidate(riderOrdersProvider);
+    });
   }
+
+  void _showNewOrderBanner(dynamic data) {
+    final orderId = data?['orderId']?.toString() ?? '';
+    final shortId = orderId.length >= 6 ? orderId.substring(orderId.length - 6).toUpperCase() : orderId.toUpperCase();
+    final customer = data?['customerName']?.toString() ?? 'A customer';
+    final address = (data?['deliveryAddress'] is Map)
+        ? data['deliveryAddress']['address']?.toString() ?? ''
+        : data?['deliveryAddress']?.toString() ?? '';
+
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 6),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        content: _NewOrderBanner(
+          shortId: shortId,
+          customer: customer,
+          address: address,
+        ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    final socket = ref.read(socketServiceProvider);
+    socket.offNewOrderAssigned();
+    socket.offOrderUpdate();
+    super.dispose();
+  }
+
+  /*  ── Location helpers (re-enable for production) ──────────────────────────
+  Future<bool> _ensureLocationPermission() async {
+    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) { ... }
+    ...
+    return true;
+  }
+  bool _hasActiveDelivery(List<dynamic> orders) {
+    return orders.any((o) {
+      final status = (o['status']?.toString() ?? '').toLowerCase();
+      return _activeStatuses.contains(status);
+    });
+  }
+  */
 
   Future<void> _toggleOnline(bool value) async {
-    setState(() => _isOnline = value);
-    if (_isOnline) {
-      await LocationTrackingService.start();
-    } else {
-      await LocationTrackingService.stop();
+    if (_isTogglingStatus) return;
+    setState(() => _isTogglingStatus = true);
+
+    try {
+      // ── Going ONLINE ────────────────────────────────────────────────────
+      if (value) {
+        // NOTE: Location check disabled for testing — re-enable in production
+        // final hasPermission = await _ensureLocationPermission();
+        // if (!hasPermission) { setState(() => _isTogglingStatus = false); return; }
+
+        // Call backend PATCH /rider/status { status: 'online' }
+        final riderService = ref.read(riderServiceProvider);
+        final result = await riderService.updateStatus('online');
+
+        if (result['success'] == false) {
+          if (mounted) {
+            _showSnack(result['message'] ?? 'Failed to go online',
+                isError: true);
+          }
+          setState(() => _isTogglingStatus = false);
+          return;
+        }
+
+        // NOTE: LocationTracking disabled for testing — re-enable in production
+        // await LocationTrackingService.start();
+        if (mounted) {
+          setState(() => _isOnline = true);
+          _showSnack('You are now ONLINE ✅');
+          ref.invalidate(riderOrdersProvider);
+        }
+
+        // ── Going OFFLINE ───────────────────────────────────────────────────
+      } else {
+        // NOTE: Active delivery block disabled for testing — re-enable in production
+        // final ordersAsyncValue = ref.read(riderOrdersProvider);
+        // final orders = ordersAsyncValue.value ?? [];
+        // if (_hasActiveDelivery(orders)) { ... return; }
+
+        // Call backend PATCH /rider/status { status: 'offline' }
+        final riderService = ref.read(riderServiceProvider);
+        final result = await riderService.updateStatus('offline');
+
+        if (result['success'] == false) {
+          if (mounted) {
+            _showSnack(result['message'] ?? 'Failed to go offline',
+                isError: true);
+          }
+          setState(() => _isTogglingStatus = false);
+          return;
+        }
+
+        // NOTE: LocationTracking disabled for testing — re-enable in production
+        // await LocationTrackingService.stop();
+        if (mounted) {
+          setState(() => _isOnline = false);
+          _showSnack('You are now OFFLINE');
+          ref.invalidate(riderOrdersProvider);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        _showSnack('Error: ${e.toString()}', isError: true);
+      }
+    } finally {
+      if (mounted) setState(() => _isTogglingStatus = false);
     }
   }
+
+  void _showSnack(String message, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content:
+          Text(message, style: const TextStyle(fontWeight: FontWeight.w500)),
+      backgroundColor: isError ? Colors.redAccent : AppColors.accentGreen,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      duration: const Duration(seconds: 2),
+    ));
+  }
+
+  /* _showAlert — re-enable with location helpers in production
+  void _showAlert({
+    required IconData icon,
+    required String title,
+    required String message,
+    required String actionLabel,
+    required VoidCallback onAction,
+  }) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        icon: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: const BoxDecoration(
+            color: Color(0xFFFFF0E0),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: Colors.orange, size: 32),
+        ),
+        title: Text(title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        content: Text(message,
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel', style: TextStyle(color: Colors.grey))),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.accentGreen,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () {
+              Navigator.pop(ctx);
+              onAction();
+            },
+            child: Text(actionLabel),
+          ),
+        ],
+      ),
+    );
+  }
+  */
 
   Future<void> _handleResponse(String orderId, String response) async {
     final riderService = ref.read(riderServiceProvider);
@@ -75,19 +262,44 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
     }
   }
 
-  Future<void> _completeDelivery(String orderId) async {
+  Future<void> _markDelivered(String orderId) async {
     final riderService = ref.read(riderServiceProvider);
-    final result = await riderService.completeOrder(orderId: orderId);
+    final result = await riderService.markAsDelivered(orderId: orderId);
 
     if (mounted) {
+      final isSuccess = result['success'] != false;
+      ScaffoldMessenger.of(context).clearSnackBars();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(result['message'] ?? 'Delivery completed'),
-          backgroundColor: AppColors.accentGreen,
+          content: Row(
+            children: [
+              Icon(
+                isSuccess ? Icons.check_circle_rounded : Icons.error_rounded,
+                color: Colors.white,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  isSuccess
+                      ? '✅ Order Delivered Successfully!'
+                      : result['message'] ?? 'Failed to mark as delivered',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: isSuccess ? AppColors.accentGreen : Colors.redAccent,
           behavior: SnackBarBehavior.floating,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          duration: const Duration(seconds: 3),
         ),
       );
-      ref.invalidate(riderOrdersProvider);
+      if (isSuccess) {
+        // Refresh assigned orders (removes this order) AND history tab
+        ref.invalidate(riderOrdersProvider);
+        ref.invalidate(deliveryHistoryProvider);
+      }
     }
   }
 
@@ -202,19 +414,42 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
                           ),
                           Column(
                             children: [
-                              Switch.adaptive(
-                                value: _isOnline,
-                                activeTrackColor: AppColors.accentGreen
-                                    .withValues(alpha: 0.5),
-                                activeThumbColor: AppColors.accentGreen,
-                                onChanged: _toggleOnline,
-                              ),
+                              if (_isTogglingStatus)
+                                const SizedBox(
+                                  width: 40,
+                                  height: 28,
+                                  child: Center(
+                                    child: SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.5,
+                                        color: AppColors.accentGreen,
+                                      ),
+                                    ),
+                                  ),
+                                )
+                              else
+                                Switch.adaptive(
+                                  value: _isOnline,
+                                  activeTrackColor: AppColors.accentGreen
+                                      .withValues(alpha: 0.5),
+                                  activeThumbColor: AppColors.accentGreen,
+                                  onChanged:
+                                      _isTogglingStatus ? null : _toggleOnline,
+                                ),
                               Text(
-                                _isOnline ? 'ONLINE' : 'OFFLINE',
+                                _isTogglingStatus
+                                    ? 'LOADING'
+                                    : _isOnline
+                                        ? 'ONLINE'
+                                        : 'OFFLINE',
                                 style: TextStyle(
-                                  color: _isOnline
-                                      ? AppColors.accentGreen
-                                      : Colors.grey,
+                                  color: _isTogglingStatus
+                                      ? Colors.orange
+                                      : _isOnline
+                                          ? AppColors.accentGreen
+                                          : Colors.grey,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 10,
                                 ),
@@ -325,151 +560,265 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
   }
 
   Widget _buildOrderCard(dynamic order) {
-    final status = order['riderAssignmentStatus'];
-    final isPending = status == 'Pending';
-    final isAccepted = status == 'Accepted';
+    final assignmentStatus = order['riderAssignmentStatus'];
+    final orderStatus =
+        (order['status']?.toString() ?? 'Pending').toLowerCase();
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
-          ),
-        ],
-        border: Border.all(color: const Color(0xFFF1F4F8)),
+    final isPending = assignmentStatus == 'Pending';
+    final isAccepted = assignmentStatus == 'Accepted';
+    final isDelivered =
+        orderStatus == 'delivered' || orderStatus == 'completed';
+
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => RiderOrderDetailsPage(order: order),
+        ),
       ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEBFFD7),
-                        borderRadius: BorderRadius.circular(8),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 15,
+              offset: const Offset(0, 5),
+            ),
+          ],
+          border: Border.all(color: const Color(0xFFF1F4F8)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEBFFD7),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              '#${(order['orderId']?.toString() ?? '').length >= 6 ? order['orderId'].toString().substring(order['orderId'].toString().length - 6).toUpperCase() : (order['orderId']?.toString() ?? '').toUpperCase()}',
+                              style: const TextStyle(
+                                color: Color(0xFF439462),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ),
+                          if (order['orderType'] == 'Subscription') ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.purple.shade50,
+                                borderRadius: BorderRadius.circular(6),
+                                border:
+                                    Border.all(color: Colors.purple.shade100),
+                              ),
+                              child: Text(
+                                'SUBSCRIPTION',
+                                style: TextStyle(
+                                  color: Colors.purple.shade700,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 9,
+                                ),
+                              ),
+                            ),
+                          ],
+                          if (order['hasExtras'] == true) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.shade50,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: Colors.blue.shade100),
+                              ),
+                              child: Text(
+                                '+ EXTRAS',
+                                style: TextStyle(
+                                  color: Colors.blue.shade700,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 9,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
-                      child: Text(
-                        '#${order['orderId'].toString().substring(order['orderId'].toString().length - 6).toUpperCase()}',
-                        style: const TextStyle(
-                          color: Color(0xFF439462),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                          letterSpacing: 0.5,
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF7E6),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          (order['status']?.toString() ?? 'UNKNOWN')
+                              .toUpperCase(),
+                          style: const TextStyle(
+                            color: Color(0xFFFFA000),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 10,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  _buildOrderInfoRow(
+                    Icons.location_on_rounded,
+                    'Delivery Address',
+                    (order['deliveryAddress'] is Map)
+                        ? (order['deliveryAddress']['address']?.toString() ??
+                            'No address provided')
+                        : 'No address provided',
+                  ),
+                  const SizedBox(height: 12),
+                  _buildOrderInfoRow(
+                    Icons.person_rounded,
+                    'Customer',
+                    (order['user'] is Map)
+                        ? (order['user']['fullName']?.toString() ??
+                                order['user']['name']?.toString() ??
+                                'Customer')
+                            .toUpperCase()
+                        : 'CUSTOMER',
+                  ),
+                  _buildOrderInfoRow(
+                    Icons.shopping_bag_rounded,
+                    'Order Type',
+                    (order['orderType']?.toString() ??
+                            order['order_type']?.toString() ??
+                            'Regular')
+                        .toUpperCase(),
+                  ),
+                ],
+              ),
+            ),
+            if (isPending)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () =>
+                            _handleResponse(order['orderId'], 'Accepted'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF68B92E),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        child: const Text('Accept Order',
+                            style: TextStyle(fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () =>
+                            _handleResponse(order['orderId'], 'Rejected'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red,
+                          side: const BorderSide(color: Colors.red),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        child: const Text('Reject'),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else if (isAccepted && !isDelivered)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                child: Row(
+                  children: [
+                    // Left: Out for Delivery
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          final result = await ref
+                              .read(riderServiceProvider)
+                              .updateDeliveryStatus(
+                                orderId: order['orderId'],
+                                status: 'Out for Delivery',
+                              );
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                              content: Text(
+                                  result['message'] ?? '🚚 Out for Delivery!'),
+                              backgroundColor: AppColors.accentGreen,
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10)),
+                            ));
+                            ref.invalidate(riderOrdersProvider);
+                          }
+                        },
+                        icon:
+                            const Icon(Icons.delivery_dining_rounded, size: 16),
+                        label: const Text('Out for\nDelivery',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                fontSize: 11, fontWeight: FontWeight.bold)),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.accentGreen,
+                          side: BorderSide(color: AppColors.accentGreen),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFF7E6),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        order['status'].toUpperCase(),
-                        style: const TextStyle(
-                          color: Color(0xFFFFA000),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 10,
-                          letterSpacing: 0.5,
+                    const SizedBox(width: 12),
+                    // Right: Mark as Delivered
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () => _markDelivered(order['orderId']),
+                        icon: const Icon(Icons.check_circle_rounded, size: 16),
+                        label: const Text('Mark as\nDelivered',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                fontSize: 11, fontWeight: FontWeight.bold)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF68B92E),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
-                _buildOrderInfoRow(
-                  Icons.location_on_rounded,
-                  'Delivery Address',
-                  order['deliveryAddress']?['address'] ?? 'No address provided',
-                ),
-                const SizedBox(height: 12),
-                _buildOrderInfoRow(
-                  Icons.person_rounded,
-                  'Customer',
-                  order['user']?['name'] ?? 'Customer',
-                ),
-              ],
-            ),
-          ),
-          if (isPending)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () =>
-                          _handleResponse(order['orderId'], 'Accepted'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF68B92E),
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                      child: const Text('Accept Order',
-                          style: TextStyle(fontWeight: FontWeight.bold)),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () =>
-                          _handleResponse(order['orderId'], 'Rejected'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.red,
-                        side: const BorderSide(color: Colors.red),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                      child: const Text('Reject'),
-                    ),
-                  ),
-                ],
               ),
-            )
-          else if (isAccepted)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: const BoxDecoration(
-                color: Color(0xFFF7F8FA),
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(20),
-                  bottomRight: Radius.circular(20),
-                ),
-              ),
-              child: ElevatedButton.icon(
-                onPressed: () => _completeDelivery(order['orderId']),
-                icon: const Icon(Icons.check_circle_outline_rounded),
-                label: const Text('Mark as Delivered',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF68B92E),
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                  padding: const EdgeInsets.symmetric(vertical: 15),
-                ),
-              ),
-            ),
-        ],
+          ],
+        ),
       ),
     ).animate().fadeIn(duration: 500.ms).slideY(begin: 0.1, end: 0);
   }
@@ -547,5 +896,122 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
         ],
       ),
     ).animate().fadeIn();
+  }
+}
+
+// ── New Order Banner ──────────────────────────────────────────────────────────
+
+/// Shown inside a SnackBar when `newOrderAssigned` arrives via Socket.IO.
+class _NewOrderBanner extends StatelessWidget {
+  final String shortId;
+  final String customer;
+  final String address;
+
+  const _NewOrderBanner({
+    required this.shortId,
+    required this.customer,
+    required this.address,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF439462), Color(0xFF68B92E)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF68B92E).withValues(alpha: 0.4),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // Pulsing bell icon
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.notifications_active_rounded,
+                color: Colors.white, size: 26),
+          )
+              .animate(onPlay: (c) => c.repeat(reverse: true))
+              .scaleXY(begin: 1.0, end: 1.15, duration: 700.ms),
+
+          const SizedBox(width: 14),
+
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    const Text(
+                      '🛵  New Order!',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 15,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.25),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '#$shortId',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                if (customer.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 3),
+                    child: Text(
+                      customer,
+                      style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.9),
+                          fontSize: 12),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                if (address.isNotEmpty)
+                  Text(
+                    address,
+                    style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.75),
+                        fontSize: 11),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    )
+        .animate()
+        .slideY(begin: -0.5, end: 0, duration: 400.ms, curve: Curves.easeOut)
+        .fadeIn(duration: 300.ms);
   }
 }

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../../data/network/api_client.dart';
+import '../../../data/models/food_models.dart';
 import '../../../data/services/db_service.dart';
+import '../../../core/constants/app_colors.dart';
 import 'payment_method_page.dart';
 
 class ShippingAddressPage extends ConsumerStatefulWidget {
@@ -32,6 +35,16 @@ class _ShippingAddressPageState extends ConsumerState<ShippingAddressPage> {
   bool _showAddForm = false;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        CartProviderScope.of(context).loadAddresses();
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _fullAddressCtrl.dispose();
     _cityCtrl.dispose();
@@ -47,8 +60,7 @@ class _ShippingAddressPageState extends ConsumerState<ShippingAddressPage> {
 
     try {
       final cart = CartProviderScope.of(context);
-      final service =
-          cart.addressService!; // Guaranteed if CartProvider is initialized
+      final service = cart.addressService!;
 
       final result = await service.saveAddress(
         label: _selectedLabel,
@@ -67,7 +79,14 @@ class _ShippingAddressPageState extends ConsumerState<ShippingAddressPage> {
             _isSaving = false;
           });
           ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Address saved successfully!')));
+            SnackBar(
+              content: const Text('Address saved successfully!'),
+              backgroundColor: AppColors.accentGreen,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+          );
         }
       }
     } catch (e) {
@@ -77,6 +96,7 @@ class _ShippingAddressPageState extends ConsumerState<ShippingAddressPage> {
           content:
               Text('Error: ${e is ApiException ? e.message : e.toString()}'),
           backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
         ),
       );
     } finally {
@@ -89,6 +109,13 @@ class _ShippingAddressPageState extends ConsumerState<ShippingAddressPage> {
     final cart = CartProviderScope.of(context);
     final addresses = cart.addresses;
 
+    // Auto-show form if no addresses exist and loading has finished
+    if (addresses.isEmpty && !_showAddForm && !cart.isAddressesLoading) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _showAddForm = true);
+      });
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
       appBar: AppBar(
@@ -98,11 +125,17 @@ class _ShippingAddressPageState extends ConsumerState<ShippingAddressPage> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded,
               color: Colors.black, size: 20),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            if (_showAddForm && addresses.isNotEmpty) {
+              setState(() => _showAddForm = false);
+            } else {
+              Navigator.pop(context);
+            }
+          },
         ),
-        title: const Text(
-          'Shipping Address',
-          style: TextStyle(
+        title: Text(
+          _showAddForm ? 'Add New Address' : 'Shipping Address',
+          style: const TextStyle(
             color: Colors.black,
             fontWeight: FontWeight.w800,
             fontSize: 20,
@@ -118,276 +151,437 @@ class _ShippingAddressPageState extends ConsumerState<ShippingAddressPage> {
             child: const _CheckoutStepper(currentStep: 1),
           ),
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              physics: const BouncingScrollPhysics(),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (addresses.isNotEmpty && !_showAddForm) ...[
-                    const Text(
-                      'Select Delivery Address',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1F2937),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: addresses.length,
-                      itemBuilder: (context, index) {
-                        final addr = addresses[index];
-                        final isSelected = cart.selectedAddressIndex == index;
-                        return GestureDetector(
-                          onTap: () => cart.selectAddress(index),
-                          child: Container(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: isSelected
-                                    ? const Color(0xFF439462)
-                                    : Colors.grey.shade200,
-                                width: isSelected ? 2 : 1,
-                              ),
-                              boxShadow: isSelected
-                                  ? [
-                                      BoxShadow(
-                                        color: const Color(0xFF439462)
-                                            .withValues(alpha: 0.1),
-                                        blurRadius: 10,
-                                        offset: const Offset(0, 4),
-                                      )
-                                    ]
-                                  : [],
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  addr.title == 'Home'
-                                      ? Icons.home_rounded
-                                      : addr.title == 'Office'
-                                          ? Icons.work_rounded
-                                          : Icons.location_on_rounded,
-                                  color: isSelected
-                                      ? const Color(0xFF439462)
-                                      : Colors.grey.shade400,
-                                  size: 24,
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        addr.title,
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16,
-                                          color: isSelected
-                                              ? const Color(0xFF439462)
-                                              : const Color(0xFF1F2937),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        addr.street,
-                                        style: TextStyle(
-                                            color: Colors.grey.shade600,
-                                            fontSize: 13),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      Text(
-                                        addr.details,
-                                        style: TextStyle(
-                                            color: Colors.grey.shade500,
-                                            fontSize: 12),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                if (isSelected)
-                                  const Icon(Icons.check_circle_rounded,
-                                      color: Color(0xFF439462)),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 20),
-                    Center(
-                      child: TextButton.icon(
-                        onPressed: () => setState(() => _showAddForm = true),
-                        icon: const Icon(Icons.add_rounded),
-                        label: const Text('Add New Address'),
-                        style: TextButton.styleFrom(
-                            foregroundColor: const Color(0xFF439462)),
-                      ),
-                    ),
-                  ] else ...[
-                    if (addresses.isNotEmpty)
-                      Row(
-                        children: [
-                          IconButton(
-                            onPressed: () =>
-                                setState(() => _showAddForm = false),
-                            icon: const Icon(Icons.arrow_back_rounded),
-                          ),
-                          const Text('Add New Address',
-                              style: TextStyle(
-                                  fontSize: 18, fontWeight: FontWeight.bold)),
-                        ],
-                      ),
-                    const SizedBox(height: 16),
-                    _buildAddressForm(),
-                  ],
-                  const SizedBox(height: 40),
-                ],
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 400),
+              transitionBuilder: (child, animation) => FadeTransition(
+                opacity: animation,
+                child: SlideTransition(
+                  position: animation.drive(Tween<Offset>(
+                          begin: const Offset(0.05, 0), end: Offset.zero)
+                      .chain(CurveTween(curve: Curves.easeOutCubic))),
+                  child: child,
+                ),
               ),
+              child: cart.isAddressesLoading
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                          color: AppColors.accentGreen))
+                  : _showAddForm
+                      ? _buildAddAddressView()
+                      : _buildAddressListView(cart),
             ),
           ),
-          _buildBottomAction(cart),
+          if (!_showAddForm && addresses.isNotEmpty) _buildBottomAction(cart),
         ],
       ),
     );
   }
 
-  Widget _buildAddressForm() {
-    return Form(
-      key: _formKey,
+  Widget _buildAddressListView(CartProvider cart) {
+    final addresses = cart.addresses;
+
+    return SingleChildScrollView(
+      key: const ValueKey('address_list'),
+      padding: const EdgeInsets.all(24),
+      physics: const BouncingScrollPhysics(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Address Label',
+            'Select Delivery Address',
             style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1F2937)),
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1F2937),
+            ),
           ),
-          const SizedBox(height: 12),
-          Row(
-            children: _labels.map((lbl) {
-              bool isSelected = _selectedLabel == lbl['name'];
-              return Expanded(
-                child: GestureDetector(
-                  onTap: () => setState(() => _selectedLabel = lbl['name']),
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    decoration: BoxDecoration(
-                      color:
-                          isSelected ? const Color(0xFF439462) : Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                          color: isSelected
-                              ? const Color(0xFF439462)
-                              : Colors.grey.shade200),
-                    ),
-                    child: Column(
-                      children: [
-                        Icon(lbl['icon'],
-                            color: isSelected
-                                ? Colors.white
-                                : Colors.grey.shade600,
-                            size: 24),
-                        const SizedBox(height: 4),
-                        Text(
-                          lbl['name'],
-                          style: TextStyle(
-                            color: isSelected
-                                ? Colors.white
-                                : Colors.grey.shade600,
-                            fontWeight:
-                                isSelected ? FontWeight.bold : FontWeight.w500,
-                            fontSize: 13,
+          const SizedBox(height: 16),
+          if (addresses.isEmpty)
+            _buildEmptyState()
+          else
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: addresses.length,
+              itemBuilder: (context, index) {
+                final addr = addresses[index];
+                final isSelected = cart.selectedAddressIndex == index;
+                return _buildAddressCard(addr, isSelected, () {
+                  cart.selectAddress(index);
+                });
+              },
+            ),
+          const SizedBox(height: 24),
+          _buildAddAddressButton(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppColors.accentGreen.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.location_off_rounded,
+                color: AppColors.accentGreen, size: 40),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'No saved addresses',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Please add an address to continue with your order.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.grey.shade500, fontSize: 14),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAddressCard(
+      UserAddress addr, bool isSelected, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? AppColors.accentGreen : Colors.transparent,
+            width: 2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: isSelected
+                  ? AppColors.accentGreen.withValues(alpha: 0.15)
+                  : Colors.black.withValues(alpha: 0.05),
+              blurRadius: 15,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? AppColors.accentGreen.withValues(alpha: 0.1)
+                    : const Color(0xFFF1F4F8),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                addr.title.toLowerCase() == 'home'
+                    ? Icons.home_rounded
+                    : addr.title.toLowerCase() == 'office'
+                        ? Icons.work_rounded
+                        : Icons.location_on_rounded,
+                color: isSelected ? AppColors.accentGreen : Colors.grey.shade600,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        addr.title,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: Color(0xFF1B2D1F),
+                        ),
+                      ),
+                      if (addr.isDefault) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F4F8),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text(
+                            'DEFAULT',
+                            style: TextStyle(
+                              fontSize: 8,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.grey,
+                            ),
                           ),
                         ),
                       ],
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    addr.street,
+                    style: TextStyle(
+                      color: Colors.grey.shade600,
+                      fontSize: 13,
+                      height: 1.4,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    addr.details,
+                    style: TextStyle(
+                      color: Colors.grey.shade400,
+                      fontSize: 12,
                     ),
                   ),
-                ),
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 32),
-          _buildInputField(
-            controller: _fullAddressCtrl,
-            label: 'Full Address',
-            hint: 'Flat no, House no, Street name',
-            icon: Icons.map_rounded,
-            validator: (v) => v!.isEmpty ? 'Please enter your address' : null,
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _buildInputField(
-                  controller: _cityCtrl,
-                  label: 'City',
-                  hint: 'e.g. Lucknow',
-                  icon: Icons.location_city_rounded,
-                  validator: (v) => v!.isEmpty ? 'Field required' : null,
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: isSelected ? AppColors.accentGreen : Colors.grey.shade300,
+                  width: 2,
                 ),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildInputField(
-                  controller: _pincodeCtrl,
-                  label: 'Pincode',
-                  hint: '123456',
-                  icon: Icons.pin_drop_rounded,
-                  keyboardType: TextInputType.number,
-                  validator: (v) => v!.length < 6 ? 'Invalid pin' : null,
+              child: isSelected
+                  ? Center(
+                      child: Container(
+                        width: 12,
+                        height: 12,
+                        decoration: BoxDecoration(
+                          color: AppColors.accentGreen,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    )
+                  : null,
+            ),
+          ],
+        ),
+      ).animate().fadeIn(duration: 400.ms).slideX(begin: 0.05, end: 0),
+    );
+  }
+
+  Widget _buildAddAddressButton() {
+    return InkWell(
+      onTap: () => setState(() => _showAddForm = true),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: AppColors.accentGreen.withValues(alpha: 0.3),
+            style: BorderStyle.solid,
+            width: 1.5,
+          ),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.add_location_alt_rounded,
+                color: AppColors.accentGreen, size: 24),
+            const SizedBox(width: 12),
+            Text(
+              'Add New Delivery Address',
+              style: TextStyle(
+                color: AppColors.accentGreen,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAddAddressView() {
+    return SingleChildScrollView(
+      key: const ValueKey('add_form'),
+      padding: const EdgeInsets.all(24),
+      physics: const BouncingScrollPhysics(),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Address Label',
+              style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1F2937)),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: _labels.map((lbl) {
+                bool isSelected = _selectedLabel == lbl['name'];
+                return Expanded(
+                  child: GestureDetector(
+                    onTap: () => setState(() => _selectedLabel = lbl['name']),
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      decoration: BoxDecoration(
+                        color:
+                            isSelected ? AppColors.accentGreen : Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: isSelected
+                            ? [
+                                BoxShadow(
+                                  color: AppColors.accentGreen
+                                      .withValues(alpha: 0.2),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                )
+                              ]
+                            : [],
+                        border: Border.all(
+                            color: isSelected
+                                ? AppColors.accentGreen
+                                : Colors.grey.shade200),
+                      ),
+                      child: Column(
+                        children: [
+                          Icon(lbl['icon'],
+                              color: isSelected
+                                  ? Colors.white
+                                  : Colors.grey.shade600,
+                              size: 26),
+                          const SizedBox(height: 6),
+                          Text(
+                            lbl['name'],
+                            style: TextStyle(
+                              color: isSelected
+                                  ? Colors.white
+                                  : Colors.grey.shade600,
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.w500,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 32),
+            _buildInputField(
+              controller: _fullAddressCtrl,
+              label: 'Full Address',
+              hint: 'Flat no, House no, Street name',
+              icon: Icons.map_rounded,
+              validator: (v) => v!.isEmpty ? 'Please enter your address' : null,
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildInputField(
+                    controller: _cityCtrl,
+                    label: 'City',
+                    hint: 'e.g. Lucknow',
+                    icon: Icons.location_city_rounded,
+                    validator: (v) => v!.isEmpty ? 'Field required' : null,
+                  ),
                 ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _buildInputField(
+                    controller: _pincodeCtrl,
+                    label: 'Pincode',
+                    hint: '123456',
+                    icon: Icons.pin_drop_rounded,
+                    keyboardType: TextInputType.number,
+                    validator: (v) => v!.length < 6 ? 'Invalid pin' : null,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            _buildInputField(
+              controller: _stateCtrl,
+              label: 'State',
+              hint: 'e.g. Uttar Pradesh',
+              icon: Icons.holiday_village_rounded,
+              validator: (v) => v!.isEmpty ? 'Please enter state' : null,
+            ),
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.grey.shade200),
               ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _buildInputField(
-            controller: _stateCtrl,
-            label: 'State',
-            hint: 'e.g. Uttar Pradesh',
-            icon: Icons.holiday_village_rounded,
-            validator: (v) => v!.isEmpty ? 'Please enter state' : null,
-          ),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              const Expanded(
-                  child: Text('Set as default address',
-                      style: TextStyle(fontWeight: FontWeight.bold))),
-              Switch.adaptive(
-                value: _isDefault,
-                activeTrackColor: const Color(0xFF439462),
-                onChanged: (val) => setState(() => _isDefault = val),
+              child: Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Set as default address',
+                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                    ),
+                  ),
+                  Switch.adaptive(
+                    value: _isDefault,
+                    activeTrackColor: AppColors.accentGreen.withValues(alpha: 0.5),
+                    activeThumbColor: AppColors.accentGreen,
+                    onChanged: (val) => setState(() => _isDefault = val),
+                  ),
+                ],
               ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          if (_showAddForm)
+            ),
+            const SizedBox(height: 40),
             SizedBox(
               width: double.infinity,
-              height: 50,
+              height: 56,
               child: ElevatedButton(
                 onPressed: _isSaving ? null : _saveAddress,
                 style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF439462),
-                    foregroundColor: Colors.white),
+                  backgroundColor: AppColors.accentGreen,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16)),
+                ),
                 child: _isSaving
                     ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text('Save Address'),
+                    : const Text(
+                        'Save & Continue',
+                        style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                      ),
               ),
             ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -404,31 +598,37 @@ class _ShippingAddressPageState extends ConsumerState<ShippingAddressPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label,
-            style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey.shade600)),
+            style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1B2D1F))),
         const SizedBox(height: 8),
         TextFormField(
           controller: controller,
           keyboardType: keyboardType,
           validator: validator,
-          cursorColor: const Color(0xFF439462),
+          cursorColor: AppColors.accentGreen,
           decoration: InputDecoration(
             hintText: hint,
-            prefixIcon: Icon(icon, color: Colors.grey.shade400, size: 20),
+            hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+            prefixIcon: Icon(icon, color: Colors.grey.shade400, size: 22),
             filled: true,
             fillColor: Colors.white,
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(16),
                 borderSide: BorderSide(color: Colors.grey.shade200)),
             enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(16),
                 borderSide: BorderSide(color: Colors.grey.shade200)),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide:
-                  const BorderSide(color: Color(0xFF439462), width: 1.5),
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: AppColors.accentGreen, width: 1.5),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(color: Colors.redAccent),
             ),
           ),
         ),
@@ -437,36 +637,18 @@ class _ShippingAddressPageState extends ConsumerState<ShippingAddressPage> {
   }
 
   Widget _buildBottomAction(CartProvider cart) {
-    // If showing add form, bottom button is "Save Address", but we handled it in the form for clarity.
-    // If not showing add form, bottom button is "Continue to Payment"
-    if (_showAddForm || (cart.addresses.isEmpty)) {
-      if (cart.addresses.isEmpty) {
-        return Container(
-          padding: const EdgeInsets.fromLTRB(24, 16, 24, 36),
-          decoration: const BoxDecoration(color: Colors.white),
-          child: SizedBox(
-            width: double.infinity,
-            height: 56,
-            child: ElevatedButton(
-              onPressed: _isSaving ? null : _saveAddress,
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF439462),
-                  foregroundColor: Colors.white),
-              child: _isSaving
-                  ? const CircularProgressIndicator(color: Colors.white)
-                  : const Text('Save & Continue'),
-            ),
-          ),
-        );
-      }
-      return const SizedBox.shrink();
-    }
-
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 36),
-      decoration: const BoxDecoration(color: Colors.white, boxShadow: [
-        BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, -5))
-      ]),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, -5),
+          )
+        ],
+      ),
       child: SizedBox(
         width: double.infinity,
         height: 56,
@@ -476,8 +658,9 @@ class _ShippingAddressPageState extends ConsumerState<ShippingAddressPage> {
                 MaterialPageRoute(builder: (_) => const PaymentMethodPage()));
           },
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF439462),
+            backgroundColor: AppColors.accentGreen,
             foregroundColor: Colors.white,
+            elevation: 0,
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           ),
@@ -492,7 +675,7 @@ class _ShippingAddressPageState extends ConsumerState<ShippingAddressPage> {
           ),
         ),
       ),
-    );
+    ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1, end: 0);
   }
 }
 
@@ -530,7 +713,7 @@ class _StepDot extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool done = currentStep > stepIndex;
     final bool active = currentStep == stepIndex;
-    final Color primary = const Color(0xFF38B24D);
+    final Color primary = AppColors.accentGreen;
 
     return Column(
       children: [
@@ -576,7 +759,7 @@ class _StepLine extends StatelessWidget {
         height: 2,
         margin: const EdgeInsets.only(bottom: 22, left: 8, right: 8),
         decoration: BoxDecoration(
-            color: active ? const Color(0xFF38B24D) : Colors.grey.shade200,
+            color: active ? AppColors.accentGreen : Colors.grey.shade200,
             borderRadius: BorderRadius.circular(2)),
       ),
     );

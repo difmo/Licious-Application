@@ -5,6 +5,7 @@ import '../../../data/services/payment_service.dart';
 import '../../../data/services/wallet_service.dart';
 import '../../../data/services/db_service.dart';
 import '../../../core/constants/app_colors.dart';
+import './wallet_page.dart';
 
 class TopUpPage extends ConsumerStatefulWidget {
   const TopUpPage({super.key});
@@ -44,7 +45,12 @@ class _TopUpPageState extends ConsumerState<TopUpPage> {
     if (mounted) {
       setState(() => _isLoading = false);
       if (result['success'] == true) {
+        // Sync both the ChangeNotifier (used in Profile/Checkout) 
+        // and invalidate the Riverpod providers (used in WalletPage)
         CartProviderScope.of(context).syncWallet();
+        ref.invalidate(walletBalanceProvider);
+        ref.invalidate(walletHistoryProvider);
+        
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
               content: Text('Wallet topped up successfully!'),

@@ -38,6 +38,7 @@ class AuthResponseModel {
   final bool success;
   final String message;
   final String? token;
+  final String? refreshToken;
   final UserModel? data;
   final String? otp; // returned by /api/otp/send in dev/dummy mode
 
@@ -45,6 +46,7 @@ class AuthResponseModel {
     required this.success,
     required this.message,
     this.token,
+    this.refreshToken,
     this.data,
     this.otp,
   });
@@ -54,6 +56,7 @@ class AuthResponseModel {
       success: json['success'] ?? false,
       message: json['message'] ?? '',
       token: json['token'],
+      refreshToken: json['refreshToken'],
       otp: json['otp']?.toString(),
       data: json['data'] is Map<String, dynamic>
           ? UserModel.fromJson(json['data'] as Map<String, dynamic>)
