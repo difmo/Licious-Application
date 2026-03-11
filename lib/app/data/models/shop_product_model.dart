@@ -7,7 +7,7 @@ class ShopProductCategory {
 
   factory ShopProductCategory.fromJson(Map<String, dynamic> json) {
     return ShopProductCategory(
-      id: (json['_id'] ?? '').toString(),
+      id: (json['_id'] ?? json['id'] ?? '').toString(),
       name: (json['name'] ?? '').toString(),
     );
   }
@@ -60,7 +60,7 @@ class ShopProduct {
     }
 
     return ShopProduct(
-      id: (json['_id'] ?? '').toString(),
+      id: (json['_id'] ?? json['id'] ?? '').toString(),
       name: (json['name'] ?? '').toString(),
       description: (json['description'] ?? '').toString(),
       price: (json['price'] as num?)?.toDouble() ?? 0.0,

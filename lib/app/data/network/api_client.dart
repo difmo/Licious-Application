@@ -25,7 +25,7 @@ class ApiException implements Exception {
 /// Provider for ApiClient
 final apiClientProvider = Provider<ApiClient>((ref) {
   final dio = Dio(BaseOptions(
-    baseUrl: dotenv.get('API_BASE_URL'),
+    baseUrl: dotenv.get('API_BASE_URL').trim(),
     connectTimeout: const Duration(seconds: 30),
     receiveTimeout: const Duration(seconds: 30),
     contentType: Headers.jsonContentType,
@@ -64,7 +64,7 @@ class ApiClient {
 
   static Dio _createDefaultDio() {
     final dio = Dio(BaseOptions(
-      baseUrl: dotenv.get('API_BASE_URL'),
+      baseUrl: dotenv.get('API_BASE_URL').trim(),
       connectTimeout: const Duration(seconds: 30),
       receiveTimeout: const Duration(seconds: 30),
       contentType: Headers.jsonContentType,
@@ -84,6 +84,15 @@ class ApiClient {
     return dio;
   }
 
+  String _buildUrl(String path) {
+    if (path.startsWith('http')) return path;
+    var base = dotenv.get('API_BASE_URL').trim();
+    if (base.endsWith('/')) base = base.substring(0, base.length - 1);
+    var p = path;
+    if (!p.startsWith('/')) p = '/$p';
+    return base + p;
+  }
+
   // ── HTTP Methods ───────────────────────────────────────────────────────────
 
   Future<dynamic> get(String path,
@@ -91,7 +100,7 @@ class ApiClient {
       bool requiresAuth = false}) async {
     try {
       final response = await _dio.get(
-        path,
+        _buildUrl(path),
         queryParameters: queryParameters,
         options: Options(extra: {'requiresAuth': requiresAuth}),
       );
@@ -105,7 +114,7 @@ class ApiClient {
       {dynamic data, bool requiresAuth = false}) async {
     try {
       final response = await _dio.post(
-        path,
+        _buildUrl(path),
         data: data,
         options: Options(extra: {'requiresAuth': requiresAuth}),
       );
@@ -119,7 +128,7 @@ class ApiClient {
       {dynamic data, bool requiresAuth = false}) async {
     try {
       final response = await _dio.put(
-        path,
+        _buildUrl(path),
         data: data,
         options: Options(extra: {'requiresAuth': requiresAuth}),
       );
@@ -133,7 +142,7 @@ class ApiClient {
       {dynamic data, bool requiresAuth = false}) async {
     try {
       final response = await _dio.patch(
-        path,
+        _buildUrl(path),
         data: data,
         options: Options(extra: {'requiresAuth': requiresAuth}),
       );
@@ -147,7 +156,7 @@ class ApiClient {
       {dynamic data, bool requiresAuth = false}) async {
     try {
       final response = await _dio.delete(
-        path,
+        _buildUrl(path),
         data: data,
         options: Options(extra: {'requiresAuth': requiresAuth}),
       );

@@ -12,8 +12,8 @@ class FavoritesService {
   Future<bool> toggleFavorite(String productId) async {
     try {
       final response = await _apiClient.post(
-        '${ApiClient.baseUrl}/app/favorites',
-        data: {'product_id': productId},
+        '${ApiClient.baseUrl}/favorites',
+        data: {'productId': productId, 'product_id': productId},
         requiresAuth: true,
       );
       debugPrint('[FavoritesService] toggleFavorite response: $response');
@@ -34,7 +34,7 @@ class FavoritesService {
   Future<List<ShopProduct>> getFavoriteProducts() async {
     try {
       final response = await _apiClient.get(
-        '${ApiClient.baseUrl}/app/favorites',
+        '${ApiClient.baseUrl}/favorites',
         requiresAuth: true,
       );
       debugPrint('[FavoritesService] getFavoriteProducts response type: ${response.runtimeType}');
@@ -122,6 +122,7 @@ class FavoritesNotifier extends AsyncNotifier<Set<String>> {
     } catch (e) {
       debugPrint('[FavoritesNotifier] toggle failed, rolling back: $e');
       state = previous;
+      rethrow;
     }
   }
 }

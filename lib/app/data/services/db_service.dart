@@ -488,11 +488,9 @@ class CartProvider extends ChangeNotifier {
     if (_service == null) return;
     try {
       final remoteItems = await _service!.getCart();
-      if (remoteItems.isNotEmpty) {
-        _items.clear();
-        _items.addAll(remoteItems);
-        notifyListeners();
-      }
+      _items.clear();
+      _items.addAll(remoteItems);
+      notifyListeners();
     } catch (e) {
       debugPrint('Error loading cart from API: $e');
     }
@@ -576,7 +574,7 @@ class CartProvider extends ChangeNotifier {
     if (_addressService == null) return;
     _isAddressesLoading = true;
     notifyListeners();
-    
+
     try {
       final token = await ApiClient.getToken();
       if (token == null || token.isEmpty) {

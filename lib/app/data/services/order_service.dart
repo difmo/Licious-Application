@@ -17,6 +17,7 @@ class OrderService {
         data: {
           'deliveryAddress': deliveryAddress,
           'paymentMethod': paymentMethod,
+          'orderType': 'One-time',
         },
         requiresAuth: true,
       );
@@ -42,35 +43,40 @@ class OrderService {
         '${ApiClient.baseUrl}/orders/history',
         requiresAuth: true,
       );
-      
+
       debugPrint('OrderHistory Response Type: ${response.runtimeType}');
-      
+
       if (response is List) {
         return response;
       }
-      
+
       if (response is Map) {
         debugPrint('OrderHistory Keys: ${response.keys.toList()}');
-        
+
         // Check various common keys
-        final directList = response['orders'] ?? response['data'] ?? response['history'] ?? response['items'];
+        final directList = response['orders'] ??
+            response['data'] ??
+            response['history'] ??
+            response['items'];
         if (directList is List) return directList;
-        
+
         // Handle nested data: { "data": { "orders": [...] } }
         if (response['data'] is Map) {
-          final nestedList = response['data']['orders'] ?? response['data']['history'] ?? response['data']['items'];
+          final nestedList = response['data']['orders'] ??
+              response['data']['history'] ??
+              response['data']['items'];
           if (nestedList is List) return nestedList;
         }
-        
+
         // If the map itself looks like a single order or doesn't have list keys
         return [];
       }
-      
+
       return [];
     } catch (e, stack) {
       debugPrint('Error fetching orders from /orders/history: $e');
       debugPrint('Stack trace: $stack');
-      
+
       // Attempt fallback to /orders/my if /orders/history failed or was empty
       try {
         final fallback = await _apiClient.get(
@@ -78,11 +84,15 @@ class OrderService {
           requiresAuth: true,
         );
         if (fallback is List) return fallback;
-        if (fallback is Map) return fallback['orders'] ?? fallback['data'] ?? fallback['history'] ?? [];
+        if (fallback is Map)
+          return fallback['orders'] ??
+              fallback['data'] ??
+              fallback['history'] ??
+              [];
       } catch (e2) {
         debugPrint('Fallback /orders/my also failed: $e2');
       }
-      
+
       return [];
     }
   }
@@ -114,27 +124,32 @@ class OrderService {
       };
     }
   }
+
   Future<List<dynamic>> getActiveOrders() async {
     try {
       final response = await _apiClient.get(
         '${ApiClient.baseUrl}/orders/active',
         requiresAuth: true,
       );
-      
+
       if (response is List) {
         return response;
       }
-      
+
       if (response is Map) {
-        final directList = response['orders'] ?? response['data'] ?? response['activeOrders'] ?? response['items'];
+        final directList = response['orders'] ??
+            response['data'] ??
+            response['activeOrders'] ??
+            response['items'];
         if (directList is List) return directList;
-        
+
         if (response['data'] is Map) {
-          final nestedList = response['data']['orders'] ?? response['data']['activeOrders'];
+          final nestedList =
+              response['data']['orders'] ?? response['data']['activeOrders'];
           if (nestedList is List) return nestedList;
         }
       }
-      
+
       return [];
     } catch (e) {
       debugPrint('Error fetching active orders: $e');

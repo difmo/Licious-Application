@@ -20,9 +20,26 @@ class CartService {
         '${ApiClient.baseUrl}/cart',
         requiresAuth: true,
       );
-      final data = json['data'] as List<dynamic>? ?? [];
-      return data.map((e) => _mapToCartItem(e)).toList();
-    } catch (e) {
+
+      List<dynamic> data = [];
+      if (json is List) {
+        data = json;
+      } else if (json is Map) {
+        final directList = json['cart'] ?? json['items'] ?? json['data'];
+        if (directList is List) {
+          data = directList;
+        } else if (directList is Map && directList['items'] is List) {
+          data = directList['items'];
+        } else if (json['data'] is Map && json['data']['items'] is List) {
+          data = json['data']['items'];
+        }
+      }
+
+      return data
+          .map((e) => _mapToCartItem(Map<String, dynamic>.from(e)))
+          .toList();
+    } catch (e, stack) {
+      print('Cart sync error: $e\\n$stack');
       // If endpoint doesn't exist yet, return empty list
       return [];
     }

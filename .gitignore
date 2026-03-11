@@ -46,3 +46,11 @@ app.*.map.json
 
 # Secret keys — never commit
 android/local.properties
+
+# Environment Variables
+.env
+
+# Firebase Config Files
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+lib/firebase_options.dart
