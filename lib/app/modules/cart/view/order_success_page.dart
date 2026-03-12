@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../home/controller/main_controller.dart';
-import 'order_tracking_page.dart';
+import '../../../routes/app_routes.dart';
 
 class OrderSuccessPage extends StatelessWidget {
   final Map<String, dynamic>? order;
@@ -17,8 +16,8 @@ class OrderSuccessPage extends StatelessWidget {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Color(0xFF1A1A1A)),
           onPressed: () {
-            MainControllerScope.of(context).changePage(0);
-            Navigator.of(context).popUntil((route) => route.isFirst);
+            Navigator.pushNamedAndRemoveUntil(
+                context, AppRoutes.home, (route) => false);
           },
         ),
         title: const Text(
@@ -67,18 +66,14 @@ class OrderSuccessPage extends StatelessWidget {
               style: TextStyle(fontSize: 15, color: Colors.grey, height: 1.5),
             ),
             const Spacer(flex: 3),
-            // Track Order Button
+            // Go to Home Page Button
             SizedBox(
               width: double.infinity,
               height: 52,
               child: ElevatedButton(
                 onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => OrderTrackingPage(order: order),
-                    ),
-                  );
+                  Navigator.pushNamedAndRemoveUntil(
+                      context, AppRoutes.home, (route) => false);
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF439462),
@@ -89,8 +84,11 @@ class OrderSuccessPage extends StatelessWidget {
                   elevation: 0,
                 ),
                 child: const Text(
-                  'Track order',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  'Go to Home Page',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),
