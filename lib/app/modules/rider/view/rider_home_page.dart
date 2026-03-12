@@ -73,7 +73,11 @@ final riderStatsProvider = FutureProvider.autoDispose<_RiderStats>((ref) async {
       'totalDeliveries',
       'total_deliveries',
       'deliveryCount',
-      'orders'
+      'orders',
+      'totalOrders',
+      'total_orders',
+      'totalOrder',
+      'total_order',
     ]),
     rating: parseNum(['rating', 'avgRating', 'avg_rating', 'riderRating']),
     earnings: parseNum([
@@ -82,7 +86,12 @@ final riderStatsProvider = FutureProvider.autoDispose<_RiderStats>((ref) async {
       'weekly_earnings',
       'earnings',
       'walletBalance',
-      'balance'
+      'balance',
+      'totalEarnings',
+      'total_earnings',
+      'totalEarning',
+      'total_earning',
+      'totalEarninag',
     ]),
   );
 });
@@ -553,16 +562,16 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
                           error: (_, __) => Row(
                             mainAxisAlignment: MainAxisAlignment.spaceAround,
                             children: [
-                              _buildStat('Orders', '—', Icons.delivery_dining),
+                              _buildStat('Total Orders', '—', Icons.delivery_dining),
                               _buildStat('Rating', '—', Icons.star_rounded),
-                              _buildStat('Earnings', '₹—',
+                              _buildStat('Total Earnings', '₹—',
                                   Icons.account_balance_wallet_rounded),
                             ],
                           ),
                           data: (stats) => Row(
                             mainAxisAlignment: MainAxisAlignment.spaceAround,
                             children: [
-                              _buildStat('Orders', '${stats.orders}',
+                              _buildStat('Total Orders', '${stats.orders}',
                                   Icons.delivery_dining),
                               _buildStat(
                                   'Rating',
@@ -571,7 +580,7 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
                                       : '—',
                                   Icons.star_rounded),
                               _buildStat(
-                                  'Earnings',
+                                  'Total Earnings',
                                   '₹${stats.earnings.toStringAsFixed(0)}',
                                   Icons.account_balance_wallet_rounded),
                             ],

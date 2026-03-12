@@ -126,8 +126,16 @@ class RiderEarningsPage extends ConsumerWidget {
         ),
         data: (earnings) {
           // ── Parse earnings fields (multi-key fallback for different API schemas)
-          final walletBalance = _parseNum(
-              earnings, ['walletBalance', 'wallet_balance', 'balance']);
+          final walletBalance = _parseNum(earnings, [
+            'walletBalance',
+            'wallet_balance',
+            'balance',
+            'totalEarnings',
+            'total_earnings',
+            'totalEarning',
+            'total_earning',
+            'totalEarninag'
+          ]);
           final today = _parseNum(earnings,
               ['today', 'todayEarnings', 'today_earnings', 'todayPay']);
           final weekly = _parseNum(earnings, [
@@ -135,13 +143,23 @@ class RiderEarningsPage extends ConsumerWidget {
             'weeklyEarnings',
             'weekly_earnings',
             'thisWeek',
-            'this_week'
+            'this_week',
+            'totalEarnings',
+            'total_earnings',
+            'totalEarning',
+            'total_earning',
+            'totalEarninag'
           ]);
           final deliveries = _parseInt(earnings, [
             'deliveries',
             'totalDeliveries',
             'total_deliveries',
-            'deliveryCount'
+            'deliveryCount',
+            'totalOrders',
+            'total_orders',
+            'totalOrder',
+            'total_order',
+            'orders'
           ]);
           final avgPerOrder = deliveries > 0
               ? weekly / deliveries
