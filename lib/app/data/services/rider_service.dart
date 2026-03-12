@@ -168,7 +168,15 @@ class RiderService {
         '${ApiClient.riderBaseUrl}/earnings',
         requiresAuth: true,
       );
-      return res;
+      // Normalise: always return { success: true, data: <map> }
+      if (res is Map) {
+        final map = Map<String, dynamic>.from(res);
+        // If already wrapped correctly, return as-is
+        if (map.containsKey('success')) return map;
+        // Otherwise wrap it
+        return {'success': true, 'data': map};
+      }
+      return {'success': false, 'message': 'Unexpected response format'};
     } catch (e) {
       return {'success': false, 'message': e.toString()};
     }

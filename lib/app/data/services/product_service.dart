@@ -41,8 +41,7 @@ class ProductService {
         queryParameters: queryParams,
       );
       // Support both "products" and "data" response keys
-      final data =
-          (json['products'] ?? json['data']) as List<dynamic>? ?? [];
+      final data = (json['products'] ?? json['data']) as List<dynamic>? ?? [];
       return data
           .map((e) => Product.fromJson(e as Map<String, dynamic>))
           .toList();

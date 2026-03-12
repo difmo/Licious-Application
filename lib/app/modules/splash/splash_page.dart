@@ -20,8 +20,6 @@ class _SplashPageState extends ConsumerState<SplashPage>
   late Animation<double> _scaleAnim;
   bool _navigated = false;
   int _retryCount = 0;
-  static const int _maxRetries =
-      10; // 10 × 200ms = 2s max retry after initial 2s delay
 
   @override
   void initState() {
@@ -66,11 +64,11 @@ class _SplashPageState extends ConsumerState<SplashPage>
     } else if (authState is AuthLoading || authState is AuthInitial) {
       // Session is still being restored — check again shortly
       _retryCount++;
-      if (_retryCount <= _maxRetries) {
+      if (_retryCount <= 50) { // Increased to 50 (10 seconds total) for slow backend cold starts
         Future.delayed(
             const Duration(milliseconds: 200), _checkAuthAndNavigate);
       } else {
-        // Hard timeout: 4 seconds total (2s initial + 2s retries), force navigate
+        // Hard timeout: force navigate
         _navigated = true;
         if (mounted) {
           Navigator.pushReplacementNamed(context, AppRoutes.initialRoute);

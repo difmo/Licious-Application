@@ -21,6 +21,72 @@ final riderOrdersProvider =
   }).toList();
 });
 
+// ── Rider dashboard stats: orders count, rating, earnings ───────────────────────
+
+class _RiderStats {
+  final int orders;
+  final double rating;
+  final double earnings;
+  const _RiderStats(
+      {required this.orders, required this.rating, required this.earnings});
+}
+
+final riderStatsProvider = FutureProvider.autoDispose<_RiderStats>((ref) async {
+  final result = await ref.read(riderServiceProvider).getEarnings();
+
+  // Unwrap: { success: true, data: {...} } OR flat map
+  Map<String, dynamic> data;
+  if (result['success'] == true && result['data'] is Map) {
+    data = Map<String, dynamic>.from(result['data'] as Map);
+  } else if (result['success'] == true) {
+    data = Map<String, dynamic>.from(result)
+      ..remove('success')
+      ..remove('message');
+  } else {
+    // Try raw fields if no success wrapper
+    data = Map<String, dynamic>.from(result);
+  }
+
+  double parseNum(List<String> keys) {
+    for (final k in keys) {
+      final v = data[k];
+      if (v == null) continue;
+      if (v is num) return v.toDouble();
+      if (v is String) return double.tryParse(v) ?? 0.0;
+    }
+    return 0.0;
+  }
+
+  int parseInt(List<String> keys) {
+    for (final k in keys) {
+      final v = data[k];
+      if (v == null) continue;
+      if (v is num) return v.toInt();
+      if (v is String) return int.tryParse(v) ?? 0;
+    }
+    return 0;
+  }
+
+  return _RiderStats(
+    orders: parseInt([
+      'deliveries',
+      'totalDeliveries',
+      'total_deliveries',
+      'deliveryCount',
+      'orders'
+    ]),
+    rating: parseNum(['rating', 'avgRating', 'avg_rating', 'riderRating']),
+    earnings: parseNum([
+      'weekly',
+      'weeklyEarnings',
+      'weekly_earnings',
+      'earnings',
+      'walletBalance',
+      'balance'
+    ]),
+  );
+});
+
 class RiderHomePage extends ConsumerStatefulWidget {
   const RiderHomePage({super.key});
 
@@ -143,6 +209,7 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
           setState(() => _isOnline = true);
           _showSnack('You are now ONLINE ✅');
           ref.invalidate(riderOrdersProvider);
+          ref.invalidate(riderStatsProvider);
         }
 
         // ── Going OFFLINE ───────────────────────────────────────────────────
@@ -171,6 +238,7 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
           setState(() => _isOnline = false);
           _showSnack('You are now OFFLINE');
           ref.invalidate(riderOrdersProvider);
+          ref.invalidate(riderStatsProvider);
         }
       }
     } catch (e) {
@@ -313,6 +381,7 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
     final authState = ref.watch(authProvider);
     final user = authState is AuthAuthenticated ? authState.user : null;
     final ordersAsync = ref.watch(riderOrdersProvider);
+    final statsAsync = ref.watch(riderStatsProvider);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
@@ -332,7 +401,10 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
-            onPressed: () => ref.invalidate(riderOrdersProvider),
+            onPressed: () {
+              ref.invalidate(riderOrdersProvider);
+              ref.invalidate(riderStatsProvider);
+            },
           ),
           IconButton(
             icon: const Icon(Icons.logout_rounded),
@@ -465,14 +537,45 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
                       ),
                       if (_isOnline) ...[
                         const Divider(height: 32),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: [
-                            _buildStat('Orders', '12', Icons.delivery_dining),
-                            _buildStat('Rating', '4.8', Icons.star_rounded),
-                            _buildStat('Earnings', '₹1,240',
-                                Icons.account_balance_wallet_rounded),
-                          ],
+                        statsAsync.when(
+                          loading: () => const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 8),
+                            child: Center(
+                              child: SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    color: AppColors.accentGreen),
+                              ),
+                            ),
+                          ),
+                          error: (_, __) => Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              _buildStat('Orders', '—', Icons.delivery_dining),
+                              _buildStat('Rating', '—', Icons.star_rounded),
+                              _buildStat('Earnings', '₹—',
+                                  Icons.account_balance_wallet_rounded),
+                            ],
+                          ),
+                          data: (stats) => Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              _buildStat('Orders', '${stats.orders}',
+                                  Icons.delivery_dining),
+                              _buildStat(
+                                  'Rating',
+                                  stats.rating > 0
+                                      ? stats.rating.toStringAsFixed(1)
+                                      : '—',
+                                  Icons.star_rounded),
+                              _buildStat(
+                                  'Earnings',
+                                  '₹${stats.earnings.toStringAsFixed(0)}',
+                                  Icons.account_balance_wallet_rounded),
+                            ],
+                          ),
                         ),
                       ],
                     ],
