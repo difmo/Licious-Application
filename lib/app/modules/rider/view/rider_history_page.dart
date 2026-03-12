@@ -2,16 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../data/services/rider_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
 
 final deliveryHistoryProvider =
     FutureProvider.autoDispose<List<dynamic>>((ref) async {
   final all = await ref.read(riderServiceProvider).getDeliveryHistory();
-  // Show only delivered / completed orders
-  return all.where((o) {
-    final s = (o['status']?.toString() ?? '').toLowerCase();
-    return s == 'delivered' || s == 'completed';
-  }).toList();
+  return all;
 });
 
 class RiderHistoryPage extends ConsumerWidget {
@@ -57,8 +54,7 @@ class RiderHistoryPage extends ConsumerWidget {
           );
         },
         loading: () => const Center(
-            child:
-                CircularProgressIndicator(color: AppColors.accentGreen)),
+            child: CircularProgressIndicator(color: AppColors.accentGreen)),
         error: (err, _) => Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -170,9 +166,12 @@ class _DeliveryHistoryCard extends StatelessWidget {
     final String itemsSummary = itemsList.isNotEmpty
         ? itemsList.map((i) {
             final n = i['name']?.toString() ??
-                (i['product'] is Map ? i['product']['name']?.toString() : null) ??
+                (i['product'] is Map
+                    ? i['product']['name']?.toString()
+                    : null) ??
                 'Item';
-            return '${i['quantity'] ?? 1}x $n';
+            final q = i['quantity'] ?? i['qty'] ?? 1;
+            return '${q}x $n';
           }).join(', ')
         : 'No items info';
 
@@ -180,149 +179,168 @@ class _DeliveryHistoryCard extends StatelessWidget {
     final double total =
         (item['totalAmount'] ?? item['grandTotal'] ?? item['total'] ?? 0)
             .toDouble();
-    final String paymentMethod =
-        item['paymentMethod']?.toString() ?? 'Cash';
+
+    Future<void> launchCall(String phone) async {
+      if (phone.isEmpty) return;
+      final uri = Uri.parse('tel:$phone');
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+      }
+    }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── Green header ── ─────────────────────────────────────────────
-          Container(
-            padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
-            decoration: const BoxDecoration(
-              color: Color(0xFF114F3B),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-            ),
-            child: Row(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Header (ID + Status) ─────────────────────────────────────────
+            Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Order #$shortId',
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 15)),
-                    if (displayDate.isNotEmpty)
-                      Text(displayDate,
-                          style: const TextStyle(
-                              color: Colors.white60, fontSize: 11)),
-                  ],
+                Text(
+                  '#$shortId',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 18,
+                      color: Color(0xFF1B2D1F)),
                 ),
                 Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.white30),
+                    color: (item['status']?.toString().toLowerCase() ==
+                                'delivered' ||
+                            item['status']?.toString().toLowerCase() ==
+                                'completed')
+                        ? const Color(0xFFEBFFD7)
+                        : Colors.orange.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.check_circle_outline,
-                          color: Colors.greenAccent, size: 12),
-                      SizedBox(width: 4),
-                      Text('DELIVERED',
-                          style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 10,
-                              letterSpacing: 0.5)),
-                    ],
+                  child: Text(
+                    (item['status']?.toString() ?? 'PENDING').toUpperCase(),
+                    style: TextStyle(
+                      color: (item['status']?.toString().toLowerCase() ==
+                                  'delivered' ||
+                              item['status']?.toString().toLowerCase() ==
+                                  'completed')
+                          ? AppColors.accentGreen
+                          : Colors.orange,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 10,
+                      letterSpacing: 1.0,
+                    ),
                   ),
                 ),
               ],
             ),
-          ),
-
-          // ── Body ─────────────────────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.all(18),
-            child: Column(
+            const SizedBox(height: 12),
+            // ── Date Row ─────────────────────────────────────────────────────
+            Row(
               children: [
-                // Customer
-                _Row(
-                  icon: Icons.person_outline_rounded,
-                  label: 'Customer',
-                  value: customerName +
-                      (customerPhone.isNotEmpty ? '  ·  $customerPhone' : ''),
-                ),
-                const SizedBox(height: 10),
-                // Address
-                _Row(
-                  icon: Icons.location_on_outlined,
-                  label: 'Delivered to',
-                  value: addressStr,
-                ),
-                const SizedBox(height: 10),
-                // Items
-                _Row(
-                  icon: Icons.set_meal_outlined,
-                  label: 'Items',
-                  value: itemsSummary,
-                  maxLines: 2,
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  child: Divider(color: Colors.grey.shade100, thickness: 1.5),
-                ),
-                // Financials row
-                Row(
-                  children: [
-                    // Payment method chip
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF0F4EC),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            paymentMethod.toLowerCase().contains('wallet')
-                                ? Icons.account_balance_wallet_outlined
-                                : Icons.payments_outlined,
-                            size: 13,
-                            color: const Color(0xFF114F3B),
-                          ),
-                          const SizedBox(width: 5),
-                          Text(paymentMethod,
-                              style: const TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF114F3B))),
-                        ],
-                      ),
-                    ),
-                    const Spacer(),
-                    Text(
-                      '₹${total.toStringAsFixed(0)}',
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w900,
-                          fontSize: 20,
-                          color: AppColors.accentGreen),
-                    ),
-                  ],
+                const Icon(Icons.calendar_today_rounded,
+                    size: 16, color: Colors.grey),
+                const SizedBox(width: 8),
+                Text(
+                  displayDate,
+                  style: TextStyle(
+                      color: Colors.grey.shade600,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500),
                 ),
               ],
             ),
-          ),
-        ],
+            const SizedBox(height: 16),
+            Divider(color: Colors.grey.shade100, thickness: 1.5),
+            const SizedBox(height: 16),
+
+            // ── Details ──
+            Row(
+              children: [
+                Expanded(
+                  child: _Row(
+                    icon: Icons.person_outline_rounded,
+                    label: 'Customer',
+                    value: customerName,
+                  ),
+                ),
+                if (customerPhone.isNotEmpty)
+                  IconButton(
+                    onPressed: () => launchCall(customerPhone),
+                    icon: const Icon(Icons.phone_in_talk_rounded,
+                        size: 20, color: AppColors.accentGreen),
+                    style: IconButton.styleFrom(
+                      backgroundColor: const Color(0xFFEBFFD7),
+                      padding: const EdgeInsets.all(8),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (customerPhone.isNotEmpty) ...[
+              _Row(
+                icon: Icons.phone_android_rounded,
+                label: 'Phone Number',
+                value: customerPhone,
+              ),
+              const SizedBox(height: 12),
+            ],
+            _Row(
+              icon: Icons.location_on_outlined,
+              label: 'Delivered to',
+              value: addressStr,
+            ),
+            const SizedBox(height: 12),
+            _Row(
+              icon: Icons.set_meal_outlined,
+              label: 'Items',
+              value: itemsSummary,
+              maxLines: 2,
+            ),
+
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF9FBF8),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Total Amount',
+                    style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey),
+                  ),
+                  Text(
+                    '₹${total.toStringAsFixed(0)}',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 22,
+                        color: Color(0xFF1B2D1F)),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -360,13 +378,12 @@ class _Row extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(label,
-                  style:
-                      const TextStyle(fontSize: 10, color: Colors.grey)),
+                  style: const TextStyle(fontSize: 10, color: Colors.grey)),
               const SizedBox(height: 2),
               Text(
                 value,
-                style: const TextStyle(
-                    fontWeight: FontWeight.w600, fontSize: 13),
+                style:
+                    const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                 maxLines: maxLines,
                 overflow: TextOverflow.ellipsis,
               ),

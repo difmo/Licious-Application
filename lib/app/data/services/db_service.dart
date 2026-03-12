@@ -649,6 +649,15 @@ class CartProvider extends ChangeNotifier {
     return _items.any((item) => item.title == title);
   }
 
+  String? get cartShopId => _items.isEmpty ? null : _items.first.shopId;
+  String? get cartShopName => _items.isEmpty ? null : _items.first.shopName;
+
+  bool isSameShop(String? shopId) {
+    if (_items.isEmpty) return true;
+    if (shopId == null) return true;
+    return cartShopId == shopId;
+  }
+
   void addToCart(CartItem cartItem) {
     final idx = _items.indexWhere((item) => item.title == cartItem.title);
     if (idx >= 0) {

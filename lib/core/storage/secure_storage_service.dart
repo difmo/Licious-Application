@@ -10,6 +10,9 @@ class SecureStorageService {
       : _storage = const FlutterSecureStorage(
           iOptions:
               IOSOptions(accessibility: KeychainAccessibility.first_unlock),
+          aOptions: AndroidOptions(
+            encryptedSharedPreferences: true,
+          ),
         );
 
   Future<void> saveTokens(

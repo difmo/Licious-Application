@@ -106,7 +106,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
     if (authState is AuthAuthenticated) {
       // Update legacy CartProvider profile (kept for rest of UI compatibility)
-      CartProviderScope.of(context).updateUserProfile(
+      final cartProvider = CartProviderScope.of(context);
+      cartProvider.updateUserProfile(
         UserProfile(
           name: authState.user.fullName,
           email: authState.user.email,
@@ -114,6 +115,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           profileImage: 'assets/images/image copy 2.png',
         ),
       );
+      // Sync cart immediately after login
+      cartProvider.loadCartFromApi();
+
       _showSnackBar('Welcome back!',
           backgroundColor: Colors.green.shade600, icon: Icons.check_circle);
 

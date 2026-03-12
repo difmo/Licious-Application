@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/foundation.dart';
 import '../../app/data/models/auth_models.dart';
 import '../../app/data/services/auth_service.dart';
 import '../storage/secure_storage_service.dart';
@@ -76,27 +77,52 @@ class AuthStore extends Notifier<AuthState> {
 
   /// App Launch: Check if tokens exist and validate/refresh access token.
   Future<void> init() async {
-    state = AuthState.loading();
+    // Only set loading if we haven't already
+    if (state.status != AuthStatus.loading) {
+      state = AuthState.loading();
+    }
+
     try {
       final String? token = await _storage.getAccessToken();
-      final String? refreshToken = await _storage.getRefreshToken();
+      // final String? refreshToken = await _storage.getRefreshToken(); // Interceptor handles refresh during profile fetch
+
+      debugPrint('AuthStore: Initializing session check...');
 
       if (token != null && token.isNotEmpty) {
+        debugPrint('AuthStore: Access token found. Validating via profile...');
         // Validate by fetching profile
         final response = await ref.read(authServiceProvider).getProfile();
+
         if (response.success && response.data != null) {
+          debugPrint(
+              'AuthStore: Session restored successfully for ${response.data!.phoneNumber}');
           state = AuthState.authenticated(response.data!);
-        } else if (refreshToken != null && refreshToken.isNotEmpty) {
-          // Profile failed but we have refresh token - attempt explicit refresh if interceptor hasn't yet
-          // Normally interceptor handles 401, but for initial load:
-          state = AuthState.unauthenticated(error: "Session expired");
         } else {
-          await logout();
+          debugPrint('AuthStore: Profile fetch failed: ${response.message}');
+          // If the profile fetch failed, the interceptor might have already tried
+          // to refresh and failed. If we still have a refresh token, we technically
+          // might want to try one last definitive logout or check the error type.
+
+          // For now, if we have a token but profile fails, it usually means
+          // either no network (we should retry or stay in local state)
+          // or invalid token (should logout).
+
+          if (response.message.contains('401') ||
+              response.message.contains('Unauthorized')) {
+            debugPrint('AuthStore: Token definitely invalid. Logging out.');
+            await logout();
+          } else {
+            // Likely a network error — we'll stay unauthenticated for now but
+            // tell the user why if they are on splash.
+            state = AuthState.unauthenticated(error: response.message);
+          }
         }
       } else {
+        debugPrint('AuthStore: No access token found. User must login.');
         state = AuthState.unauthenticated();
       }
     } catch (e) {
+      debugPrint('AuthStore: Critical error during init: $e');
       state = AuthState.unauthenticated(error: e.toString());
     }
   }

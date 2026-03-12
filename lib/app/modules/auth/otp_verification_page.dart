@@ -120,10 +120,11 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
       );
     } else if (authState is AuthAuthenticated) {
       debugPrint('[OTP] Instant login successful!');
-      
+
       // Update legacy CartProvider profile (kept for rest of UI compatibility)
       try {
-        CartProviderScope.of(context).updateUserProfile(
+        final cartProvider = CartProviderScope.of(context);
+        cartProvider.updateUserProfile(
           UserProfile(
             name: authState.user.fullName,
             email: authState.user.email,
@@ -131,14 +132,18 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
             profileImage: 'assets/images/image copy 2.png',
           ),
         );
+        // Sync cart immediately after login
+        cartProvider.loadCartFromApi();
       } catch (e) {
         debugPrint('Failed to update CartProvider profile: $e');
       }
 
       if (authState.user.role == 'rider') {
-        Navigator.pushNamedAndRemoveUntil(context, AppRoutes.riderHome, (route) => false);
+        Navigator.pushNamedAndRemoveUntil(
+            context, AppRoutes.riderHome, (route) => false);
       } else {
-        Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (route) => false);
+        Navigator.pushNamedAndRemoveUntil(
+            context, AppRoutes.home, (route) => false);
       }
     } else if (authState is AuthError) {
       debugPrint('[OTP] Verification failed: ${authState.message}');
@@ -149,8 +154,7 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
 
   // ── Snack bar helper ──────────────────────────────────────────────────────
 
-  void _showSnackBar(String message,
-      {Color backgroundColor = Colors.black87}) {
+  void _showSnackBar(String message, {Color backgroundColor = Colors.black87}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -158,8 +162,7 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
             Text(message, style: const TextStyle(fontWeight: FontWeight.w500)),
         backgroundColor: backgroundColor,
         behavior: SnackBarBehavior.floating,
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         duration: const Duration(seconds: 3),
       ),
     );
@@ -204,7 +207,8 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
               const SizedBox(height: 8),
               // ── Debug hint ───────────────────────────────────────────────
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
                   color: const Color(0xFFFFF8E1),
                   borderRadius: BorderRadius.circular(8),
@@ -234,8 +238,7 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
                 const Center(
                   child: Padding(
                     padding: EdgeInsets.symmetric(vertical: 20),
-                    child: CircularProgressIndicator(
-                        color: Color(0xFF2E7D32)),
+                    child: CircularProgressIndicator(color: Color(0xFF2E7D32)),
                   ),
                 )
               else
@@ -263,8 +266,7 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
                           contentPadding: EdgeInsets.zero,
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide:
-                                const BorderSide(color: Colors.black12),
+                            borderSide: const BorderSide(color: Colors.black12),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
@@ -299,8 +301,7 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Text("Didn't receive the code? ",
-                      style:
-                          TextStyle(color: Colors.black54, fontSize: 13)),
+                      style: TextStyle(color: Colors.black54, fontSize: 13)),
                   GestureDetector(
                     onTap: _isSendingOtp ? null : _sendOtp,
                     child: Text(

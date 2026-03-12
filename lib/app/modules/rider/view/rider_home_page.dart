@@ -67,7 +67,9 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
 
   void _showNewOrderBanner(dynamic data) {
     final orderId = data?['orderId']?.toString() ?? '';
-    final shortId = orderId.length >= 6 ? orderId.substring(orderId.length - 6).toUpperCase() : orderId.toUpperCase();
+    final shortId = orderId.length >= 6
+        ? orderId.substring(orderId.length - 6).toUpperCase()
+        : orderId.toUpperCase();
     final customer = data?['customerName']?.toString() ?? 'A customer';
     final address = (data?['deliveryAddress'] is Map)
         ? data['deliveryAddress']['address']?.toString() ?? ''
@@ -173,7 +175,10 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
       }
     } catch (e) {
       if (mounted) {
-        _showSnack('Error: ${e.toString()}', isError: true);
+        final msg = e.toString().contains('404')
+            ? 'Backend error: Status endpoint not found (404)'
+            : 'Error: ${e.toString()}';
+        _showSnack(msg, isError: true);
       }
     } finally {
       if (mounted) setState(() => _isTogglingStatus = false);

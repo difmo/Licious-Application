@@ -25,6 +25,7 @@ class RiderOrderDetailsPage extends ConsumerStatefulWidget {
 
 class _RiderOrderDetailsPageState extends ConsumerState<RiderOrderDetailsPage> {
   bool _isLoading = false;
+
   /// Live-updated status from Socket.IO (falls back to the initial order status)
   late String _liveStatus;
 
@@ -47,7 +48,8 @@ class _RiderOrderDetailsPageState extends ConsumerState<RiderOrderDetailsPage> {
     socket.onOrderUpdate((data) {
       if (!mounted) return;
       final incomingId = data?['orderId']?.toString() ?? '';
-      if (incomingId != orderId && incomingId.isNotEmpty) return; // not our order
+      if (incomingId != orderId && incomingId.isNotEmpty)
+        return; // not our order
 
       final newStatus = data?['status']?.toString() ?? '';
       if (newStatus.isNotEmpty && newStatus != _liveStatus) {
@@ -56,7 +58,8 @@ class _RiderOrderDetailsPageState extends ConsumerState<RiderOrderDetailsPage> {
           content: Text('📍 Status updated: $newStatus'),
           backgroundColor: AppColors.accentGreen,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           duration: const Duration(seconds: 2),
         ));
       }
@@ -78,20 +81,38 @@ class _RiderOrderDetailsPageState extends ConsumerState<RiderOrderDetailsPage> {
 
   Future<void> _updateStatus(String status) async {
     setState(() => _isLoading = true);
-    final result = await ref.read(riderServiceProvider).updateDeliveryStatus(
-          orderId: widget.order['orderId'].toString(),
-          status: status,
-        );
+    final orderId = widget.order['orderId'].toString();
+    final riderService = ref.read(riderServiceProvider);
+
+    Map<String, dynamic> result;
+
+    if (status == 'Accepted' || status == 'Rejected') {
+      result = await riderService.respondToOrder(
+        orderId: orderId,
+        response: status,
+      );
+    } else if (status == 'Delivered') {
+      result = await riderService.markAsDelivered(orderId: orderId);
+    } else {
+      result = await riderService.updateDeliveryStatus(
+        orderId: orderId,
+        status: status,
+      );
+    }
+
     setState(() => _isLoading = false);
     if (mounted) {
+      final isSuccess = result['success'] != false;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(result['message'] ?? 'Status updated: $status'),
-        backgroundColor: AppColors.accentGreen,
+        backgroundColor: isSuccess ? AppColors.accentGreen : Colors.red,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ));
       ref.invalidate(riderOrdersProvider);
-      if (status == 'Delivered') Navigator.pop(context);
+      if (isSuccess && (status == 'Delivered' || status == 'Rejected')) {
+        Navigator.pop(context);
+      }
     }
   }
 
@@ -307,7 +328,9 @@ class _RiderOrderDetailsPageState extends ConsumerState<RiderOrderDetailsPage> {
                 children: [
                   if (status.toLowerCase() == 'pending' ||
                       status.toLowerCase() == 'preparing' ||
-                      status.toLowerCase() == 'accepted')
+                      status.toLowerCase() == 'accepted' ||
+                      status.toLowerCase() == 'rider accepted' ||
+                      status.toLowerCase() == 'rider_accepted')
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
@@ -326,7 +349,43 @@ class _RiderOrderDetailsPageState extends ConsumerState<RiderOrderDetailsPage> {
                         ),
                       ),
                     )
-                  else if (status.toLowerCase() == 'out for delivery' || status.toLowerCase() == 'out_for_delivery')
+                  else if (status.toLowerCase() == 'rider assigned' ||
+                      status.toLowerCase() == 'rider_assigned')
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () => _updateStatus('Accepted'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.accentGreen,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14)),
+                            ),
+                            child: const Text('Accept',
+                                style: TextStyle(fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => _updateStatus('Rejected'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.red,
+                              side: const BorderSide(color: Colors.red),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14)),
+                            ),
+                            child: const Text('Reject',
+                                style: TextStyle(fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                      ],
+                    )
+                  else if (status.toLowerCase() == 'out for delivery' ||
+                      status.toLowerCase() == 'out_for_delivery')
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(

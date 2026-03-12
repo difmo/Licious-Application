@@ -107,16 +107,35 @@ class CartService {
 
   // ── Mapper ───────────────────────────────────────────────────────────────
   CartItem _mapToCartItem(Map<String, dynamic> json) {
-    // Assuming the backend returns something that can be mapped to our CartItem
-    // Adjust mapping based on actual API response keys
+    // Backend may return nested product details or flat structure
+    final Map<String, dynamic> p =
+        json['product'] is Map ? json['product'] : json;
+
     return CartItem(
-      id: (json['productId'] ?? json['id'] ?? '').toString(),
-      title: (json['name'] ?? json['productName'] ?? '').toString(),
-      unitPrice: (json['price'] as num?)?.toDouble() ?? 0.0,
+      id: (p['_id'] ?? p['id'] ?? json['productId'] ?? '').toString(),
+      title: (p['name'] ?? p['productName'] ?? json['productName'] ?? '')
+          .toString(),
+      unitPrice: (json['price'] as num?)?.toDouble() ??
+          (p['price'] as num?)?.toDouble() ??
+          0.0,
       quantity: (json['quantity'] as num?)?.toInt() ?? 1,
-      subtitle: (json['category'] ?? '').toString(),
-      image: (json['image'] ?? '').toString(),
-      category: (json['type'] ?? 'standard').toString(),
+      subtitle:
+          (p['category'] is Map ? p['category']['name'] : (p['category'] ?? ''))
+              .toString(),
+      image: (p['image'] ??
+              p['imageUrl'] ??
+              (p['images'] is List && p['images'].isNotEmpty
+                  ? p['images'][0]
+                  : ''))
+          .toString(),
+      category: (p['type'] ?? json['type'] ?? 'standard').toString(),
+      shopId: (json['retailerId'] ??
+              json['shopId'] ??
+              p['retailerId'] ??
+              p['retailer'] ??
+              '')
+          .toString(),
+      shopName: (json['retailerName'] ?? json['shopName'] ?? '').toString(),
     );
   }
 }

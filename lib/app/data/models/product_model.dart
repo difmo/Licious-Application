@@ -7,6 +7,8 @@ class CartItem {
   final String subtitle;
   final String image;
   final String category;
+  final String? shopId;
+  final String? shopName;
   int quantity;
 
   CartItem({
@@ -16,6 +18,8 @@ class CartItem {
     required this.subtitle,
     required this.image,
     required this.category,
+    this.shopId,
+    this.shopName,
     this.quantity = 1,
   });
 

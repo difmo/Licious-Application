@@ -45,7 +45,8 @@ class AppPages {
         AppRoutes.walletStatement: (context) => const WalletStatementScreen(),
         AppRoutes.activeOrders: (context) => const ActiveOrdersPage(),
         AppRoutes.trackOrder: (context) {
-          final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+          final args = ModalRoute.of(context)?.settings.arguments
+              as Map<String, dynamic>?;
           return TrackOrderPage(
             orderId: args?['orderId'] ?? '',
             deliveryAddress: args?['address'],

@@ -8,7 +8,7 @@ import '../../../data/services/favorites_service.dart';
 import '../provider/shop_provider.dart';
 import '../widgets/cart_summary_bar.dart';
 import '../widgets/quantity_selector.dart';
-import '../controller/main_controller.dart';
+import 'package:licius_application/app/routes/app_routes.dart';
 
 class RestaurantMenuPage extends ConsumerWidget {
   final ShopModel shop;
@@ -268,6 +268,7 @@ class RestaurantMenuPage extends ConsumerWidget {
                             product: product,
                             index: index,
                             shopId: shop.id,
+                            shopName: shop.name,
                           );
                         },
                         childCount: products.length,
@@ -289,13 +290,7 @@ class RestaurantMenuPage extends ConsumerWidget {
               child: CartSummaryBar(
                 cart: cart,
                 onTap: () {
-                  try {
-                    final controller = MainControllerScope.of(context);
-                    controller.changePage(2);
-                    Navigator.popUntil(context, (route) => route.isFirst);
-                  } catch (e) {
-                    Navigator.popUntil(context, (route) => route.isFirst);
-                  }
+                  Navigator.pushNamed(context, AppRoutes.cart);
                 },
               ),
             ),
@@ -335,11 +330,13 @@ class _ProductCard extends ConsumerStatefulWidget {
   final ShopProduct product;
   final int index;
   final String shopId;
+  final String shopName;
 
   const _ProductCard({
     required this.product,
     required this.index,
     required this.shopId,
+    required this.shopName,
   });
 
   @override
@@ -467,7 +464,7 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
                 ),
                 // Dynamic Cart Controls
                 if (p.isAvailable)
-                  _buildCartControls(context, cart, p)
+                  _buildCartControls(context, cart, p, widget.shopName)
                 else
                   Container(
                     width: 32,
@@ -490,7 +487,7 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
   }
 
   Widget _buildCartControls(
-      BuildContext context, CartProvider cart, ShopProduct p) {
+      BuildContext context, CartProvider cart, ShopProduct p, String shopName) {
     final cartItem = cart.items.firstWhere(
       (item) => item.id == p.id,
       orElse: () => CartItem(
@@ -500,6 +497,8 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
         subtitle: p.category?.name ?? 'Shrimp',
         image: p.primaryImage,
         category: 'restaurant',
+        shopId: widget.shopId,
+        shopName: shopName,
         quantity: 0,
       ),
     );
@@ -507,24 +506,30 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
     if (cartItem.quantity == 0) {
       return GestureDetector(
         onTap: () {
-          cart.addToCart(CartItem(
-            id: p.id,
-            title: p.name,
-            unitPrice: p.price,
-            subtitle: p.category?.name ?? 'Shrimp',
-            image: p.primaryImage,
-            category: 'restaurant',
-          ));
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('${p.name} added to cart!'),
-              duration: const Duration(seconds: 1),
-              backgroundColor: const Color(0xFF439462),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
-            ),
-          );
+          if (cart.isSameShop(widget.shopId)) {
+            cart.addToCart(CartItem(
+              id: p.id,
+              title: p.name,
+              unitPrice: p.price,
+              subtitle: p.category?.name ?? 'Shrimp',
+              image: p.primaryImage,
+              category: 'restaurant',
+              shopId: widget.shopId,
+              shopName: shopName,
+            ));
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('${p.name} added to cart!'),
+                duration: const Duration(seconds: 1),
+                backgroundColor: const Color(0xFF439462),
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+              ),
+            );
+          } else {
+            _showReplaceCartDialog(context, cart, p, shopName);
+          }
         },
         child: Container(
           width: 32,
@@ -543,6 +548,89 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
       onIncrement: () => cart.increment(p.name),
       onDecrement: () => cart.decrement(p.name),
       size: 32, // Compact size for grid card
+    );
+  }
+
+  void _showReplaceCartDialog(BuildContext context, CartProvider cart,
+      ShopProduct p, String newShopName) {
+    final oldShopName = cart.cartShopName ?? 'another shop';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Replace cart item?',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+        ),
+        content: Text(
+          'Your cart contains dishes from $oldShopName. Do you want to discard the selection and add dishes from $newShopName?',
+          style:
+              const TextStyle(color: Colors.black87, fontSize: 14, height: 1.5),
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        actions: [
+          Row(
+            children: [
+              Expanded(
+                child: TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    backgroundColor: const Color(0xFFFFF1F0),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text(
+                    'No',
+                    style: TextStyle(
+                        color: Color(0xFFFC5A44), fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () {
+                    cart.clearCart();
+                    cart.addToCart(CartItem(
+                      id: p.id,
+                      title: p.name,
+                      unitPrice: p.price,
+                      subtitle: p.category?.name ?? 'Shrimp',
+                      image: p.primaryImage,
+                      category: 'restaurant',
+                      shopId: widget.shopId,
+                      shopName: newShopName,
+                    ));
+                    Navigator.pop(ctx);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content:
+                            Text('Cart replaced with items from $newShopName'),
+                        backgroundColor: const Color(0xFF439462),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    backgroundColor: const Color(0xFFFC5A44),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text(
+                    'Replace',
+                    style: TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 

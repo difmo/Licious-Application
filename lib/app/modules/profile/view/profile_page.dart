@@ -665,6 +665,9 @@ class _SignOutButton extends ConsumerWidget {
       alignment: Alignment.centerRight,
       child: GestureDetector(
         onTap: () async {
+          // Clear legacy cart session
+          CartProviderScope.of(context).clearSession();
+
           await ref.read(authProvider.notifier).logout();
           if (context.mounted) {
             Navigator.pushNamedAndRemoveUntil(

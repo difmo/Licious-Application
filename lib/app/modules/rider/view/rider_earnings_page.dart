@@ -4,7 +4,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../data/services/rider_service.dart';
 
-final riderEarningsProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
+final riderEarningsProvider =
+    FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
   final result = await ref.read(riderServiceProvider).getEarnings();
   // If API returns success, return data; else return mock data structure
   if (result['success'] == true) return result['data'] ?? result;
@@ -26,7 +27,8 @@ class RiderEarningsPage extends ConsumerWidget {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
       appBar: AppBar(
-        title: const Text('Earnings', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        title: const Text('Earnings',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 0,
@@ -39,13 +41,15 @@ class RiderEarningsPage extends ConsumerWidget {
         ],
       ),
       body: earningsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator(color: AppColors.accentGreen)),
+        loading: () => const Center(
+            child: CircularProgressIndicator(color: AppColors.accentGreen)),
         error: (err, _) => Center(child: Text('Error: $err')),
         data: (earnings) {
           final today = (earnings['today'] as num?)?.toDouble() ?? 0.0;
           final weekly = (earnings['weekly'] as num?)?.toDouble() ?? 0.0;
           final deliveries = (earnings['deliveries'] as num?)?.toInt() ?? 0;
-          final walletBalance = (earnings['walletBalance'] as num?)?.toDouble() ?? 0.0;
+          final walletBalance =
+              (earnings['walletBalance'] as num?)?.toDouble() ?? 0.0;
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(20),
@@ -73,18 +77,27 @@ class RiderEarningsPage extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Wallet Balance', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                      const Text('Wallet Balance',
+                          style:
+                              TextStyle(color: Colors.white70, fontSize: 14)),
                       const SizedBox(height: 8),
                       Text(
                         '₹${walletBalance.toStringAsFixed(2)}',
-                        style: const TextStyle(color: Colors.white, fontSize: 38, fontWeight: FontWeight.w900),
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 38,
+                            fontWeight: FontWeight.w900),
                       ),
                       const SizedBox(height: 20),
                       Row(
                         children: [
-                          _StatPill(label: "Today's Pay", value: '₹${today.toStringAsFixed(0)}'),
+                          _StatPill(
+                              label: "Today's Pay",
+                              value: '₹${today.toStringAsFixed(0)}'),
                           const SizedBox(width: 12),
-                          _StatPill(label: 'This Week', value: '₹${weekly.toStringAsFixed(0)}'),
+                          _StatPill(
+                              label: 'This Week',
+                              value: '₹${weekly.toStringAsFixed(0)}'),
                         ],
                       ),
                     ],
@@ -103,7 +116,10 @@ class RiderEarningsPage extends ConsumerWidget {
                         bgColor: const Color(0xFFE8F0FE),
                         label: 'Total Deliveries',
                         value: '$deliveries',
-                      ).animate(delay: 100.ms).fadeIn().slideY(begin: 0.1, end: 0),
+                      )
+                          .animate(delay: 100.ms)
+                          .fadeIn()
+                          .slideY(begin: 0.1, end: 0),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
@@ -112,8 +128,13 @@ class RiderEarningsPage extends ConsumerWidget {
                         iconColor: Colors.amber,
                         bgColor: const Color(0xFFFFF8E1),
                         label: 'Avg per order',
-                        value: deliveries > 0 ? '₹${(weekly / deliveries).toStringAsFixed(0)}' : '₹0',
-                      ).animate(delay: 150.ms).fadeIn().slideY(begin: 0.1, end: 0),
+                        value: deliveries > 0
+                            ? '₹${(weekly / deliveries).toStringAsFixed(0)}'
+                            : '₹0',
+                      )
+                          .animate(delay: 150.ms)
+                          .fadeIn()
+                          .slideY(begin: 0.1, end: 0),
                     ),
                   ],
                 ),
@@ -128,19 +149,31 @@ class RiderEarningsPage extends ConsumerWidget {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
-                      BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4)),
+                      BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.04),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4)),
                     ],
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Payout', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1A1A1A))),
+                      const Text('Payout',
+                          style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF1A1A1A))),
                       const SizedBox(height: 4),
-                      Text('Earnings are settled weekly to your bank', style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+                      Text('Earnings are settled weekly to your bank',
+                          style: TextStyle(
+                              fontSize: 12, color: Colors.grey.shade500)),
                       const SizedBox(height: 16),
-                      _PayoutRow(label: 'Next Settlement', value: 'Monday, 10 Mar'),
+                      _PayoutRow(
+                          label: 'Next Settlement', value: 'Monday, 10 Mar'),
                       const Divider(height: 24),
-                      _PayoutRow(label: 'Pending Balance', value: '₹${weekly.toStringAsFixed(0)}'),
+                      _PayoutRow(
+                          label: 'Pending Balance',
+                          value: '₹${weekly.toStringAsFixed(0)}'),
                     ],
                   ),
                 ).animate(delay: 200.ms).fadeIn().slideY(begin: 0.1, end: 0),
@@ -169,9 +202,14 @@ class _StatPill extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 11)),
+          Text(label,
+              style: const TextStyle(color: Colors.white70, fontSize: 11)),
           const SizedBox(height: 2),
-          Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 17)),
+          Text(value,
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 17)),
         ],
       ),
     );
@@ -200,7 +238,12 @@ class _EarningsCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 4))
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -211,9 +254,14 @@ class _EarningsCard extends StatelessWidget {
             child: Icon(icon, color: iconColor, size: 22),
           ),
           const SizedBox(height: 14),
-          Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF1A1A1A))),
+          Text(value,
+              style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF1A1A1A))),
           const SizedBox(height: 4),
-          Text(label, style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+          Text(label,
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
         ],
       ),
     );
@@ -230,8 +278,13 @@ class _PayoutRow extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
-        Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF1A1A1A))),
+        Text(label,
+            style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
+        Text(value,
+            style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+                color: Color(0xFF1A1A1A))),
       ],
     );
   }

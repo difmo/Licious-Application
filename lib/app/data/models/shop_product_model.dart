@@ -44,13 +44,40 @@ class ShopProduct {
   bool get isAvailable =>
       status == 'Published' && stockStatus == 'In Stock' && stock > 0;
 
-  String get primaryImage => images.isNotEmpty ? images.first : '';
+  String get primaryImage {
+    if (images.isNotEmpty && images.first.length > 5) return images.first;
+
+    // Fallback logic for demo/missing data:
+    // If it's a "Fish" or "Prawns/Shrimp", return a relevant local asset if we had them.
+    // For now, let's just use high-quality placeholder URLs if network image is missing
+    final lower = name.toLowerCase();
+    if (lower.contains('rohu')) {
+      return 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?q=80&w=800&auto=format&fit=crop';
+    }
+    if (lower.contains('prawn') || lower.contains('shrimp')) {
+      return 'https://images.unsplash.com/photo-1559737558-2f5a35f4523b?q=80&w=800&auto=format&fit=crop';
+    }
+    if (lower.contains('fish')) {
+      return 'https://images.unsplash.com/photo-1551098134-8025287f3299?q=80&w=800&auto=format&fit=crop';
+    }
+    return '';
+  }
 
   factory ShopProduct.fromJson(Map<String, dynamic> json) {
+    // Collect images from various possible fields
+    final List<String> images = [];
+
     final rawImages = json['images'];
-    List<String> images = [];
     if (rawImages is List) {
-      images = rawImages.map((e) => e.toString()).toList();
+      images.addAll(rawImages.map((e) => e.toString()));
+    }
+
+    final singleImage =
+        json['image'] ?? json['imageUrl'] ?? json['productImage'];
+    if (singleImage != null && singleImage.toString().isNotEmpty) {
+      if (!images.contains(singleImage.toString())) {
+        images.add(singleImage.toString());
+      }
     }
 
     ShopProductCategory? category;
