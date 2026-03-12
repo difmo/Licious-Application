@@ -156,6 +156,22 @@ class OrderService {
       return [];
     }
   }
+
+  Future<Map<String, dynamic>> trackOrder(String orderIdOrMongId) async {
+    try {
+      final response = await _apiClient.get(
+        '${ApiClient.baseUrl}/orders/track/$orderIdOrMongId',
+        requiresAuth: true,
+      );
+      if (response is Map && response['success'] == true) {
+        return response['order'] ?? response['data'] ?? {};
+      }
+      return {};
+    } catch (e) {
+      debugPrint('Error tracking order: $e');
+      return {};
+    }
+  }
 }
 
 final orderServiceProvider = Provider<OrderService>((ref) {

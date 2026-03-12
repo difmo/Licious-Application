@@ -129,7 +129,7 @@ class SocketService {
       debugPrint('⚠️ SocketService._emit skipped — not connected ($event)');
       return;
     }
-    _socket!.emit('emit', {'event': event, 'data': data});
+    _socket!.emit(event, data);
   }
 
   void dispose() {

@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../data/models/subscription_model.dart';
 import '../../data/services/subscription_service.dart';
 import '../../modules/wallet/view/wallet_page.dart' show walletBalanceProvider;
+import '../orders/view/order_tracking_page.dart';
 
 class SubscriptionPage extends ConsumerStatefulWidget {
   const SubscriptionPage({super.key});
@@ -312,11 +313,63 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
               children: [
                 Text(sub.productName,
                     style: const TextStyle(fontWeight: FontWeight.bold)),
+                if (sub.retailerName.isNotEmpty)
+                  Text(sub.retailerName,
+                      style: TextStyle(
+                          color: const Color(0xFF114F3B).withValues(alpha: 0.7),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600)),
                 Text('Qty ${sub.quantity} • ${sub.frequency}',
                     style: TextStyle(color: Colors.grey[600], fontSize: 12)),
               ],
             ),
           ),
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => OrderTrackingPage(
+                    order: {
+                      '_id': sub.id,
+                      'orderId': sub.id,
+                      'status': 'Processing',
+                      'orderType': 'Subscription',
+                      'frequency': sub.frequency,
+                      'customDays': sub.customDays,
+                      'items': [
+                        {
+                          'quantity': sub.quantity,
+                          'price': 0,
+                          'product': {
+                            'name': sub.productName,
+                            'images': [sub.productImage],
+                          }
+                        }
+                      ],
+                    },
+                  ),
+                ),
+              );
+            },
+            child: const Row(
+              children: [
+                Icon(Icons.location_on_outlined, color: Color(0xFF68B92E), size: 16),
+                SizedBox(width: 4),
+                Text(
+                  'Track',
+                  style: TextStyle(
+                    color: Color(0xFF68B92E),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    decoration: TextDecoration.underline,
+                    decorationColor: Color(0xFF68B92E),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
           const Icon(Icons.check_circle, color: Color(0xFF68B92E)),
         ],
       ),
