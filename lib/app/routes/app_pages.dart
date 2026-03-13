@@ -22,6 +22,7 @@ import '../modules/wallet/view/wallet_statement_screen.dart';
 import '../modules/orders/view/active_orders_page.dart';
 import '../modules/orders/view/track_order_page.dart';
 import '../modules/location/view/location_picker_screen.dart';
+import '../modules/home/view/search_page.dart';
 
 class AppPages {
   static Map<String, WidgetBuilder> get routes => {
@@ -54,5 +55,6 @@ class AppPages {
           );
         },
         AppRoutes.locationPicker: (context) => const LocationPickerScreen(),
+        AppRoutes.search: (context) => const SearchPage(),
       };
 }

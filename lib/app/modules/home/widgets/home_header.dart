@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../../data/services/db_service.dart';
 import '../controller/main_controller.dart';
 import '../../../widgets/bounce_widget.dart';
+import '../../../routes/app_routes.dart';
 
 class HomeHeader extends StatefulWidget {
   const HomeHeader({super.key});
@@ -12,7 +13,6 @@ class HomeHeader extends StatefulWidget {
 }
 
 class _HomeHeaderState extends State<HomeHeader> {
-
   @override
   Widget build(BuildContext context) {
     final cart = CartProviderScope.of(context);
@@ -84,6 +84,8 @@ class _HomeHeaderState extends State<HomeHeader> {
                     border: Border.all(color: Colors.grey.shade200),
                   ),
                   child: TextField(
+                    readOnly: true,
+                    onTap: () => Navigator.pushNamed(context, AppRoutes.search),
                     decoration: InputDecoration(
                       hintText: 'Search "curries"',
                       fillColor: Colors.white,
@@ -124,7 +126,9 @@ class _HomeHeaderState extends State<HomeHeader> {
           ),
         ],
       ),
-    ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.1, duration: 400.ms, curve: Curves.easeOut);
+    )
+        .animate()
+        .fadeIn(duration: 400.ms)
+        .slideY(begin: -0.1, duration: 400.ms, curve: Curves.easeOut);
   }
-
 }

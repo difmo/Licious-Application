@@ -22,4 +22,5 @@ class AppRoutes {
   static const String activeOrders = '/active-orders';
   static const String trackOrder = '/track-order';
   static const String locationPicker = '/location-picker';
+  static const String search = '/search';
 }

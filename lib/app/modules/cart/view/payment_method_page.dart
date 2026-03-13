@@ -38,7 +38,7 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
     super.initState();
     // Default start date = tomorrow
     _startDate = DateTime.now().add(const Duration(days: 1));
-    
+
     // Sync wallet balance when page is opened to reflect latest money
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
@@ -109,7 +109,7 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
                       _PaymentMethodTile(
                         index: 3,
                         selected: true,
-                        onTap: () {},
+                        onTap: () => Navigator.pushNamed(context, '/wallet'),
                         label: 'Wallet',
                         child: const Icon(Icons.account_balance_wallet_rounded,
                             size: 28, color: Color(0xFF439462)),
@@ -117,42 +117,50 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
                     ],
                   ),
                   const SizedBox(height: 24),
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF439462).withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                          color: const Color(0xFF439462).withValues(alpha: 0.3)),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.account_balance_wallet_rounded,
-                            color: Color(0xFF439462), size: 32),
-                        const SizedBox(width: 16),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('Wallet Balance',
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.pushNamed(context, '/wallet');
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF439462).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                            color:
+                                const Color(0xFF439462).withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.account_balance_wallet_rounded,
+                              color: Color(0xFF439462), size: 32),
+                          const SizedBox(width: 16),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Wallet Balance',
+                                  style: TextStyle(
+                                      fontSize: 13, color: Colors.grey)),
+                              Text(
+                                '₹${cartProvider.walletBalance.toStringAsFixed(2)}',
+                                style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF439462)),
+                              ),
+                            ],
+                          ),
+                          const Spacer(),
+                          if (cartProvider.walletBalance < cartProvider.total)
+                            const Text('Insufficient',
                                 style: TextStyle(
-                                    fontSize: 13, color: Colors.grey)),
-                            Text(
-                              '₹${cartProvider.walletBalance.toStringAsFixed(2)}',
-                              style: const TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF439462)),
-                            ),
-                          ],
-                        ),
-                        const Spacer(),
-                        if (cartProvider.walletBalance < cartProvider.total)
-                          const Text('Insufficient',
-                              style: TextStyle(
-                                  color: Colors.red,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12)),
-                      ],
+                                    color: Colors.red,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12)),
+                          const Icon(Icons.arrow_forward_ios,
+                              size: 16, color: Color(0xFF439462)),
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -167,7 +175,8 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
+                      border:
+                          Border.all(color: Colors.grey.withValues(alpha: 0.1)),
                     ),
                     child: Column(
                       children: [
@@ -445,7 +454,8 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
                               ref.invalidate(activeOrdersProvider);
                               navigator.pushAndRemoveUntil(
                                   MaterialPageRoute(
-                                      builder: (_) => OrderSuccessPage(order: response['order'])),
+                                      builder: (_) => OrderSuccessPage(
+                                          order: response['order'])),
                                   (route) => route.isFirst);
                             } else {
                               throw Exception(response['message'] ??

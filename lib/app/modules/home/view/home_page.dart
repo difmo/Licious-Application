@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import '../../../data/services/db_service.dart';
 import '../widgets/home_header.dart';
 import '../widgets/category_circles.dart';
-import '../widgets/filter_bar.dart';
 import '../widgets/home_banner.dart';
 import '../widgets/restaurant_list_section.dart';
 import '../../categories/view/category_items_page.dart';
@@ -50,16 +49,6 @@ class HomePage extends StatelessWidget {
                 ),
               ),
 
-              // Filters
-              const SliverToBoxAdapter(child: FilterBar()),
-
-              // Divider
-              const SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  child: Divider(height: 1, color: Color(0xFFEEEEEE)),
-                ),
-              ),
 
               // Banner (Horizontal Scrolling Carousel)
               const SliverToBoxAdapter(child: HomeBanner()),

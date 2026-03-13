@@ -11,11 +11,9 @@ import './my_orders_page.dart';
 import './transactions_page.dart';
 import './saved_cards_page.dart';
 import '../../auth/provider/auth_provider.dart';
-import '../../home/controller/main_controller.dart';
 import '../../subscriptions/view/subscription_dashboard_page.dart';
 import '../../home/view/favorites_page.dart';
 import '../../../routes/app_routes.dart';
-import '../../wallet/view/wallet_page.dart' show walletBalanceProvider;
 
 class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
@@ -41,7 +39,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     final profileAsync = ref.watch(auth.userProfileProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F4EC),
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () => ref.refresh(auth.userProfileProvider.future),
@@ -110,7 +108,6 @@ class _ProfileHeaderSkeleton extends StatelessWidget {
   }
 }
 
-// Simple fallback for Shimmer if not available, or just use Container
 class Shimmer extends StatelessWidget {
   final Widget child;
   const Shimmer({super.key, required this.child});
@@ -136,13 +133,6 @@ class _ProfileHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Profile Dashboard',
-                style: TextStyle(
-                  color: Colors.black54,
-                  fontSize: 14,
-                ),
-              ),
               Text(
                 'Hello, ${name.split(' ').first}!',
                 style: const TextStyle(
@@ -239,8 +229,6 @@ class _ActiveOrdersAndSubscriptions extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final activeOrdersAsync = ref.watch(activeOrdersProvider);
-
-    // Count active orders from the dedicated provider
     final activeOrdersCount = activeOrdersAsync.maybeWhen(
       data: (orders) => orders.length,
       orElse: () => 0,
@@ -254,7 +242,8 @@ class _ActiveOrdersAndSubscriptions extends ConsumerWidget {
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFFA5C9AD),
+                color: const Color(0xFFEBFFD7),
+                border: Border.all(color: const Color(0xFF114F3B).withOpacity(0.1)),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Column(
@@ -286,41 +275,21 @@ class _ActiveOrdersAndSubscriptions extends ConsumerWidget {
                       color: Color(0xFF114F3B),
                       fontSize: 12,
                     ),
-                    // loading: () => const SizedBox(
-                    //   height: 12,
-                    //   width: 80,
-                    //   child: LinearProgressIndicator(
-                    //     backgroundColor: Color(0xFF7BAE87),
-                    //     color: Color(0xFF114F3B),
-                    //   ),
-                    // ),
-                    // error: (_, __) => const Text('—',
-                    //     style:
-                    //         TextStyle(color: Color(0xFF114F3B), fontSize: 12)),
                   ),
-                  const SizedBox(height: 8),
-                  if (activeOrdersCount > 0)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.location_on,
-                              size: 10, color: Color(0xFF114F3B)),
-                          const SizedBox(width: 4),
-                          const Text('Live Tracking ON',
-                              style: TextStyle(
-                                  color: Color(0xFF114F3B),
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w500)),
-                        ],
-                      ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
                     ),
+                    child: const Text('Arriving in 15 mins',
+                        style: TextStyle(
+                            color: Color(0xFF114F3B),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500)),
+                  ),
                 ],
               ),
             ),
@@ -334,6 +303,7 @@ class _ActiveOrdersAndSubscriptions extends ConsumerWidget {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: const Color(0xFF114F3B),
+                border: Border.all(color: Colors.white.withOpacity(0.1)),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Column(
@@ -358,13 +328,13 @@ class _ActiveOrdersAndSubscriptions extends ConsumerWidget {
                     ),
                   ),
                   const Text(
-                    'View your plans',
+                    '2 Active Plans',
                     style: TextStyle(
                       color: Color(0xFFA5C9AD),
                       fontSize: 12,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                   Container(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -372,7 +342,7 @@ class _ActiveOrdersAndSubscriptions extends ConsumerWidget {
                       color: const Color(0xFFA5C9AD).withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const Text('Manage Plans',
+                    child: const Text('Renewal Jun 11, 2023',
                         style:
                             TextStyle(color: Color(0xFFA5C9AD), fontSize: 10)),
                   ),
@@ -391,86 +361,47 @@ class _WalletSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final balanceAsync = ref.watch(walletBalanceProvider);
-
-    return GestureDetector(
-      onTap: () {
-        MainControllerScope.of(context).changePage(3);
-      },
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF0F4EC),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            const BoxShadow(
-              color: Colors.white,
-              blurRadius: 10,
-              spreadRadius: 1,
-              offset: Offset(-4, -4),
-            ),
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              spreadRadius: 1,
-              offset: const Offset(4, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.account_balance_wallet_outlined,
-                color: Color(0xFF114F3B), size: 24),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('My Wallet',
-                      style: TextStyle(
-                          color: Color(0xFF114F3B),
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold)),
-                  Text('Check balance & statements',
-                      style: TextStyle(color: Colors.black54, fontSize: 12)),
-                ],
-              ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: Colors.grey.shade200),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.account_balance_wallet_outlined,
+              color: Color(0xFF114F3B), size: 24),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Balance',
-                    style: TextStyle(color: Colors.black54, fontSize: 12)),
-                balanceAsync.when(
-                  data: (balance) => Text(
-                    '₹${balance.toStringAsFixed(2)}',
-                    style: const TextStyle(
+                Text('My Wallet',
+                    style: TextStyle(
                         color: Color(0xFF114F3B),
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold),
-                  ),
-                  loading: () => const SizedBox(
-                    width: 70,
-                    height: 18,
-                    child: LinearProgressIndicator(
-                      backgroundColor: Color(0xFFDEEDD4),
-                      color: Color(0xFF114F3B),
-                      borderRadius: BorderRadius.all(Radius.circular(4)),
-                    ),
-                  ),
-                  error: (_, __) => const Text('—',
-                      style: TextStyle(
-                          color: Colors.grey,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold)),
-                ),
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold)),
+                Text('Credit Cards | Transactions',
+                    style: TextStyle(color: Colors.grey, fontSize: 12)),
               ],
             ),
-            const SizedBox(width: 4),
-            const Icon(Icons.arrow_forward_ios_rounded,
-                color: Color(0xFFA5C9AD), size: 14),
-          ],
-        ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: const [
+              Text('Balance:',
+                  style: TextStyle(color: Colors.grey, fontSize: 10)),
+              Text(
+                '₹0.00',
+                style: TextStyle(
+                    color: Color(0xFF114F3B),
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -489,7 +420,7 @@ class _QuickActionsRow extends ConsumerWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         _QuickActionBtn(
-          title: 'Favorite\nProducts',
+          title: 'Reorder\nFavorite',
           navigateTo: 'My Favorites',
           badgeCount: favCount,
         ),
@@ -541,27 +472,13 @@ class _QuickActionBtn extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 12),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: const Color(0xFFF0F4EC),
-          boxShadow: [
-            const BoxShadow(
-              color: Colors.white,
-              blurRadius: 10,
-              spreadRadius: 1,
-              offset: Offset(-4, -4),
-            ),
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              spreadRadius: 1,
-              offset: const Offset(4, 4),
-            ),
-          ],
-          borderRadius: BorderRadius.circular(30),
+          color: Colors.white,
+          border: Border.all(color: Colors.grey.shade200),
+          borderRadius: BorderRadius.circular(16),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Icon with optional badge
             Stack(
               clipBehavior: Clip.none,
               children: [
@@ -594,7 +511,7 @@ class _QuickActionBtn extends StatelessWidget {
                         '$badgeCount',
                         style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 8,
+                            fontSize: 12,
                             fontWeight: FontWeight.bold),
                         textAlign: TextAlign.center,
                       ),
@@ -626,6 +543,10 @@ class _ListTilesSection extends StatelessWidget {
     return Column(
       children: const [
         _ListTileItem(icon: Icons.notifications_none, title: 'Notifications'),
+        SizedBox(height: 12),
+        _ListTileItem(icon: Icons.history, title: 'Transaction History'),
+        SizedBox(height: 12),
+        _ListTileItem(icon: Icons.credit_card, title: 'Credit/Debit Card'),
       ],
     );
   }
@@ -662,22 +583,9 @@ class _ListTileItem extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         decoration: BoxDecoration(
-          color: const Color(0xFFF0F4EC),
-          borderRadius: BorderRadius.circular(30),
-          boxShadow: [
-            const BoxShadow(
-              color: Colors.white,
-              blurRadius: 10,
-              spreadRadius: 1,
-              offset: Offset(-4, -4),
-            ),
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              spreadRadius: 1,
-              offset: const Offset(4, 4),
-            ),
-          ],
+          color: Colors.white,
+          border: Border.all(color: Colors.grey.shade200),
+          borderRadius: BorderRadius.circular(16),
         ),
         child: Row(
           children: [
@@ -707,9 +615,7 @@ class _SignOutButton extends ConsumerWidget {
       alignment: Alignment.centerRight,
       child: GestureDetector(
         onTap: () async {
-          // Clear legacy cart session
           CartProviderScope.of(context).clearSession();
-
           await ref.read(authProvider.notifier).logout();
           if (context.mounted) {
             Navigator.pushNamedAndRemoveUntil(
