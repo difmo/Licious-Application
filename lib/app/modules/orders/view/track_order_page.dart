@@ -5,6 +5,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../../data/services/socket_service.dart';
 import '../../../data/services/notification_service.dart';
+import '../../../data/services/order_service.dart';
 
 /// Maps every backend status string → a 0-based step index (0 = just placed).
 int _statusToStep(String status) {
@@ -28,15 +29,20 @@ int _statusToStep(String status) {
 
 String _stepLabel(String status) {
   switch (status.toLowerCase()) {
-    case 'pending': return 'Order Placed';
-    case 'accepted': return 'Accepted by Rider';
+    case 'pending':
+      return 'Order Placed';
+    case 'accepted':
+      return 'Accepted by Rider';
     case 'pickedup':
     case 'picked_up':
     case 'out_for_delivery':
     case 'out for delivery':
-    case 'ontheway': return 'Out for Delivery';
-    case 'delivered': return 'Delivered!';
-    default: return status;
+    case 'ontheway':
+      return 'Out for Delivery';
+    case 'delivered':
+      return 'Delivered!';
+    default:
+      return status;
   }
 }
 
@@ -68,6 +74,11 @@ class _TrackOrderPageState extends ConsumerState<TrackOrderPage>
   String _riderName = '';
   String _riderPhone = '';
   bool _hasNotifiedProximity = false;
+  bool _isLoading = true;
+
+  // Socket callbacks
+  late void Function(dynamic) _onOrderUpdate;
+  late void Function(dynamic) _onRiderAssigned;
 
   // Pulse animation for the live dot
   late AnimationController _pulseCtrl;
@@ -77,21 +88,50 @@ class _TrackOrderPageState extends ConsumerState<TrackOrderPage>
   void initState() {
     super.initState();
     _currentStatus = widget.status ?? 'Pending';
-    _pulseCtrl =
-        AnimationController(vsync: this, duration: const Duration(milliseconds: 900))
-          ..repeat(reverse: true);
-    _pulseAnim = Tween<double>(begin: 0.6, end: 1.0).animate(
-        CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
+    _pulseCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 900))
+      ..repeat(reverse: true);
+    _pulseAnim = Tween<double>(begin: 0.6, end: 1.0)
+        .animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
 
     _setupLocations();
+    _fetchOrderDetails();
     _connectSocket();
+  }
+
+  Future<void> _fetchOrderDetails() async {
+    try {
+      final orderData =
+          await ref.read(orderServiceProvider).getOrderById(widget.orderId);
+      if (!mounted) return;
+      if (orderData.isNotEmpty) {
+        setState(() {
+          _currentStatus = orderData['status']?.toString() ?? _currentStatus;
+          final rider = orderData['rider'] ?? orderData['riderId'];
+          if (rider is Map) {
+            _riderName = rider['fullName'] ?? rider['name'] ?? _riderName;
+            _riderPhone = rider['phoneNumber'] ?? rider['phone'] ?? _riderPhone;
+          }
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching order details: $e');
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   void _setupLocations() {
     final addr = widget.deliveryAddress;
     if (addr != null) {
-      final lat = (addr['lat'] ?? addr['latitude'] ?? addr['coordinates']?['lat'] ?? 26.8467) as num;
-      final lng = (addr['lng'] ?? addr['longitude'] ?? addr['coordinates']?['lng'] ?? 80.9462) as num;
+      final lat = (addr['lat'] ??
+          addr['latitude'] ??
+          addr['coordinates']?['lat'] ??
+          26.8467) as num;
+      final lng = (addr['lng'] ??
+          addr['longitude'] ??
+          addr['coordinates']?['lng'] ??
+          80.9462) as num;
       _deliveryLocation = LatLng(lat.toDouble(), lng.toDouble());
     } else {
       _deliveryLocation = const LatLng(26.8467, 80.9462); // Lucknow default
@@ -124,50 +164,52 @@ class _TrackOrderPageState extends ConsumerState<TrackOrderPage>
     final socketService = ref.read(socketServiceProvider);
     socketService.joinOrderRoom(widget.orderId);
 
-    // Listen for any status change
-    socketService.onOrderUpdate((data) {
+    _onOrderUpdate = (data) {
       if (!mounted) return;
-      final newStatus = (data['status'] ?? '').toString();
+      final String statusStr = (data['status'] ?? '').toString();
       final payload = data['data'];
 
+      // Handle Rider Location Change specifically
+      if (statusStr == 'RIDER_LOCATION_UPDATE') {
+        if (payload is Map &&
+            payload['lat'] != null &&
+            payload['lng'] != null) {
+          final lat = (payload['lat'] as num).toDouble();
+          final lng = (payload['lng'] as num).toDouble();
+          debugPrint('📍 Rider moving: $lat, $lng');
+          setState(() {
+            _riderLocation = LatLng(lat, lng);
+            _updateMarkers();
+          });
+          _checkProximity(_riderLocation!);
+        }
+        return;
+      }
+
+      // Handle Status Change
       setState(() {
-        if (newStatus.isNotEmpty) {
-          _currentStatus = newStatus;
+        if (statusStr.isNotEmpty && statusStr != 'RIDER_LOCATION_UPDATE') {
+          _currentStatus = statusStr;
         }
 
-        // Update rider info if present
         if (payload is Map) {
+          // If the payload has the full order object, extract rider
           final rider = payload['rider'] ?? payload['riderId'];
           if (rider is Map) {
             _riderName = rider['fullName'] ?? rider['name'] ?? _riderName;
             _riderPhone = rider['phoneNumber'] ?? rider['phone'] ?? _riderPhone;
           }
         }
-
-        // Handle rider GPS location update
-        final payloadStatus = newStatus.toLowerCase();
-        if (payloadStatus.contains('rider_location') || payloadStatus.contains('location')) {
-          if (payload is Map && payload['lat'] != null && payload['lng'] != null) {
-            _riderLocation = LatLng(
-              (payload['lat'] as num).toDouble(),
-              (payload['lng'] as num).toDouble(),
-            );
-            _updateMarkers();
-            _checkProximity(_riderLocation!);
-            _tiltCamera(_riderLocation!);
-          }
-        }
       });
 
-      // Show delivered dialog
-      if (newStatus.toLowerCase() == 'delivered') {
+      if (statusStr.toLowerCase() == 'delivered') {
         Future.delayed(const Duration(milliseconds: 500), _showDeliverySuccess);
       }
-    });
+    };
 
-    // Also listen for rider assignment specifically  
-    socketService.onRiderAssigned((data) {
+    _onRiderAssigned = (data) {
       if (!mounted) return;
+      debugPrint('🛵 Rider assigned: ${data['riderName']}');
       setState(() {
         _riderName = data['riderName']?.toString() ?? _riderName;
         _riderPhone = data['riderPhone']?.toString() ?? _riderPhone;
@@ -175,22 +217,19 @@ class _TrackOrderPageState extends ConsumerState<TrackOrderPage>
           _currentStatus = 'Accepted';
         }
       });
-    });
-  }
+    };
 
-  void _tiltCamera(LatLng pos) {
-    _mapController?.animateCamera(
-      CameraUpdate.newCameraPosition(
-        CameraPosition(target: pos, zoom: 16.5, tilt: 45),
-      ),
-    );
+    socketService.onOrderUpdate(_onOrderUpdate);
+    socketService.onRiderAssigned(_onRiderAssigned);
   }
 
   void _checkProximity(LatLng riderPos) {
     if (_deliveryLocation == null || _hasNotifiedProximity) return;
     final double distance = Geolocator.distanceBetween(
-      riderPos.latitude, riderPos.longitude,
-      _deliveryLocation!.latitude, _deliveryLocation!.longitude,
+      riderPos.latitude,
+      riderPos.longitude,
+      _deliveryLocation!.latitude,
+      _deliveryLocation!.longitude,
     );
     if (distance < 500) {
       _hasNotifiedProximity = true;
@@ -212,7 +251,8 @@ class _TrackOrderPageState extends ConsumerState<TrackOrderPage>
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.check_circle_rounded, color: Color(0xFF68B92E), size: 72),
+            const Icon(Icons.check_circle_rounded,
+                color: Color(0xFF68B92E), size: 72),
             const SizedBox(height: 16),
             const Text('Order Delivered!',
                 style: TextStyle(fontWeight: FontWeight.w900, fontSize: 22)),
@@ -230,10 +270,13 @@ class _TrackOrderPageState extends ConsumerState<TrackOrderPage>
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF114F3B),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
-                child: const Text('Back to Home', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                child: const Text('Back to Home',
+                    style: TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.bold)),
               ),
             ),
           ],
@@ -247,8 +290,9 @@ class _TrackOrderPageState extends ConsumerState<TrackOrderPage>
     _pulseCtrl.dispose();
     final socketService = ref.read(socketServiceProvider);
     socketService.leaveOrderRoom(widget.orderId);
-    socketService.offOrderUpdate();
-    socketService.offRiderAssigned();
+    socketService.offOrderUpdate(_onOrderUpdate);
+    socketService.offRiderAssigned(_onRiderAssigned);
+    _mapController?.dispose();
     super.dispose();
   }
 
@@ -294,6 +338,17 @@ class _TrackOrderPageState extends ConsumerState<TrackOrderPage>
             mapToolbarEnabled: false,
           ),
 
+          if (_isLoading)
+            const Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: LinearProgressIndicator(
+                backgroundColor: Colors.transparent,
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF114F3B)),
+              ),
+            ),
+
           // ── Bottom Sheet ────────────────────────────────────────────────
           DraggableScrollableSheet(
             initialChildSize: 0.52,
@@ -305,12 +360,14 @@ class _TrackOrderPageState extends ConsumerState<TrackOrderPage>
                   color: Colors.white,
                   borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
                   boxShadow: [
-                    BoxShadow(color: Colors.black12, blurRadius: 20, spreadRadius: 5)
+                    BoxShadow(
+                        color: Colors.black12, blurRadius: 20, spreadRadius: 5)
                   ],
                 ),
                 child: ListView(
                   controller: scrollController,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
                   children: [
                     // Handle bar
                     Center(
@@ -341,23 +398,33 @@ class _TrackOrderPageState extends ConsumerState<TrackOrderPage>
                                       width: 10,
                                       height: 10,
                                       decoration: BoxDecoration(
-                                        color: Colors.green.withValues(alpha: _pulseAnim.value),
+                                        color: Colors.green.withValues(
+                                            alpha: _pulseAnim.value),
                                         shape: BoxShape.circle,
                                       ),
                                     ),
                                   ),
                                   const SizedBox(width: 8),
-                                  const Text('LIVE', style: TextStyle(color: Colors.green, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1)),
+                                  const Text('LIVE',
+                                      style: TextStyle(
+                                          color: Colors.green,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          letterSpacing: 1)),
                                 ],
                               ),
                               const SizedBox(height: 6),
                               Text(
                                 _stepLabel(_currentStatus),
-                                style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 22, letterSpacing: -0.5),
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 22,
+                                    letterSpacing: -0.5),
                               ),
                               Text(
                                 _getStatusSubtitle(_currentStatus),
-                                style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+                                style: TextStyle(
+                                    color: Colors.grey.shade500, fontSize: 13),
                               ),
                             ],
                           ),
@@ -371,10 +438,15 @@ class _TrackOrderPageState extends ConsumerState<TrackOrderPage>
                                 color: Color(0xFFF0F4EC),
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(Icons.timer_outlined, color: Color(0xFF114F3B), size: 20),
+                              child: const Icon(Icons.timer_outlined,
+                                  color: Color(0xFF114F3B), size: 20),
                             ),
                             const SizedBox(height: 4),
-                            Text(shortId, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Colors.grey.shade400)),
+                            Text(shortId,
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 11,
+                                    color: Colors.grey.shade400)),
                           ],
                         ),
                       ],
@@ -435,10 +507,17 @@ class _TrackOrderPageState extends ConsumerState<TrackOrderPage>
                     width: 22,
                     height: 22,
                     decoration: BoxDecoration(
-                      color: isDone ? const Color(0xFF114F3B) : Colors.grey.shade200,
+                      color: isDone
+                          ? const Color(0xFF114F3B)
+                          : Colors.grey.shade200,
                       shape: BoxShape.circle,
                       boxShadow: isCurrent
-                          ? [BoxShadow(color: const Color(0xFF114F3B).withValues(alpha: 0.3), blurRadius: 8)]
+                          ? [
+                              BoxShadow(
+                                  color: const Color(0xFF114F3B)
+                                      .withValues(alpha: 0.3),
+                                  blurRadius: 8)
+                            ]
                           : [],
                     ),
                     child: Icon(
@@ -452,7 +531,9 @@ class _TrackOrderPageState extends ConsumerState<TrackOrderPage>
                       duration: const Duration(milliseconds: 400),
                       width: 2,
                       height: 40,
-                      color: isDone ? const Color(0xFF114F3B) : Colors.grey.shade200,
+                      color: isDone
+                          ? const Color(0xFF114F3B)
+                          : Colors.grey.shade200,
                     ),
                 ],
               ),
@@ -496,7 +577,11 @@ class _TrackOrderPageState extends ConsumerState<TrackOrderPage>
   Widget _buildAddressCard() {
     final addr = widget.deliveryAddress;
     final String displayAddr = addr != null
-        ? (addr['fullAddress'] ?? addr['address'] ?? addr['street'] ?? 'Your delivery address').toString()
+        ? (addr['fullAddress'] ??
+                addr['address'] ??
+                addr['street'] ??
+                'Your delivery address')
+            .toString()
         : 'Your delivery address';
 
     return Container(
@@ -514,7 +599,8 @@ class _TrackOrderPageState extends ConsumerState<TrackOrderPage>
               color: Color(0xFFEBFFD7),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.location_on, color: Color(0xFF114F3B), size: 18),
+            child: const Icon(Icons.location_on,
+                color: Color(0xFF114F3B), size: 18),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -525,7 +611,8 @@ class _TrackOrderPageState extends ConsumerState<TrackOrderPage>
                     style: TextStyle(fontSize: 11, color: Colors.grey)),
                 const SizedBox(height: 2),
                 Text(displayAddr,
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w600, fontSize: 13),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis),
               ],
@@ -550,12 +637,16 @@ class _TrackOrderPageState extends ConsumerState<TrackOrderPage>
           CircleAvatar(
             radius: 26,
             backgroundColor: const Color(0xFF114F3B),
-            child: hasRider
+            child: (hasRider && _riderName.trim().isNotEmpty)
                 ? Text(
-                    _riderName[0].toUpperCase(),
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                    _riderName.trim()[0].toUpperCase(),
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18),
                   )
-                : const Icon(Icons.delivery_dining, color: Colors.white, size: 22),
+                : const Icon(Icons.delivery_dining,
+                    color: Colors.white, size: 22),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -564,7 +655,8 @@ class _TrackOrderPageState extends ConsumerState<TrackOrderPage>
               children: [
                 Text(
                   hasRider ? _riderName : 'Assigning Rider...',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 16),
                 ),
                 Row(
                   children: [
@@ -572,7 +664,8 @@ class _TrackOrderPageState extends ConsumerState<TrackOrderPage>
                     const SizedBox(width: 4),
                     Text(
                       hasRider ? 'Your Delivery Partner' : 'Please wait',
-                      style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+                      style:
+                          TextStyle(color: Colors.grey.shade500, fontSize: 12),
                     ),
                   ],
                 ),
@@ -598,15 +691,20 @@ class _TrackOrderPageState extends ConsumerState<TrackOrderPage>
 
   String _getStatusSubtitle(String status) {
     switch (status.toLowerCase()) {
-      case 'pending': return 'Your order has been received';
-      case 'accepted': return 'Rider is heading to pick up your order';
+      case 'pending':
+        return 'Your order has been received';
+      case 'accepted':
+        return 'Rider is heading to pick up your order';
       case 'pickedup':
       case 'picked_up':
       case 'out_for_delivery':
       case 'out for delivery':
-      case 'ontheway': return 'Your order is on the way! 🛵';
-      case 'delivered': return 'Enjoy your meal! 🦐';
-      default: return 'Tracking your order...';
+      case 'ontheway':
+        return 'Your order is on the way! 🛵';
+      case 'delivered':
+        return 'Enjoy your meal! 🦐';
+      default:
+        return 'Tracking your order...';
     }
   }
 }
@@ -616,7 +714,8 @@ class _IconBtn extends StatelessWidget {
   final bool isPrimary;
   final VoidCallback onPressed;
 
-  const _IconBtn({required this.icon, required this.isPrimary, required this.onPressed});
+  const _IconBtn(
+      {required this.icon, required this.isPrimary, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
@@ -630,7 +729,8 @@ class _IconBtn extends StatelessWidget {
           border: Border.all(
               color: isPrimary ? Colors.transparent : Colors.grey.shade200),
         ),
-        child: Icon(icon, color: isPrimary ? Colors.white : Colors.black87, size: 18),
+        child: Icon(icon,
+            color: isPrimary ? Colors.white : Colors.black87, size: 18),
       ),
     );
   }

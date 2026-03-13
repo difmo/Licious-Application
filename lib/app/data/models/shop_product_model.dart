@@ -126,6 +126,28 @@ class ShopModel {
     this.isShopActive = true,
   });
 
+  ShopModel copyWith({
+    String? id,
+    String? name,
+    String? businessName,
+    String? image,
+    String? location,
+    double? rating,
+    String? deliveryTime,
+    bool? isShopActive,
+  }) {
+    return ShopModel(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      businessName: businessName ?? this.businessName,
+      image: image ?? this.image,
+      location: location ?? this.location,
+      rating: rating ?? this.rating,
+      deliveryTime: deliveryTime ?? this.deliveryTime,
+      isShopActive: isShopActive ?? this.isShopActive,
+    );
+  }
+
   factory ShopModel.fromJson(Map<String, dynamic> json) {
     return ShopModel(
       id: (json['id'] ?? json['_id'] ?? '').toString(),

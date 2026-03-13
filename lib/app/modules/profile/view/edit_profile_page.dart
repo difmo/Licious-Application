@@ -1,34 +1,25 @@
 import 'package:flutter/material.dart';
-import '../../../data/services/db_service.dart';
-import '../../../data/models/food_models.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../data/services/auth_service.dart';
+import '../../../data/models/auth_models.dart';
 
-class EditProfilePage extends StatefulWidget {
+class EditProfilePage extends ConsumerStatefulWidget {
   const EditProfilePage({super.key});
 
   @override
-  State<EditProfilePage> createState() => _EditProfilePageState();
+  ConsumerState<EditProfilePage> createState() => _EditProfilePageState();
 }
 
-class _EditProfilePageState extends State<EditProfilePage> {
+class _EditProfilePageState extends ConsumerState<EditProfilePage> {
   late TextEditingController _nameController;
   late TextEditingController _emailController;
   late TextEditingController _phoneController;
-  String _profileImage = '';
+  bool _isSaving = false;
+  bool _isInitialized = false;
 
   @override
   void initState() {
     super.initState();
-    // Use the context to get initial data
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final provider = CartProviderScope.of(context);
-      final profile = provider.userProfile;
-      setState(() {
-        _nameController.text = profile.name;
-        _emailController.text = profile.email;
-        _phoneController.text = profile.phone;
-        _profileImage = profile.profileImage;
-      });
-    });
     _nameController = TextEditingController();
     _emailController = TextEditingController();
     _phoneController = TextEditingController();
@@ -42,56 +33,67 @@ class _EditProfilePageState extends State<EditProfilePage> {
     super.dispose();
   }
 
-  void _saveProfile() {
-    final provider = CartProviderScope.of(context);
-    final updatedProfile = UserProfile(
-      name: _nameController.text,
-      email: _emailController.text,
-      phone: _phoneController.text,
-      profileImage: _profileImage,
-    );
-    provider.updateUserProfile(updatedProfile);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Profile updated successfully!')),
-    );
-    Navigator.pop(context);
+  void _populateControllers(UserModel user) {
+    if (_isInitialized) return;
+    _nameController.text = user.fullName;
+    _emailController.text = user.email;
+    _phoneController.text = user.phoneNumber;
+    _isInitialized = true;
   }
 
-  void _changePhoto() {
-    // Simulate image change by cycling through some placeholder or just showing a dialog
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => SafeArea(
-        child: Wrap(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.photo_library),
-              title: const Text('Pick from Gallery'),
-              onTap: () {
-                // Simulate selection
-                setState(() => _profileImage = 'assets/images/image copy.png');
-                Navigator.pop(context);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.camera_alt),
-              title: const Text('Take a Photo'),
-              onTap: () {
-                // Simulate selection
-                setState(
-                  () => _profileImage = 'assets/images/image copy 2.png',
-                );
-                Navigator.pop(context);
-              },
-            ),
-          ],
-        ),
-      ),
-    );
+  Future<void> _saveProfile() async {
+    if (_nameController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Name cannot be empty')),
+      );
+      return;
+    }
+
+    setState(() => _isSaving = true);
+
+    try {
+      final response = await ref.read(authServiceProvider).updateName(
+        fullName: _nameController.text.trim(),
+      );
+
+      if (!mounted) return;
+
+      if (response.success) {
+        // Refresh the profile provider to update UI everywhere
+        ref.invalidate(userProfileProvider);
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response.message.isNotEmpty 
+                ? response.message 
+                : 'Profile updated successfully!'),
+            backgroundColor: const Color(0xFF68B92E),
+          ),
+        );
+        Navigator.pop(context);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response.message),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final profileAsync = ref.watch(userProfileProvider);
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -109,100 +111,140 @@ class _EditProfilePageState extends State<EditProfilePage> {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
-          TextButton(
-            onPressed: _saveProfile,
-            child: const Text(
-              'SAVE',
-              style: TextStyle(
-                color: Color(0xFF68B92E),
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            // Profile Image Section
-            Center(
-              child: Stack(
-                children: [
-                  CircleAvatar(
-                    radius: 60,
-                    backgroundImage: AssetImage(_profileImage),
-                    backgroundColor: Colors.grey.shade200,
-                  ),
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: GestureDetector(
-                      onTap: _changePhoto,
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF68B92E),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                        ),
-                        child: const Icon(
-                          Icons.camera_alt,
-                          color: Colors.white,
-                          size: 18,
-                        ),
+          if (profileAsync.hasValue)
+            TextButton(
+              onPressed: _isSaving ? null : _saveProfile,
+              child: _isSaving
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Color(0xFF68B92E)),
+                    )
+                  : const Text(
+                      'SAVE',
+                      style: TextStyle(
+                        color: Color(0xFF68B92E),
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
+            ),
+        ],
+      ),
+      body: profileAsync.when(
+        data: (user) {
+          _populateControllers(user);
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              children: [
+                // Profile Image Section
+                Center(
+                  child: Stack(
+                    children: [
+                      CircleAvatar(
+                        radius: 60,
+                        backgroundColor: const Color(0xFFEBFFD7),
+                        child: Text(
+                          _nameController.text.isNotEmpty
+                              ? _nameController.text[0].toUpperCase()
+                              : 'U',
+                          style: const TextStyle(
+                            fontSize: 48,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF114F3B),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF68B92E),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                          ),
+                          child: const Icon(
+                            Icons.camera_alt,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 32),
-            // Form Fields
-            _buildTextField(
-              controller: _nameController,
-              label: 'Full Name',
-              hint: 'Enter your name',
-              icon: Icons.person_outline,
-            ),
-            const SizedBox(height: 20),
-            _buildTextField(
-              controller: _emailController,
-              label: 'Email Address',
-              hint: 'Enter your email',
-              icon: Icons.email_outlined,
-              keyboardType: TextInputType.emailAddress,
-            ),
-            const SizedBox(height: 20),
-            _buildTextField(
-              controller: _phoneController,
-              label: 'Phone Number',
-              hint: 'Enter your phone number',
-              icon: Icons.phone_android_outlined,
-              keyboardType: TextInputType.phone,
-            ),
-            const SizedBox(height: 40),
-            // Save Button
-            SizedBox(
-              width: double.infinity,
-              height: 54,
-              child: ElevatedButton(
-                onPressed: _saveProfile,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF439462),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+                ),
+                const SizedBox(height: 32),
+                // Form Fields
+                _buildTextField(
+                  controller: _nameController,
+                  label: 'Full Name',
+                  hint: 'Enter your name',
+                  icon: Icons.person_outline,
+                  enabled: !_isSaving,
+                ),
+                const SizedBox(height: 20),
+                _buildTextField(
+                  controller: _emailController,
+                  label: 'Email Address',
+                  hint: 'Enter your email',
+                  icon: Icons.email_outlined,
+                  keyboardType: TextInputType.emailAddress,
+                  enabled: false, // Usually email/phone aren't editable here
+                ),
+                const SizedBox(height: 20),
+                _buildTextField(
+                  controller: _phoneController,
+                  label: 'Phone Number',
+                  hint: 'Enter your phone number',
+                  icon: Icons.phone_android_outlined,
+                  keyboardType: TextInputType.phone,
+                  enabled: false,
+                ),
+                const SizedBox(height: 40),
+                // Save Button
+                SizedBox(
+                  width: double.infinity,
+                  height: 54,
+                  child: ElevatedButton(
+                    onPressed: _isSaving ? null : _saveProfile,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF439462),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: _isSaving
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : const Text(
+                            'Save Changes',
+                            style: TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
                   ),
-                  elevation: 0,
                 ),
-                child: const Text(
-                  'Save Changes',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-              ),
+              ],
             ),
-          ],
+          );
+        },
+        loading: () => const Center(
+            child: CircularProgressIndicator(color: Color(0xFF68B92E))),
+        error: (e, _) => Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text('Error loading profile: $e'),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () => ref.invalidate(userProfileProvider),
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -214,6 +256,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     required String hint,
     required IconData icon,
     TextInputType keyboardType = TextInputType.text,
+    bool enabled = true,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -223,18 +266,19 @@ class _EditProfilePageState extends State<EditProfilePage> {
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.bold,
-            color: Colors.grey.shade700,
+            color: enabled ? Colors.grey.shade700 : Colors.grey.shade400,
           ),
         ),
         const SizedBox(height: 8),
         TextField(
           controller: controller,
           keyboardType: keyboardType,
+          enabled: enabled,
           decoration: InputDecoration(
             hintText: hint,
             prefixIcon: Icon(icon, color: Colors.grey.shade400, size: 20),
             filled: true,
-            fillColor: Colors.grey.shade50,
+            fillColor: enabled ? Colors.grey.shade50 : Colors.grey.shade100,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide.none,

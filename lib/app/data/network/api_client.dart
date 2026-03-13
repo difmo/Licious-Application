@@ -168,9 +168,18 @@ class ApiClient {
 
   ApiException _handleError(DioException e) {
     if (e.response != null) {
-      final message = e.response?.data['message'] ?? e.message;
+      final data = e.response?.data;
+      String message = e.message ?? 'Server error';
+      if (data is Map) {
+        message = data['message']?.toString() ?? message;
+      } else if (data is String && data.isNotEmpty) {
+        // If it's a string but doesn't look like HTML, use it
+        if (!data.contains('<html')) {
+          message = data;
+        }
+      }
       return ApiException(
-          statusCode: e.response?.statusCode, message: message.toString());
+          statusCode: e.response?.statusCode, message: message);
     }
     return ApiException(message: e.message ?? 'Network error');
   }

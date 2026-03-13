@@ -36,7 +36,14 @@ class _OrderTrackingPageState extends ConsumerState<OrderTrackingPage> {
     }
 
     try {
-      final freshData = await ref.read(orderServiceProvider).trackOrder(mongoId);
+      final service = ref.read(orderServiceProvider);
+      Map<String, dynamic> freshData = await service.trackOrder(mongoId);
+
+      // Fallback: some order types (e.g. subscription) may not be on /track
+      if (freshData.isEmpty) {
+        freshData = await service.getOrderById(mongoId);
+      }
+
       if (freshData.isNotEmpty && mounted) {
         setState(() {
           _order = freshData;
@@ -106,9 +113,22 @@ class _OrderTrackingPageState extends ConsumerState<OrderTrackingPage> {
         return const Color(0xFFE67E22);
       case 'user':
         return const Color(0xFF3498DB);
+      case 'system':
+        return const Color(0xFF95A5A6);
       default:
         return Colors.grey;
     }
+  }
+
+  IconData _statusIcon(String status) {
+    final s = status.toLowerCase();
+    if (s.contains('pending') || s.contains('placed')) return Icons.receipt_long_rounded;
+    if (s.contains('accepted') && s.contains('rider')) return Icons.delivery_dining_rounded;
+    if (s.contains('accepted')) return Icons.check_circle_rounded;
+    if (s.contains('processing') || s.contains('preparing')) return Icons.restaurant_rounded;
+    if (s.contains('shipped') || s.contains('out for delivery')) return Icons.moped_rounded;
+    if (s.contains('delivered')) return Icons.home_rounded;
+    return Icons.radio_button_checked_rounded;
   }
 
   String _formatTimestamp(dynamic ts) {
@@ -194,7 +214,7 @@ class _OrderTrackingPageState extends ConsumerState<OrderTrackingPage> {
     if (items.isNotEmpty) {
       final item = items.first;
       final product = item['product'];
-      itemName = product is Map ? product['name']?.toString() ?? 'Item' : 'Item';
+      itemName = (product is Map && product['name'] != null) ? product['name'].toString() : 'Item';
       qty = item['quantity']?.toString() ?? '1';
       
       // Attempt to get retailer name
@@ -257,6 +277,15 @@ class _OrderTrackingPageState extends ConsumerState<OrderTrackingPage> {
                       color: Colors.black87,
                       fontSize: 20,
                       fontWeight: FontWeight.w900)),
+              const SizedBox(height: 8),
+              Text(
+                'Refresh to check the latest update on your order.',
+                style: TextStyle(
+                  color: Colors.grey.shade500,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
               if (subtitle.isNotEmpty) ...[
                 const SizedBox(height: 4),
                 Text(subtitle,
@@ -373,11 +402,126 @@ class _OrderTrackingPageState extends ConsumerState<OrderTrackingPage> {
               const SizedBox(height: 12),
               _buildAddressSection(),
 
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: Divider(color: Color(0xFFEEEEEE), thickness: 1.5),
+              ),
+
+              // ── Order Summary (Payment) ─────────────────────────────────────
+              _buildOrderSummary(),
+
               const SizedBox(height: 100),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildOrderSummary() {
+    final totalAmount = _order['totalAmount'];
+    final paymentMethod = _order['paymentMethod']?.toString() ?? '';
+    final paymentStatus = _order['paymentStatus']?.toString() ?? '';
+    final orderType = _order['orderType']?.toString() ?? '';
+
+    if (totalAmount == null && paymentMethod.isEmpty) return const SizedBox();
+
+    Color payStatusColor;
+    switch (paymentStatus.toLowerCase()) {
+      case 'paid':
+        payStatusColor = const Color(0xFF68B92E);
+        break;
+      case 'pending':
+        payStatusColor = Colors.orange;
+        break;
+      case 'failed':
+        payStatusColor = Colors.red;
+        break;
+      default:
+        payStatusColor = Colors.grey;
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('ORDER SUMMARY',
+            style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey)),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF7F8FA),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFEEEEEE)),
+          ),
+          child: Column(
+            children: [
+              if (totalAmount != null)
+                _summaryRow(
+                  'Total Amount',
+                  '₹${totalAmount.toString()}',
+                  icon: Icons.receipt_long_outlined,
+                  valueStyle: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 18,
+                      color: Color(0xFF114F3B)),
+                ),
+              if (paymentMethod.isNotEmpty) ...[
+                const Divider(height: 20, color: Color(0xFFEEEEEE)),
+                _summaryRow(
+                  'Payment Method',
+                  paymentMethod,
+                  icon: Icons.account_balance_wallet_outlined,
+                ),
+              ],
+              if (paymentStatus.isNotEmpty) ...[
+                const Divider(height: 20, color: Color(0xFFEEEEEE)),
+                _summaryRow(
+                  'Payment Status',
+                  paymentStatus,
+                  icon: Icons.verified_outlined,
+                  valueStyle: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: payStatusColor),
+                ),
+              ],
+              if (orderType.isNotEmpty) ...[
+                const Divider(height: 20, color: Color(0xFFEEEEEE)),
+                _summaryRow(
+                  'Order Type',
+                  orderType,
+                  icon: Icons.category_outlined,
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _summaryRow(String label, String value,
+      {IconData? icon, TextStyle? valueStyle}) {
+    return Row(
+      children: [
+        if (icon != null) ...[
+          Icon(icon, size: 16, color: Colors.grey),
+          const SizedBox(width: 10),
+        ],
+        Expanded(
+          child: Text(label,
+              style: const TextStyle(color: Colors.grey, fontSize: 13)),
+        ),
+        Text(value,
+            style: valueStyle ??
+                const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: Colors.black87)),
+      ],
     );
   }
 
@@ -463,14 +607,27 @@ class _OrderTrackingPageState extends ConsumerState<OrderTrackingPage> {
   }
 
   Widget _buildHistoryTimeline() {
+    // Filter duplicates and sequential identical statuses
+    final filteredHistory = <dynamic>[];
+    String lastStatus = '';
+    
+    for (var item in _statusHistory) {
+      final currentStatus = item['status']?.toString() ?? '';
+      if (currentStatus != lastStatus) {
+        filteredHistory.add(item);
+        lastStatus = currentStatus;
+      }
+    }
+
     return Column(
-      children: _statusHistory.asMap().entries.map((entry) {
+      children: filteredHistory.asMap().entries.map((entry) {
         final i = entry.key;
         final item = entry.value;
-        final isLast = i == _statusHistory.length - 1;
+        final isLast = i == filteredHistory.length - 1;
         final role = item['role']?.toString() ?? 'system';
         final statusText = item['status']?.toString() ?? '';
         final ts = _formatTimestamp(item['timestamp']);
+        final color = isLast ? const Color(0xFF68B92E) : Colors.grey.shade400;
 
         return Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -478,37 +635,54 @@ class _OrderTrackingPageState extends ConsumerState<OrderTrackingPage> {
             Column(
               children: [
                 Container(
-                  margin: const EdgeInsets.only(top: 4),
-                  width: 12,
-                  height: 12,
+                  width: 32,
+                  height: 32,
                   decoration: BoxDecoration(
-                    color: isLast
-                        ? const Color(0xFF68B92E)
-                        : Colors.grey.shade300,
+                    color: color.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
+                    border: Border.all(
+                      color: color.withValues(alpha: 0.2),
+                      width: 1,
+                    ),
+                  ),
+                  child: Center(
+                    child: Icon(
+                      _statusIcon(statusText),
+                      size: 16,
+                      color: color,
+                    ),
                   ),
                 ),
                 if (!isLast)
                   Container(
                     width: 2,
-                    height: 50,
-                    color: Colors.grey.shade100,
+                    height: 45,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          color.withValues(alpha: 0.2),
+                          Colors.grey.shade100,
+                        ],
+                      ),
+                    ),
                   ),
               ],
             ),
             const SizedBox(width: 20),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.only(bottom: 24),
+                padding: const EdgeInsets.only(bottom: 28),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(statusText,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.bold,
+                        style: TextStyle(
+                            fontWeight: FontWeight.w900,
                             fontSize: 16,
-                            color: Color(0xFF1A1A1A))),
-                    const SizedBox(height: 8),
+                            color: isLast ? const Color(0xFF114F3B) : const Color(0xFF2C3E50))),
+                    const SizedBox(height: 6),
                     Row(
                       children: [
                         if (role != 'system') ...[
@@ -516,8 +690,10 @@ class _OrderTrackingPageState extends ConsumerState<OrderTrackingPage> {
                           const SizedBox(width: 8),
                         ],
                         Text(ts,
-                            style: const TextStyle(
-                                color: Colors.grey, fontSize: 13)),
+                            style: TextStyle(
+                                color: Colors.grey.shade500, 
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500)),
                       ],
                     ),
                   ],
@@ -547,9 +723,11 @@ class _OrderTrackingPageState extends ConsumerState<OrderTrackingPage> {
         if (s == 'Accepted' || s == 'Processing') role = 'retailer';
         if (s == 'Out for Delivery' ||
             s == 'Delivered' ||
-            s == 'Rider Accepted') {
+            s.contains('Rider Accepted')) {
           role = 'rider';
         }
+
+        final color = isLast ? const Color(0xFF68B92E) : Colors.grey.shade400;
 
         return Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -557,44 +735,61 @@ class _OrderTrackingPageState extends ConsumerState<OrderTrackingPage> {
             Column(
               children: [
                 Container(
-                  margin: const EdgeInsets.only(top: 4),
-                  width: 12,
-                  height: 12,
+                  width: 32,
+                  height: 32,
                   decoration: BoxDecoration(
-                    color: isLast
-                        ? const Color(0xFF68B92E)
-                        : Colors.grey.shade300,
+                    color: color.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
+                    border: Border.all(
+                      color: color.withValues(alpha: 0.2),
+                      width: 1,
+                    ),
+                  ),
+                  child: Center(
+                    child: Icon(
+                      _statusIcon(s),
+                      size: 16,
+                      color: color,
+                    ),
                   ),
                 ),
                 if (!isLast)
                   Container(
                     width: 2,
-                    height: 50,
-                    color: Colors.grey.shade100,
+                    height: 45,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          color.withValues(alpha: 0.2),
+                          Colors.grey.shade100,
+                        ],
+                      ),
+                    ),
                   ),
               ],
             ),
             const SizedBox(width: 20),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.only(bottom: 24),
+                padding: const EdgeInsets.only(bottom: 28),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(s,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.bold,
+                        style: TextStyle(
+                            fontWeight: FontWeight.w900,
                             fontSize: 16,
-                            color: Color(0xFF1A1A1A))),
-                    const SizedBox(height: 8),
+                            color: isLast ? const Color(0xFF114F3B) : const Color(0xFF2C3E50))),
+                    const SizedBox(height: 6),
                     Row(
                       children: [
                         if (role != 'system') ...[
                           _buildRoleBadge(role),
                           const SizedBox(width: 8),
                         ],
-                        const Text('...',
+                        const Text('Done',
                             style: TextStyle(
                                 color: Colors.grey, fontSize: 13)),
                       ],

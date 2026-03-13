@@ -106,7 +106,7 @@ class _OrderCard extends ConsumerWidget {
     if (items.isEmpty) return 'Order';
     final first = items.first;
     final product = first['product'];
-    if (product is Map) return product['name']?.toString() ?? 'Order';
+    if (product is Map && product['name'] != null) return product['name'].toString();
     return 'Order';
   }
 
@@ -115,7 +115,7 @@ class _OrderCard extends ConsumerWidget {
     if (items.isEmpty) return 'No items';
     final first = items.first;
     final product = first['product'];
-    final name = product is Map ? product['name']?.toString() ?? 'Item' : 'Item';
+    final name = (product is Map && product['name'] != null) ? product['name'].toString() : 'Item';
     final qty = first['quantity']?.toString() ?? '1';
     
     if (items.length > 1) {

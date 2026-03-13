@@ -139,6 +139,7 @@ class CartProvider extends ChangeNotifier {
         _selectedAddressIndex < _addresses.length) {
       return _addresses[_selectedAddressIndex];
     }
+    if (_addresses.isEmpty) return null;
     return _addresses.firstWhere((a) => a.isDefault,
         orElse: () => _addresses.first);
   }
@@ -499,6 +500,8 @@ class CartProvider extends ChangeNotifier {
   final List<String> _favoriteIds = ['1', '3']; // Default favorites for demo
 
   List<Restaurant> get favRestaurants {
+    if (_restaurants.isEmpty) return [];
+    
     final List<Restaurant> favs = [];
     for (var id in _favoriteIds) {
       final r = _restaurants.firstWhere((res) => res.id == id,
@@ -510,6 +513,7 @@ class CartProvider extends ChangeNotifier {
         favs.add(r);
       }
     }
+    
     // Correct way: map ids to restaurants in order
     return _favoriteIds
         .map((id) => _restaurants.firstWhere((r) => r.id == id,
@@ -539,10 +543,12 @@ class CartProvider extends ChangeNotifier {
 
   void addAddress(UserAddress address) async {
     if (_addressService != null) {
+      final addressParts = address.details.split(',');
+      final cityName = addressParts.isNotEmpty ? addressParts.first.trim() : 'City';
       final result = await _addressService!.saveAddress(
         label: address.title,
         fullAddress: address.street,
-        city: address.details.split(',').first.trim(),
+        city: cityName,
         state: address.details.contains(',')
             ? address.details.split(',')[1].trim()
             : '',

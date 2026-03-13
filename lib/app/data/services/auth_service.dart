@@ -1,14 +1,40 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/auth_models.dart';
 import '../network/api_client.dart';
 
+final authServiceProvider = Provider<AuthService>((ref) {
+  return AuthService(client: ref.watch(apiClientProvider));
+});
+
+final userProfileProvider = FutureProvider.autoDispose<UserModel>((ref) async {
+  final response = await ref.watch(authServiceProvider).getProfile();
+  if (response.success && response.data != null) {
+    return response.data!;
+  }
+  throw Exception(response.message);
+});
+
 /// Service layer for authentication.
-///
-/// Uses [ApiClient] for raw HTTP and returns typed [AuthResponseModel] objects.
-/// All network errors are caught here and surfaced via [AuthResponseModel.success] == false.
 class AuthService {
   final ApiClient _client;
 
   AuthService({ApiClient? client}) : _client = client ?? ApiClient();
+
+  // ── Update Name (Requested Endpoint) ──────────────────────────────────────
+  Future<AuthResponseModel> updateName({required String fullName}) async {
+    try {
+      final json = await _client.put(
+        '${ApiClient.baseUrl}/update-name',
+        data: {'fullName': fullName},
+        requiresAuth: true,
+      );
+      return AuthResponseModel.fromJson(json);
+    } on ApiException catch (e) {
+      return AuthResponseModel(success: false, message: e.message);
+    } catch (e) {
+      return AuthResponseModel(success: false, message: e.toString());
+    }
+  }
 
   // ── Register ──────────────────────────────────────────────────────────────
   Future<AuthResponseModel> register({

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:dio/dio.dart';
 import '../../../core/api/api_provider.dart';
 import '../../../core/storage/secure_storage_service.dart';
 
@@ -14,8 +15,22 @@ class SocketService {
 
   io.Socket? _socket;
   bool _initialized = false;
+  final List<Map<String, dynamic>> _emitQueue = [];
+  final Dio _dio = Dio();
 
   // ── Connection ─────────────────────────────────────────────────────────────
+
+  Future<void> _wakeUpRender(String url) async {
+    try {
+      debugPrint('🚀 Poking Render server to wake up: $url');
+      // Just a quick HTTP ping to wake the server up
+      await _dio.get(url);
+      debugPrint('✅ Render Poked!');
+    } catch (e) {
+      // Ignore errors, we just need to hit the server
+      debugPrint('⚠️ Render poke finished (likely 404/ignored): $e');
+    }
+  }
 
   Future<void> connect(SecureStorageService storage) async {
     if (_initialized && (_socket?.connected ?? false)) return;
@@ -23,29 +38,68 @@ class SocketService {
     final token = await storage.getAccessToken();
     final baseUrl = dotenv.maybeGet('SOCKET_URL') ??
         'https://shrimpbite-socket-server.onrender.com';
+    final apiBaseUrl = dotenv.maybeGet('API_BASE_URL') ?? '';
+
+    // 1. Poke Render (both API and Socket URLs) to wake up
+    await _wakeUpRender(baseUrl);
+    if (apiBaseUrl.isNotEmpty) {
+      await _wakeUpRender(apiBaseUrl);
+    }
+
+    // Give the server a 5-second head start to boot up
+    debugPrint('⏳ Giving Render 5s head start to boot...');
+    await Future.delayed(const Duration(seconds: 5));
 
     _socket?.disconnect();
+    _socket?.dispose();
 
-    final Map<String, dynamic> headers = token != null
-        ? {'Authorization': 'Bearer $token'}
-        : {};
+    final Map<String, dynamic> headers =
+        token != null ? {'Authorization': 'Bearer $token'} : {};
 
+    debugPrint('🔌 Initializing socket with autoConnect...');
     _socket = io.io(
       baseUrl,
       <String, dynamic>{
-        'transports': ['websocket'],
-        'autoConnect': false,
+        'transports': ['polling', 'websocket'],
+        'autoConnect': true,
         'extraHeaders': headers,
+        'reconnection': true,
+        'reconnectionAttempts': 15,
+        'reconnectionDelay': 5000,
+        'timeout': 120000, // 2 minutes timeout for slow cold starts
       },
     );
 
-    _socket!.onConnect((_) => debugPrint('✅ SocketService connected'));
+    _socket!.onConnect((_) {
+      debugPrint('✅ SocketService connected');
+      _flushQueue();
+    });
     _socket!.onDisconnect((_) => debugPrint('🔌 SocketService disconnected'));
-    _socket!.onConnectError((err) => debugPrint('⚠️ SocketService connect error: $err'));
+    _socket!.onConnectError((err) {
+      debugPrint('⚠️ SocketService connect error: $err');
+    });
     _socket!.onError((err) => debugPrint('💥 SocketService error: $err'));
 
-    _socket!.connect();
+    // Reconnection logs
+    _socket!.onReconnect((_) => debugPrint('♻️ SocketService reconnected'));
+    _socket!.onReconnectAttempt((count) =>
+        debugPrint('🔄 SocketService reconnection attempt: $count'));
+    _socket!.onReconnectError(
+        (err) => debugPrint('❌ SocketService reconnection error: $err'));
+    _socket!.onReconnectFailed(
+        (_) => debugPrint('🛑 SocketService reconnection failed'));
+
     _initialized = true;
+  }
+
+  void _flushQueue() {
+    if (_emitQueue.isEmpty) return;
+    debugPrint('📤 Flushing ${_emitQueue.length} queued emits');
+    final items = List<Map<String, dynamic>>.from(_emitQueue);
+    _emitQueue.clear();
+    for (final item in items) {
+      _emit(item['event'], item['data']);
+    }
   }
 
   void disconnect() {
@@ -64,11 +118,21 @@ class SocketService {
     debugPrint('👤 Joined user room: user_$userId');
   }
 
+  void leaveUserRoom(String userId) {
+    _emit('leave', 'user_$userId');
+    debugPrint('👤 Left user room: user_$userId');
+  }
+
   /// JOIN rider room — rider receives new order assignments here.
   /// `socket.emit("join", "rider_{riderId}")`
   void joinRiderRoom(String riderId) {
     _emit('join', 'rider_$riderId');
     debugPrint('🛵 Joined rider room: rider_$riderId');
+  }
+
+  void leaveRiderRoom(String riderId) {
+    _emit('leave', 'rider_$riderId');
+    debugPrint('🛵 Left rider room: rider_$riderId');
   }
 
   /// JOIN specific order room — for real-time status during tracking.
@@ -97,11 +161,19 @@ class SocketService {
 
   /// `orderUpdate` — fires on every status change.
   /// Payload: `{ status: "Out for Delivery", orderId: "ORD-...", data: {...} }`
+  /// `orderUpdate` — fires on every status change.
+  /// Payload: `{ status: "Out for Delivery", orderId: "ORD-...", data: {...} }`
   void onOrderUpdate(void Function(dynamic) callback) {
     _socket?.on(_orderUpdateEvent, callback);
   }
 
-  void offOrderUpdate() => _socket?.off(_orderUpdateEvent);
+  void offOrderUpdate([void Function(dynamic)? callback]) {
+    if (callback != null) {
+      _socket?.off(_orderUpdateEvent, callback);
+    } else {
+      _socket?.off(_orderUpdateEvent);
+    }
+  }
 
   /// `riderAssigned` — fires when a rider is assigned to a user's order.
   /// Payload: `{ riderId, riderName, riderPhone, orderId }`
@@ -109,7 +181,13 @@ class SocketService {
     _socket?.on(_riderAssignedEvent, callback);
   }
 
-  void offRiderAssigned() => _socket?.off(_riderAssignedEvent);
+  void offRiderAssigned([void Function(dynamic)? callback]) {
+    if (callback != null) {
+      _socket?.off(_riderAssignedEvent, callback);
+    } else {
+      _socket?.off(_riderAssignedEvent);
+    }
+  }
 
   /// `newOrderAssigned` — fires on the RIDER side when a new order is dispatched.
   /// Payload: `{ orderId, customerName, deliveryAddress, ... }`
@@ -117,16 +195,43 @@ class SocketService {
     _socket?.on(_newOrderEvent, callback);
   }
 
-  void offNewOrderAssigned() => _socket?.off(_newOrderEvent);
+  void offNewOrderAssigned([void Function(dynamic)? callback]) {
+    if (callback != null) {
+      _socket?.off(_newOrderEvent, callback);
+    } else {
+      _socket?.off(_newOrderEvent);
+    }
+  }
+
+  /// `shopStatusUpdate` — fires when a retailer toggles status.
+  /// Payload: `{ shopId: "65e...", isShopActive: false }`
+  void onShopStatusUpdate(void Function(dynamic) callback) {
+    _socket?.on('shopStatusUpdate', callback);
+  }
+
+  void offShopStatusUpdate([void Function(dynamic)? callback]) {
+    if (callback != null) {
+      _socket?.off('shopStatusUpdate', callback);
+    } else {
+      _socket?.off('shopStatusUpdate');
+    }
+  }
 
   /// Generic remove listener.
-  void offEvent(String event) => _socket?.off(event);
+  void offEvent(String event, [void Function(dynamic)? callback]) {
+    if (callback != null) {
+      _socket?.off(event, callback);
+    } else {
+      _socket?.off(event);
+    }
+  }
 
   // ── Internal ──────────────────────────────────────────────────────────────
 
   void _emit(String event, dynamic data) {
     if (_socket == null || !isConnected) {
-      debugPrint('⚠️ SocketService._emit skipped — not connected ($event)');
+      debugPrint('⏳ SocketService._emit queued — not connected ($event)');
+      _emitQueue.add({'event': event, 'data': data});
       return;
     }
     _socket!.emit(event, data);

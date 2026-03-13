@@ -62,17 +62,17 @@ class RestaurantListSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final shopsAsync = ref.watch(shopsProvider);
+    final shopsAsync = ref.watch(shopsListProvider);
 
     return shopsAsync.when(
       loading: () => const _ShopsLoadingState(),
       error: (err, _) => _ShopsErrorState(
         message: err.toString(),
-        onRetry: () => ref.invalidate(shopsProvider),
+        onRetry: () => ref.invalidate(shopsListProvider),
       ),
       data: (shops) {
         if (shops.isEmpty) {
-          return _ShopsEmptyState(onRetry: () => ref.invalidate(shopsProvider));
+          return _ShopsEmptyState(onRetry: () => ref.invalidate(shopsListProvider));
         }
         return _ShopsList(shops: shops);
       },
@@ -204,6 +204,16 @@ class _ShopCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
+        if (!shop.isShopActive) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('This shop is currently not accepting orders.'),
+              backgroundColor: Colors.black87,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          return;
+        }
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -211,20 +221,26 @@ class _ShopCard extends StatelessWidget {
           ),
         );
       },
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.shade100),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+      child: Opacity(
+        opacity: shop.isShopActive ? 1.0 : 0.8,
+        child: ColorFiltered(
+          colorFilter: shop.isShopActive
+              ? const ColorFilter.mode(Colors.transparent, BlendMode.multiply)
+              : const ColorFilter.mode(Colors.grey, BlendMode.saturation),
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey.shade100),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
-          ],
-        ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           // ── Hero Banner ─────────────────────────────────────────────────
           Stack(
@@ -452,7 +468,9 @@ class _ShopCard extends StatelessWidget {
           ),
         ]),
       ),
-    );
+    ),
+  ),
+);
   }
 
   Widget _buildHeroImage() {

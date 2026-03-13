@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../data/models/subscription_model.dart';
 import '../../data/services/subscription_service.dart';
+import '../../data/services/order_service.dart';
 import '../../modules/wallet/view/wallet_page.dart' show walletBalanceProvider;
 import '../orders/view/order_tracking_page.dart';
 
@@ -72,36 +73,54 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
   @override
   Widget build(BuildContext context) {
     final subscriptionsAsync = ref.watch(mySubscriptionsProvider);
+    final ordersAsync = ref.watch(myOrdersProvider);
     final balanceAsync = ref.watch(walletBalanceProvider);
 
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeader(balanceAsync),
-            _buildHorizontalCalendar(subscriptionsAsync),
-            Expanded(
-              child: subscriptionsAsync.when(
-                data: (subs) => SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    children: [
-                      _buildStatusCard(subs),
-                      const SizedBox(height: 20),
-                      _buildYourPlans(subs),
-                      const SizedBox(height: 30),
-                      _buildQuickActions(subs),
-                    ],
+        child: RefreshIndicator(
+          onRefresh: () async {
+            ref.invalidate(mySubscriptionsProvider);
+            ref.invalidate(myOrdersProvider);
+            ref.invalidate(walletBalanceProvider);
+          },
+          color: const Color(0xFF68B92E),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeader(balanceAsync),
+              _buildHorizontalCalendar(subscriptionsAsync),
+              Expanded(
+                child: subscriptionsAsync.when(
+                  data: (subs) => ordersAsync.when(
+                    data: (orders) => SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        children: [
+                          _buildStatusCard(subs, orders),
+                          const SizedBox(height: 20),
+                          _buildYourPlans(subs),
+                          const SizedBox(height: 30),
+                          _buildQuickActions(subs),
+                        ],
+                      ),
+                    ),
+                    loading: () => const Center(
+                        child: CircularProgressIndicator(
+                            color: Color(0xFF68B92E))),
+                    error: (e, _) =>
+                        Center(child: Text('Error loading orders: $e')),
                   ),
+                  loading: () => const Center(
+                      child:
+                          CircularProgressIndicator(color: Color(0xFF68B92E))),
+                  error: (e, _) => Center(child: Text('Error: $e')),
                 ),
-                loading: () => const Center(
-                    child: CircularProgressIndicator(color: Color(0xFF68B92E))),
-                error: (e, _) => Center(child: Text('Error: $e')),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -231,13 +250,29 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
     );
   }
 
-  Widget _buildStatusCard(List<UserSubscription> subs) {
+  Widget _buildStatusCard(List<UserSubscription> subs, List<dynamic> orders) {
+    // 1. Find subscriptions that should deliver on this date
     final deliveringSubs = subs
         .where((s) => s.status == 'Active' && _deliversOn(s, _selectedDate))
         .toList();
-    final hasDelivery = deliveringSubs.isNotEmpty;
 
-    // The backend cron handles price logic nightly
+    // 2. Find real orders created for this date
+    // We assume the order's createdAt or custom field matches the date
+    final ordersForDate = orders.where((o) {
+      if (o is! Map) return false;
+      final createdAtStr = o['createdAt']?.toString();
+      if (createdAtStr == null) return false;
+      try {
+        final orderDate = DateTime.parse(createdAtStr);
+        return orderDate.day == _selectedDate.day &&
+            orderDate.month == _selectedDate.month &&
+            orderDate.year == _selectedDate.year;
+      } catch (_) {
+        return false;
+      }
+    }).toList();
+
+    final hasDelivery = deliveringSubs.isNotEmpty || ordersForDate.isNotEmpty;
 
     return Container(
       width: double.infinity,
@@ -268,9 +303,49 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
                       fontWeight: FontWeight.bold),
                 ),
               ),
+              if (ordersForDate.isNotEmpty) ...[
+                const SizedBox(width: 16),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'CURRENT STATUS',
+                      style: TextStyle(
+                        color: Color(0xFF8E99AF),
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEBFFD7),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: const Color(0xFF68B92E).withValues(alpha: 0.2),
+                        ),
+                      ),
+                      child: Text(
+                        (ordersForDate.isNotEmpty && ordersForDate.first['status'] != null
+                                ? ordersForDate.first['status'].toString()
+                                : 'PENDING')
+                            .toUpperCase(),
+                        style: const TextStyle(
+                          color: Color(0xFF439462),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
               const Spacer(),
               if (hasDelivery)
-                Text('${deliveringSubs.length} item(s)',
+                Text('${deliveringSubs.length + ordersForDate.length} item(s)',
                     style: const TextStyle(
                         fontWeight: FontWeight.bold, color: Color(0xFF1A1A1A))),
             ],
@@ -284,8 +359,98 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
                     style: TextStyle(color: Colors.grey)),
               ),
             )
-          else
-            ...deliveringSubs.map((sub) => _buildDeliveryItem(sub)),
+          else ...[
+            // Show matched/real orders first
+            ...ordersForDate.map((order) {
+              final items = order['items'] as List<dynamic>? ?? [];
+              if (items.isEmpty) return const SizedBox();
+              return _buildRealOrderItem(order);
+            }),
+            // Show subscriptions that haven't turned into orders yet
+            ...deliveringSubs.where((sub) {
+              // Avoid duplicates if order is already shown
+              return !ordersForDate.any((o) {
+                final oItems = o['items'] as List<dynamic>? ?? [];
+                return oItems.any((item) =>
+                    item['product']?['_id'] == sub.productId ||
+                    item['product'] == sub.productId);
+              });
+            }).map((sub) => _buildDeliveryItem(sub)),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRealOrderItem(Map<String, dynamic> order) {
+    final items = order['items'] as List<dynamic>? ?? [];
+    if (items.isEmpty) return const SizedBox();
+    final item = items.first;
+    final product = item['product'];
+    final name =
+        product is Map ? product['name']?.toString() ?? 'Item' : 'Item';
+    final image = (product is Map && (product['images'] as List?)?.isNotEmpty == true)
+        ? (product['images'] as List).first.toString()
+        : '';
+    final qty = item['quantity']?.toString() ?? '1';
+    final status = order['status']?.toString() ?? 'Pending';
+    final isDelivered = status.toLowerCase() == 'delivered';
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: image.isNotEmpty
+                ? Image.network(image,
+                    width: 50,
+                    height: 50,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _imagePlaceholder)
+                : _imagePlaceholder,
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text('Qty $qty • Real-time Status: $status',
+                    style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+              ],
+            ),
+          ),
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => OrderTrackingPage(order: order),
+                ),
+              );
+            },
+            child: const Row(
+              children: [
+                Icon(Icons.location_on_outlined,
+                    color: Color(0xFF68B92E), size: 16),
+                SizedBox(width: 4),
+                Text(
+                  'Track',
+                  style: TextStyle(
+                    color: Color(0xFF68B92E),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    decoration: TextDecoration.underline,
+                    decorationColor: Color(0xFF68B92E),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Icon(isDelivered ? Icons.check_circle : Icons.radio_button_checked,
+              color: const Color(0xFF68B92E)),
         ],
       ),
     );
@@ -325,36 +490,11 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
             ),
           ),
           GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => OrderTrackingPage(
-                    order: {
-                      '_id': sub.id,
-                      'orderId': sub.id,
-                      'status': 'Processing',
-                      'orderType': 'Subscription',
-                      'frequency': sub.frequency,
-                      'customDays': sub.customDays,
-                      'items': [
-                        {
-                          'quantity': sub.quantity,
-                          'price': 0,
-                          'product': {
-                            'name': sub.productName,
-                            'images': [sub.productImage],
-                          }
-                        }
-                      ],
-                    },
-                  ),
-                ),
-              );
-            },
+            onTap: () => _openTrackingForSubscription(sub),
             child: const Row(
               children: [
-                Icon(Icons.location_on_outlined, color: Color(0xFF68B92E), size: 16),
+                Icon(Icons.location_on_outlined,
+                    color: Color(0xFF68B92E), size: 16),
                 SizedBox(width: 4),
                 Text(
                   'Track',
@@ -374,6 +514,77 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
         ],
       ),
     );
+  }
+
+  /// Fetches the latest order for [sub] from the backend and navigates
+  /// to [OrderTrackingPage] with the real order data.
+  Future<void> _openTrackingForSubscription(UserSubscription sub) async {
+    // Show a loading snackbar while we fetch
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(
+      const SnackBar(
+        content: Row(children: [
+          SizedBox(
+            width: 18,
+            height: 18,
+            child:
+                CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+          ),
+          SizedBox(width: 12),
+          Text('Fetching order details…'),
+        ]),
+        duration: Duration(seconds: 10),
+        backgroundColor: Color(0xFF114F3B),
+      ),
+    );
+
+    try {
+      final orderService = ref.read(orderServiceProvider);
+      Map<String, dynamic> order =
+          await orderService.getOrderBySubscriptionId(sub.id);
+
+      // If no backend order found, use a sensible stub so the page still opens
+      if (order.isEmpty) {
+        order = {
+          '_id': sub.id,
+          'orderId': sub.id,
+          'status': 'Processing',
+          'orderType': 'Subscription',
+          'frequency': sub.frequency,
+          'customDays': sub.customDays,
+          'items': [
+            {
+              'quantity': sub.quantity,
+              'price': 0,
+              'product': {
+                'name': sub.productName,
+                'images': [sub.productImage],
+              },
+            }
+          ],
+        };
+      }
+
+      if (!mounted) return;
+      messenger.hideCurrentSnackBar();
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => OrderTrackingPage(order: order),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      messenger.hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not load order: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   Widget get _imagePlaceholder => Container(

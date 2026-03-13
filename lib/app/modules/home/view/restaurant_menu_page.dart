@@ -46,14 +46,26 @@ class RestaurantMenuPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final productsAsync = ref.watch(shopProductsProvider(shop.id));
+    final shopsAsync = ref.watch(shopsListProvider);
+    final currentShop = shopsAsync.maybeWhen(
+      data: (list) => list.firstWhere((s) => s.id == shop.id, orElse: () => shop),
+      orElse: () => shop,
+    );
+    final productsAsync = ref.watch(shopProductsProvider(currentShop.id));
     final cart = CartProviderScope.of(context);
+    final isShopActive = currentShop.isShopActive;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
       body: Stack(
         children: [
-          CustomScrollView(
+          ColorFiltered(
+            colorFilter: isShopActive
+                ? const ColorFilter.mode(Colors.transparent, BlendMode.multiply)
+                : const ColorFilter.mode(Colors.grey, BlendMode.saturation),
+            child: Opacity(
+              opacity: isShopActive ? 1.0 : 0.8,
+              child: CustomScrollView(
             physics: const BouncingScrollPhysics(),
             slivers: [
               // ── Hero App Bar ──────────────────────────────────────────────────
@@ -84,7 +96,7 @@ class RestaurantMenuPage extends ConsumerWidget {
                   ),
                 ],
                 flexibleSpace: FlexibleSpaceBar(
-                  background: _buildHeroBanner(),
+                  background: _buildHeroBanner(currentShop),
                 ),
               ),
 
@@ -188,31 +200,57 @@ class RestaurantMenuPage extends ConsumerWidget {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 12),
-                      // Offer banner
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEBFFD7),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.local_offer,
-                                size: 14, color: Color(0xFF439462)),
-                            const SizedBox(width: 8),
-                            Text(
-                              shop.location,
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: const Color(0xFF439462),
-                              ),
+                        if (!isShopActive) ...[
+                          const SizedBox(height: 16),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.black87,
+                              borderRadius: BorderRadius.circular(12),
                             ),
-                          ],
-                        ),
-                      ),
+                            child: const Row(
+                              children: [
+                                Icon(Icons.error_outline, color: Colors.white),
+                                SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    'This restaurant is currently offline and not accepting orders.',
+                                    style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ] else ...[
+                          const SizedBox(height: 12),
+                          // Offer banner
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEBFFD7),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.local_offer,
+                                    size: 14, color: Color(0xFF439462)),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Flat ₹100 OFF above ₹499',
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF439462),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                     ],
                   ),
                 ),
@@ -267,8 +305,9 @@ class RestaurantMenuPage extends ConsumerWidget {
                           return _ProductCard(
                             product: product,
                             index: index,
-                            shopId: shop.id,
-                            shopName: shop.name,
+                            shopId: currentShop.id,
+                            shopName: currentShop.name,
+                            isShopActive: isShopActive,
                           );
                         },
                         childCount: products.length,
@@ -279,9 +318,26 @@ class RestaurantMenuPage extends ConsumerWidget {
               ),
 
               const SliverPadding(padding: EdgeInsets.only(bottom: 120)),
-            ],
+                ],
+              ),
+            ),
           ),
-          if (cart.itemCount > 0)
+
+          // ── Floating Back Button (Above Grayscale) ────────────────────────
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 10,
+            left: 12,
+            child: CircleAvatar(
+              backgroundColor: Colors.white.withValues(alpha: 0.9),
+              child: IconButton(
+                icon: const Icon(Icons.arrow_back,
+                    color: Colors.black87, size: 20),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+          ),
+
+          if (cart.itemCount > 0 && isShopActive)
             Positioned(
               bottom:
                   30, // Positioned near bottom since this page doesn't have a persistent bottom bar like MainPage
@@ -299,8 +355,8 @@ class RestaurantMenuPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildHeroBanner() {
-    final networkUrl = shop.image;
+  Widget _buildHeroBanner(ShopModel currentShop) {
+    final networkUrl = currentShop.image;
     if (networkUrl.length > 5) {
       return Image.network(
         networkUrl,
@@ -331,12 +387,14 @@ class _ProductCard extends ConsumerStatefulWidget {
   final int index;
   final String shopId;
   final String shopName;
+  final bool isShopActive;
 
   const _ProductCard({
     required this.product,
     required this.index,
     required this.shopId,
     required this.shopName,
+    required this.isShopActive,
   });
 
   @override
@@ -502,6 +560,18 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
         quantity: 0,
       ),
     );
+
+    if (!widget.isShopActive) {
+      return Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade200,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: const Icon(Icons.block, color: Colors.grey, size: 18),
+      );
+    }
 
     if (cartItem.quantity == 0) {
       return GestureDetector(

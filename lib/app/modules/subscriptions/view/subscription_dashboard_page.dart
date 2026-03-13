@@ -150,26 +150,29 @@ class SubscriptionDashboardPage extends ConsumerWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Next Delivery',
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Next Delivery',
+                          style: TextStyle(
+                              color: Colors.black54,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 2),
+                      Text(
+                        isActive ? "Tomorrow, 7:00 AM" : "Paused",
                         style: TextStyle(
-                            color: Colors.black54,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 2),
-                    Text(
-                      isActive ? "Tomorrow, 7:00 AM" : "Paused",
-                      style: TextStyle(
-                        color: isActive ? AppColors.accentGreen : Colors.red,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
+                          color: isActive ? AppColors.accentGreen : Colors.red,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
                 Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     if (isActive)
                       ElevatedButton(
@@ -178,21 +181,29 @@ class SubscriptionDashboardPage extends ConsumerWidget {
                           backgroundColor: Colors.orange.shade50,
                           foregroundColor: Colors.orange.shade900,
                           elevation: 0,
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12)),
                         ),
                         child: const Text('Deliver Today',
                             style: TextStyle(
-                                fontSize: 12, fontWeight: FontWeight.bold)),
+                                fontSize: 11, fontWeight: FontWeight.bold)),
                       ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 4),
                     TextButton.icon(
                       onPressed: () => _showVacationPicker(context, ref, sub),
-                      icon: const Icon(Icons.calendar_month, size: 18),
+                      icon: const Icon(Icons.calendar_month, size: 16),
                       label: const Text('Manage'),
                       style: TextButton.styleFrom(
-                          foregroundColor: AppColors.primaryDark),
+                        foregroundColor: AppColors.primaryDark,
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        textStyle: const TextStyle(
+                            fontSize: 11, fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ],
                 ),

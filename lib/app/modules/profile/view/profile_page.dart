@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import './profile_detail_page.dart';
 import './edit_profile_page.dart';
+import '../../../data/services/auth_service.dart' as auth;
+import '../../../data/models/auth_models.dart' as models;
 import '../../../data/services/db_service.dart';
 import '../../../data/services/order_service.dart';
 import '../../../data/services/favorites_service.dart';
@@ -36,39 +38,47 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    final provider = CartProviderScope.of(context);
-    final profile = provider.userProfile;
+    final profileAsync = ref.watch(auth.userProfileProvider);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF0F4EC),
       body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _ProfileHeader(user: profile),
-              const SizedBox(height: 30),
-              const _ActiveOrdersAndSubscriptions(),
-              const SizedBox(height: 24),
-              const _WalletSection(),
-              const SizedBox(height: 24),
-              const Text(
-                'Quick Actions',
-                style: TextStyle(
-                    color: Color(0xFF114F3B),
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 12),
-              const _QuickActionsRow(),
-              const SizedBox(height: 24),
-              const _ListTilesSection(),
-              const SizedBox(height: 32),
-              const _SignOutButton(),
-              const SizedBox(height: 100),
-            ],
+        child: RefreshIndicator(
+          onRefresh: () => ref.refresh(auth.userProfileProvider.future),
+          color: const Color(0xFF114F3B),
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 20.0, vertical: 20.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                profileAsync.when(
+                  data: (user) => _ProfileHeader(user: user),
+                  loading: () => const _ProfileHeaderSkeleton(),
+                  error: (e, _) => Center(child: Text('Error: $e')),
+                ),
+                const SizedBox(height: 30),
+                const _ActiveOrdersAndSubscriptions(),
+                const SizedBox(height: 24),
+                const _WalletSection(),
+                const SizedBox(height: 24),
+                const Text(
+                  'Quick Actions',
+                  style: TextStyle(
+                      color: Color(0xFF114F3B),
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                const _QuickActionsRow(),
+                const SizedBox(height: 24),
+                const _ListTilesSection(),
+                const SizedBox(height: 32),
+                const _SignOutButton(),
+                const SizedBox(height: 100),
+              ],
+            ),
           ),
         ),
       ),
@@ -76,16 +86,48 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   }
 }
 
+class _ProfileHeaderSkeleton extends StatelessWidget {
+  const _ProfileHeaderSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Shimmer(
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(width: 100, height: 14, color: Colors.white),
+              const SizedBox(height: 8),
+              Container(width: 150, height: 28, color: Colors.white),
+            ],
+          ),
+          const CircleAvatar(radius: 40, backgroundColor: Colors.white),
+        ],
+      ),
+    );
+  }
+}
+
+// Simple fallback for Shimmer if not available, or just use Container
+class Shimmer extends StatelessWidget {
+  final Widget child;
+  const Shimmer({super.key, required this.child});
+  @override
+  Widget build(BuildContext context) => Opacity(opacity: 0.5, child: child);
+}
+
 class _ProfileHeader extends StatelessWidget {
-  final dynamic user; // UserModel or null
+  final models.UserModel user;
 
   const _ProfileHeader({required this.user});
 
   @override
   Widget build(BuildContext context) {
-    final name = user?.name ?? 'Guest';
-    final email = user?.email ?? '';
-    final phone = user?.phone ?? '';
+    final name = user.fullName;
+    final email = user.email;
+    final phone = user.phoneNumber;
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,

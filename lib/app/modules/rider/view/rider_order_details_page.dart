@@ -162,9 +162,16 @@ class _RiderOrderDetailsPageState extends ConsumerState<RiderOrderDetailsPage> {
         ? (user['phoneNumber']?.toString() ?? user['phone']?.toString() ?? '')
         : '';
     final deliveryAddressMap = order['deliveryAddress'];
-    final deliveryAddress = (deliveryAddressMap is Map)
-        ? (deliveryAddressMap['address']?.toString() ?? 'N/A')
-        : 'N/A';
+    final deliveryAddress = (deliveryAddressMap == null)
+        ? 'N/A'
+        : (deliveryAddressMap is Map)
+            ? (deliveryAddressMap['fullAddress'] ??
+                    deliveryAddressMap['address'] ??
+                    deliveryAddressMap['street'] ??
+                    'N/A')
+                .toString()
+            : deliveryAddressMap.toString();
+
     // Use live status from socket, falls back to initial order status
     final status = _liveStatus.isNotEmpty
         ? _liveStatus
@@ -173,8 +180,14 @@ class _RiderOrderDetailsPageState extends ConsumerState<RiderOrderDetailsPage> {
     final shortId = orderId.length >= 6
         ? orderId.substring(orderId.length - 6).toUpperCase()
         : orderId.toUpperCase();
-    final paymentType = order['paymentType']?.toString() ?? 'N/A';
-    final instructions = order['deliveryInstructions']?.toString() ?? 'None';
+    final paymentType = (order['paymentMethod'] ??
+            order['paymentType'] ??
+            order['payment_method'] ??
+            'N/A')
+        .toString();
+    final instructions = order['deliveryInstructions']?.toString() ??
+        order['instructions']?.toString() ??
+        'None';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),

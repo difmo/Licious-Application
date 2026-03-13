@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../network/api_client.dart';
+import 'socket_service.dart';
 
 class OrderService {
   final ApiClient _apiClient;
@@ -164,11 +165,62 @@ class OrderService {
         requiresAuth: true,
       );
       if (response is Map && response['success'] == true) {
-        return response['order'] ?? response['data'] ?? {};
+        return Map<String, dynamic>.from(
+            response['order'] ?? response['data'] ?? {});
       }
       return {};
     } catch (e) {
       debugPrint('Error tracking order: $e');
+      return {};
+    }
+  }
+
+  /// Fetch the latest order associated with a subscription.
+  /// The backend endpoint GET /app/orders/by-subscription/:subscriptionId
+  /// should return the most recent order for that subscription.
+  Future<Map<String, dynamic>> getOrderBySubscriptionId(
+      String subscriptionId) async {
+    try {
+      final response = await _apiClient.get(
+        '${ApiClient.baseUrl}/orders/by-subscription/$subscriptionId',
+        requiresAuth: true,
+      );
+      if (response is Map) {
+        if (response['success'] == true) {
+          final order = response['order'] ?? response['data'];
+          if (order is Map) return Map<String, dynamic>.from(order);
+        }
+        // Fallback: if the response itself looks like an order
+        if (response['_id'] != null) {
+          return Map<String, dynamic>.from(response);
+        }
+      }
+      return {};
+    } catch (e) {
+      debugPrint('Error fetching order by subscription: $e');
+      return {};
+    }
+  }
+
+  /// Fetch a single order by its MongoDB _id
+  Future<Map<String, dynamic>> getOrderById(String mongoId) async {
+    try {
+      final response = await _apiClient.get(
+        '${ApiClient.baseUrl}/orders/$mongoId',
+        requiresAuth: true,
+      );
+      if (response is Map) {
+        if (response['success'] == true) {
+          final order = response['order'] ?? response['data'];
+          if (order is Map) return Map<String, dynamic>.from(order);
+        }
+        if (response['_id'] != null) {
+          return Map<String, dynamic>.from(response);
+        }
+      }
+      return {};
+    } catch (e) {
+      debugPrint('Error fetching order by id: $e');
       return {};
     }
   }
@@ -182,6 +234,63 @@ final myOrdersProvider = FutureProvider.autoDispose<List<dynamic>>((ref) {
   return ref.watch(orderServiceProvider).getMyOrders();
 });
 
-final activeOrdersProvider = FutureProvider.autoDispose<List<dynamic>>((ref) {
-  return ref.watch(orderServiceProvider).getActiveOrders();
+final activeOrdersProvider =
+    AsyncNotifierProvider<ActiveOrdersNotifier, List<dynamic>>(
+        ActiveOrdersNotifier.new);
+
+class ActiveOrdersNotifier extends AsyncNotifier<List<dynamic>> {
+  @override
+  Future<List<dynamic>> build() async {
+    // Listen for real-time order status updates from socket
+    final socket = ref.watch(socketServiceProvider);
+    socket.onOrderUpdate((data) {
+      debugPrint('🔔 ActiveOrdersNotifier: Order update received, refreshing...');
+      ref.invalidateSelf();
+    });
+
+    ref.onDispose(() {
+      socket.offOrderUpdate();
+    });
+
+    return _fetchActiveOrders();
+  }
+
+  Future<List<dynamic>> _fetchActiveOrders() async {
+    final service = ref.read(orderServiceProvider);
+
+    try {
+      // Fetch full history to ensure we include everything "not delivered"
+      final history = await service.getMyOrders();
+
+      if (history.isEmpty) return [];
+
+      return history.where((o) {
+        final status = (o['status'] ?? '').toString().toLowerCase();
+        // The user specifically wants orders that are NOT "delivered"
+        return status != 'delivered';
+      }).toList();
+    } catch (e) {
+      debugPrint('Error in _fetchActiveOrders: $e');
+      return [];
+    }
+  }
+
+  Future<void> refresh() async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() => _fetchActiveOrders());
+  }
+}
+
+/// Provider that fetches a single order by subscription ID (latest order).
+final orderBySubscriptionProvider = FutureProvider.autoDispose
+    .family<Map<String, dynamic>, String>((ref, subscriptionId) {
+  return ref
+      .watch(orderServiceProvider)
+      .getOrderBySubscriptionId(subscriptionId);
+});
+
+/// Provider that fetches a single order by its MongoDB _id.
+final orderByIdProvider = FutureProvider.autoDispose
+    .family<Map<String, dynamic>, String>((ref, mongoId) {
+  return ref.watch(orderServiceProvider).getOrderById(mongoId);
 });
