@@ -72,7 +72,8 @@ class RestaurantListSection extends ConsumerWidget {
       ),
       data: (shops) {
         if (shops.isEmpty) {
-          return _ShopsEmptyState(onRetry: () => ref.invalidate(shopsListProvider));
+          return _ShopsEmptyState(
+              onRetry: () => ref.invalidate(shopsListProvider));
         }
         return _ShopsList(shops: shops);
       },
@@ -144,6 +145,7 @@ class _ShopsList extends StatelessWidget {
           ),
         ),
         ListView.builder(
+          padding: EdgeInsets.zero,
           physics: const NeverScrollableScrollPhysics(),
           shrinkWrap: true,
           itemCount: shops.length,
@@ -232,245 +234,256 @@ class _ShopCard extends StatelessWidget {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.grey.shade100),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+              border: Border.all(color: Colors.grey.shade200),
             ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          // ── Hero Banner ─────────────────────────────────────────────────
-          Stack(
-            children: [
-              ClipRRect(
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(16)),
-                child: _buildHeroImage(),
-              ),
-              // Closed/Offline Overlay
-              if (!shop.isShopActive)
-                Positioned.fill(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.4),
-                      borderRadius:
-                          const BorderRadius.vertical(top: Radius.circular(16)),
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              // ── Hero Banner ─────────────────────────────────────────────────
+              Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius:
+                        const BorderRadius.vertical(top: Radius.circular(16)),
+                    child: _buildHeroImage(),
+                  ),
+                  // Closed/Offline Overlay
+                  if (!shop.isShopActive)
+                    Positioned.fill(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.2),
+                          borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(16)),
+                        ),
+                        child: Center(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade700,
+                              borderRadius: BorderRadius.circular(8),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.3),
+                                  blurRadius: 10,
+                                ),
+                              ],
+                            ),
+                            child: const Text(
+                              'CLOSED',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 1.2,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
-                    child: const Center(
+                  // Top dish label overlay
+                  Positioned(
+                    top: 12,
+                    left: 12,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.65),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
                       child: Text(
-                        'NOT ACCEPTING ORDERS',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 1.5,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              // Top dish label overlay
-              Positioned(
-                top: 12,
-                left: 12,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.65),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    shop.businessName.isNotEmpty
-                        ? shop.businessName
-                        : 'Fresh Shrimp · ₹499+',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-              // Bookmark
-              Positioned(
-                top: 10,
-                right: 12,
-                child: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.9),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.bookmark_border,
-                      size: 16, color: Colors.black54),
-                ),
-              ),
-              // Featured badge
-              if (_isFeatured)
-                Positioned(
-                  bottom: 10,
-                  left: 12,
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFF3CD),
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: const Color(0xFFFFD600)),
-                    ),
-                    child: const Text(
-                      '⭐ Featured',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF5D4037),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-
-          // ── Info Row ─────────────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        shop.name,
-                        style: const TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF1A1A1A),
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        _cuisine,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                // Rating badge
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF68B92E),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.star, size: 12, color: Colors.white),
-                      const SizedBox(width: 3),
-                      Text(
-                        shop.rating > 0
-                            ? shop.rating.toStringAsFixed(1)
-                            : _rating.toStringAsFixed(1),
+                        shop.businessName.isNotEmpty
+                            ? shop.businessName
+                            : 'Fresh Shrimp · ₹499+',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                    ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  _formatReviews(_reviews),
-                  style: const TextStyle(fontSize: 11, color: Colors.grey),
-                ),
-              ],
-            ),
-          ),
+                  // Bookmark
+                  Positioned(
+                    top: 10,
+                    right: 12,
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.9),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.bookmark_border,
+                          size: 16, color: Colors.black54),
+                    ),
+                  ),
+                  // Featured badge
+                  if (_isFeatured)
+                    Positioned(
+                      bottom: 10,
+                      left: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF3CD),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: const Color(0xFFFFD600)),
+                        ),
+                        child: const Text(
+                          '⭐ Featured',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF5D4037),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
 
-          // ── Delivery Meta ────────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 6, 14, 0),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
+              // ── Info Row ─────────────────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.bolt, size: 14, color: Color(0xFF68B92E)),
-                    const SizedBox(width: 3),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            shop.name,
+                            style: const TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF1A1A1A),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            _cuisine,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Rating badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF68B92E),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.star, size: 12, color: Colors.white),
+                          const SizedBox(width: 3),
+                          Text(
+                            shop.rating > 0
+                                ? shop.rating.toStringAsFixed(1)
+                                : _rating.toStringAsFixed(1),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 6),
                     Text(
-                      shop.deliveryTime.isNotEmpty
-                          ? shop.deliveryTime
-                          : _deliveryTime,
+                      _formatReviews(_reviews),
+                      style: const TextStyle(fontSize: 11, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
+
+              // ── Delivery Meta ────────────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 6, 14, 0),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.bolt,
+                            size: 14, color: Color(0xFF68B92E)),
+                        const SizedBox(width: 3),
+                        Text(
+                          shop.deliveryTime.isNotEmpty
+                              ? shop.deliveryTime
+                              : _deliveryTime,
+                          style: const TextStyle(
+                              fontSize: 12, color: Colors.black87),
+                        ),
+                      ],
+                    ),
+                    Text('·', style: TextStyle(color: Colors.grey.shade400)),
+                    Text(
+                      '${_distance.toStringAsFixed(1)} km',
                       style:
                           const TextStyle(fontSize: 12, color: Colors.black87),
                     ),
-                  ],
-                ),
-                Text('·', style: TextStyle(color: Colors.grey.shade400)),
-                Text(
-                  '${_distance.toStringAsFixed(1)} km',
-                  style: const TextStyle(fontSize: 12, color: Colors.black87),
-                ),
-                Text('·', style: TextStyle(color: Colors.grey.shade400)),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.delivery_dining_outlined,
-                        size: 14, color: Colors.grey),
-                    const SizedBox(width: 3),
-                    const Text(
-                      'Free',
-                      style: TextStyle(fontSize: 12, color: Colors.black87),
+                    Text('·', style: TextStyle(color: Colors.grey.shade400)),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.delivery_dining_outlined,
+                            size: 14, color: Colors.grey),
+                        const SizedBox(width: 3),
+                        const Text(
+                          'Free',
+                          style: TextStyle(fontSize: 12, color: Colors.black87),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
-          ),
+              ),
 
-          // ── Offer Strip ──────────────────────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 8, 14, 14),
-            child: Row(
-              children: [
-                Icon(Icons.local_offer_outlined, size: 14, color: _offerColor),
-                const SizedBox(width: 5),
-                Expanded(
-                  child: Text(
-                    _offerText(index),
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: _offerColor,
-                      fontWeight: FontWeight.w600,
+              // ── Offer Strip ──────────────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 8, 14, 14),
+                child: Row(
+                  children: [
+                    Icon(Icons.local_offer_outlined,
+                        size: 14, color: _offerColor),
+                    const SizedBox(width: 5),
+                    Expanded(
+                      child: Text(
+                        _offerText(index),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: _offerColor,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ]),
           ),
-        ]),
+        ),
       ),
-    ),
-  ),
-);
+    );
   }
 
   Widget _buildHeroImage() {

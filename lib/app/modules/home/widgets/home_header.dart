@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import '../../../data/services/db_service.dart';
 import '../controller/main_controller.dart';
 import '../../../widgets/bounce_widget.dart';
 import '../../../routes/app_routes.dart';
@@ -15,10 +14,8 @@ class HomeHeader extends StatefulWidget {
 class _HomeHeaderState extends State<HomeHeader> {
   @override
   Widget build(BuildContext context) {
-    final cart = CartProviderScope.of(context);
-
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 20),
+      padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 16),
       decoration: const BoxDecoration(color: Colors.white),
       // decoration: const BoxDecoration(color: Color(0xFFF9FFF6)),
       child: Column(
@@ -38,7 +35,7 @@ class _HomeHeaderState extends State<HomeHeader> {
                         Text(
                           'Vibhav Khand -4',
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: 10.6,
                             fontWeight: FontWeight.bold,
                             color: Color(0xFF1A1A1A),
                           ),
@@ -48,7 +45,7 @@ class _HomeHeaderState extends State<HomeHeader> {
                     ),
                     Text(
                       'Vibhav Khand, Gomti Nagar, L...',
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                      style: TextStyle(fontSize: 8.2, color: Colors.grey),
                     ),
                   ],
                 ),
@@ -65,7 +62,12 @@ class _HomeHeaderState extends State<HomeHeader> {
                   tag: 'profile_pic',
                   child: CircleAvatar(
                     radius: 18,
-                    backgroundImage: AssetImage(cart.userProfile.profileImage),
+                    backgroundColor: const Color(0xFFE54141),
+                    child: const Icon(
+                      Icons.person,
+                      color: Colors.white,
+                      size: 20,
+                    ),
                   ),
                 ),
               ),

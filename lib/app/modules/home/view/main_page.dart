@@ -57,7 +57,12 @@ class _MainPageState extends State<MainPage> {
         extendBody: true,
         body: Stack(
           children: [
-            Positioned.fill(child: _pages[_controller.currentIndex]),
+            Positioned.fill(
+              child: IndexedStack(
+                index: _controller.currentIndex,
+                children: _pages,
+              ),
+            ),
             if (showSummary)
               Positioned(
                 bottom: 110, // Just above the custom bottom bar (height ~100)

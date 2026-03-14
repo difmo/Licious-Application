@@ -42,9 +42,9 @@ class _SplashPageState extends ConsumerState<SplashPage>
       ref.read(authProvider.notifier).init();
     });
 
-    // Enforce a minimum display time for the splash screen (e.g., 2 seconds)
+    // Enforce a minimum display time for the splash screen (e.g., 500ms)
     // and then navigate based on current state.
-    Future.delayed(const Duration(seconds: 2), () {
+    Future.delayed(const Duration(milliseconds: 500), () {
       if (!mounted || _navigated) return;
       _handleNavigation(ref.read(authProvider));
     });
@@ -62,7 +62,7 @@ class _SplashPageState extends ConsumerState<SplashPage>
     } else if (state is AuthSuccess) {
       // Success state from registration or forgot password usually goes to welcome or login
       _navigated = true;
-      Navigator.pushReplacementNamed(context, AppRoutes.login);
+      Navigator.pushReplacementNamed(context, AppRoutes.welcome);
     }
   }
 

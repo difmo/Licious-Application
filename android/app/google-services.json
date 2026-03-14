@@ -9,7 +9,26 @@
       "client_info": {
         "mobilesdk_app_id": "1:246944187312:android:cda60be867e22f21994c75",
         "android_client_info": {
-          "package_name": "com.example.licius_application"
+          "package_name": "com.android.application"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCDCh9kYPOSZ6-K3FYYJ2jlK4QS9-KqEvk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:246944187312:android:fa5cff913cf04705994c75",
+        "android_client_info": {
+          "package_name": "com.shrimpbite.app"
         }
       },
       "oauth_client": [],

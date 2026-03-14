@@ -44,10 +44,12 @@ class MyOrdersPage extends ConsumerWidget {
                 onRefresh: () async => ref.refresh(myOrdersProvider),
                 color: const Color(0xFF114F3B),
                 child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   physics: const BouncingScrollPhysics(),
                   itemCount: orders.length,
-                  itemBuilder: (context, index) => _OrderCard(order: orders[index]),
+                  itemBuilder: (context, index) =>
+                      _OrderCard(order: orders[index]),
                 ),
               ),
         loading: () => const Center(
@@ -86,7 +88,9 @@ class _EmptyOrdersView extends StatelessWidget {
           const SizedBox(height: 16),
           const Text('No orders yet',
               style: TextStyle(
-                  fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey)),
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey)),
           const SizedBox(height: 8),
           const Text('Your orders will appear here after you place one.',
               style: TextStyle(color: Colors.grey)),
@@ -106,7 +110,8 @@ class _OrderCard extends ConsumerWidget {
     if (items.isEmpty) return 'Order';
     final first = items.first;
     final product = first['product'];
-    if (product is Map && product['name'] != null) return product['name'].toString();
+    if (product is Map && product['name'] != null)
+      return product['name'].toString();
     return 'Order';
   }
 
@@ -115,9 +120,11 @@ class _OrderCard extends ConsumerWidget {
     if (items.isEmpty) return 'No items';
     final first = items.first;
     final product = first['product'];
-    final name = (product is Map && product['name'] != null) ? product['name'].toString() : 'Item';
+    final name = (product is Map && product['name'] != null)
+        ? product['name'].toString()
+        : 'Item';
     final qty = first['quantity']?.toString() ?? '1';
-    
+
     if (items.length > 1) {
       return '${qty}x $name & ${items.length - 1} more';
     }
@@ -125,8 +132,9 @@ class _OrderCard extends ConsumerWidget {
   }
 
   double _totalPrice() {
-    return (order['totalAmount'] as num?)?.toDouble() ?? 
-           (order['total'] as num?)?.toDouble() ?? 0.0;
+    return (order['totalAmount'] as num?)?.toDouble() ??
+        (order['total'] as num?)?.toDouble() ??
+        0.0;
   }
 
   String _orderStatus() => order['status']?.toString() ?? 'Pending';
@@ -170,13 +178,7 @@ class _OrderCard extends ConsumerWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        border: Border.all(color: Colors.grey.shade200),
       ),
       child: IntrinsicHeight(
         child: Row(

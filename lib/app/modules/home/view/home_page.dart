@@ -7,11 +7,14 @@ import '../widgets/home_banner.dart';
 import '../widgets/restaurant_list_section.dart';
 import '../../categories/view/category_items_page.dart';
 
-class HomePage extends StatelessWidget {
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../provider/shop_provider.dart';
+
+class HomePage extends ConsumerWidget {
   const HomePage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final cart = CartProviderScope.of(context);
     final categories = cart.foodCategories;
 
@@ -25,51 +28,59 @@ class HomePage extends StatelessWidget {
         backgroundColor: const Color(0xFFF7F8FA),
         body: SafeArea(
           bottom: false,
-          child: CustomScrollView(
-            slivers: [
-              // Header: Location & Search
-              const SliverToBoxAdapter(child: HomeHeader()),
+          child: RefreshIndicator(
+            onRefresh: () async {
+              await ref.read(shopsListProvider.notifier).refresh();
+              // Proactively refresh other related data if needed
+              CartProviderScope.of(context).loadAddresses();
+              CartProviderScope.of(context).syncWallet();
+            },
+            color: const Color(0xFF68B92E),
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                // Header: Location & Search
+                const SliverToBoxAdapter(child: HomeHeader()),
 
-              // Categories
-              SliverPadding(
-                padding: const EdgeInsets.only(top: 10, bottom: 20),
-                sliver: SliverToBoxAdapter(
-                  child: CategoryCircles(
-                    categories: categories,
-                    onCategorySelected: (name) {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              CategoryItemsPage(categoryName: name),
-                        ),
-                      );
-                    },
+                // Categories
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  sliver: SliverToBoxAdapter(
+                    child: CategoryCircles(
+                      categories: categories,
+                      onCategorySelected: (name) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                CategoryItemsPage(categoryName: name),
+                          ),
+                        );
+                      },
+                    ),
                   ),
                 ),
-              ),
 
+                // Banner (Horizontal Scrolling Carousel)
+                const SliverToBoxAdapter(child: HomeBanner()),
 
-              // Banner (Horizontal Scrolling Carousel)
-              const SliverToBoxAdapter(child: HomeBanner()),
+                const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
-              const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                // Restaurants Section
+                const SliverToBoxAdapter(child: RestaurantListSection()),
 
-              // Restaurants Section
-              const SliverToBoxAdapter(child: RestaurantListSection()),
+                // Footer
+                const SliverToBoxAdapter(child: AnimatedFooterText()),
 
-              // Footer
-              const SliverToBoxAdapter(child: AnimatedFooterText()),
-
-              // Bottom Spacing for Navigation Bar
-              const SliverPadding(padding: EdgeInsets.only(bottom: 100)),
-            ],
+                // Bottom Spacing for Navigation Bar
+                const SliverPadding(padding: EdgeInsets.only(bottom: 100)),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
-
 }
 
 class AnimatedFooterText extends StatefulWidget {
@@ -120,12 +131,12 @@ class _AnimatedFooterTextState extends State<AnimatedFooterText>
         );
       },
       child: const Padding(
-        padding: EdgeInsets.symmetric(vertical: 15),
+        padding: EdgeInsets.symmetric(vertical: 1),
         child: Text(
           'With love,\nfrom Shrimp.',
           textAlign: TextAlign.center,
           style: TextStyle(
-            fontSize: 48,
+            fontSize: 28,
             fontWeight: FontWeight.w900,
             color: Color(0xFFB4B4B4),
             height: 1.1,

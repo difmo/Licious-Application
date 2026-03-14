@@ -23,7 +23,15 @@ class CartPage extends StatelessWidget {
         elevation: 0.5,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Color(0xFF1A1A1A)),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            try {
+              MainControllerScope.of(context).changePage(0);
+            } catch (_) {
+              if (Navigator.canPop(context)) {
+                Navigator.pop(context);
+              }
+            }
+          },
         ),
         title: const Text(
           'Shopping Cart',
@@ -97,7 +105,13 @@ class CartPage extends StatelessWidget {
             height: 52,
             child: ElevatedButton(
               onPressed: () {
-                MainControllerScope.of(context).changePage(0); // Go to Home tab
+                if (Navigator.canPop(context)) {
+                  Navigator.pop(context);
+                }
+                try {
+                  MainControllerScope.of(context)
+                      .changePage(0); // Go to Home tab
+                } catch (_) {}
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF439462),
@@ -147,14 +161,7 @@ class CartPage extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.3),
-              blurRadius: 15,
-              spreadRadius: 0,
-              offset: const Offset(0, 8),
-            ),
-          ],
+          border: Border.all(color: Colors.grey.shade300),
         ),
         child: Padding(
           padding: const EdgeInsets.all(12),
@@ -285,14 +292,7 @@ class CartPage extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
-            blurRadius: 15,
-            spreadRadius: 0,
-            offset: const Offset(0, -8),
-          ),
-        ],
+        border: Border(top: BorderSide(color: Colors.grey.shade300)),
       ),
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 110),
       child: Column(

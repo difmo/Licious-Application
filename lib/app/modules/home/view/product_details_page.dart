@@ -4,7 +4,6 @@ import '../../../data/models/food_models.dart';
 import '../../../data/services/db_service.dart';
 import '../../../data/models/product_model.dart';
 import '../../../data/services/subscription_service.dart';
-import '../controller/main_controller.dart';
 import '../widgets/cart_summary_bar.dart';
 import '../widgets/quantity_selector.dart';
 
@@ -199,17 +198,6 @@ class ProductDetailsPage extends ConsumerWidget {
               right: 0,
               child: CartSummaryBar(
                 cart: cart,
-                onTap: () {
-                  // Navigate to cart tab and pop details page
-                  try {
-                    final controller = MainControllerScope.of(context);
-                    controller.changePage(2);
-                    Navigator.popUntil(context, (route) => route.isFirst);
-                  } catch (e) {
-                    // Fallback
-                    Navigator.popUntil(context, (route) => route.isFirst);
-                  }
-                },
               ),
             ),
           Positioned(

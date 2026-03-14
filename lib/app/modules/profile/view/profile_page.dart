@@ -8,8 +8,6 @@ import '../../../data/services/db_service.dart';
 import '../../../data/services/order_service.dart';
 import '../../../data/services/favorites_service.dart';
 import './my_orders_page.dart';
-import './transactions_page.dart';
-import './saved_cards_page.dart';
 import '../../auth/provider/auth_provider.dart';
 import '../../subscriptions/view/subscription_dashboard_page.dart';
 import '../../home/view/favorites_page.dart';
@@ -23,17 +21,6 @@ class ProfilePage extends ConsumerStatefulWidget {
 }
 
 class _ProfilePageState extends ConsumerState<ProfilePage> {
-  @override
-  void initState() {
-    super.initState();
-    // Sync wallet balance whenever the profile tab is visited
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        CartProviderScope.of(context).syncWallet();
-      }
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final profileAsync = ref.watch(auth.userProfileProvider);
@@ -58,8 +45,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 ),
                 const SizedBox(height: 30),
                 const _ActiveOrdersAndSubscriptions(),
-                const SizedBox(height: 24),
-                const _WalletSection(),
                 const SizedBox(height: 24),
                 const Text(
                   'Quick Actions',
@@ -157,6 +142,49 @@ class _ProfileHeader extends StatelessWidget {
                     fontSize: 12,
                   ),
                 ),
+              if (user.role == 'retailer') ...[
+                const SizedBox(height: 8),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: user.isShopActive
+                        ? const Color(0xFF68B92E).withOpacity(0.1)
+                        : Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: user.isShopActive
+                          ? const Color(0xFF68B92E)
+                          : Colors.red,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color:
+                              user.isShopActive ? const Color(0xFF68B92E) : Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        user.isShopActive ? 'SHOP OPEN' : 'SHOP CLOSED',
+                        style: TextStyle(
+                          color: user.isShopActive
+                              ? const Color(0xFF114F3B)
+                              : Colors.red,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -356,57 +384,6 @@ class _ActiveOrdersAndSubscriptions extends ConsumerWidget {
   }
 }
 
-class _WalletSection extends ConsumerWidget {
-  const _WalletSection();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: Colors.grey.shade200),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.account_balance_wallet_outlined,
-              color: Color(0xFF114F3B), size: 24),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('My Wallet',
-                    style: TextStyle(
-                        color: Color(0xFF114F3B),
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold)),
-                Text('Credit Cards | Transactions',
-                    style: TextStyle(color: Colors.grey, fontSize: 12)),
-              ],
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: const [
-              Text('Balance:',
-                  style: TextStyle(color: Colors.grey, fontSize: 10)),
-              Text(
-                '₹0.00',
-                style: TextStyle(
-                    color: Color(0xFF114F3B),
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _QuickActionsRow extends ConsumerWidget {
   const _QuickActionsRow();
 
@@ -543,10 +520,6 @@ class _ListTilesSection extends StatelessWidget {
     return Column(
       children: const [
         _ListTileItem(icon: Icons.notifications_none, title: 'Notifications'),
-        SizedBox(height: 12),
-        _ListTileItem(icon: Icons.history, title: 'Transaction History'),
-        SizedBox(height: 12),
-        _ListTileItem(icon: Icons.credit_card, title: 'Credit/Debit Card'),
       ],
     );
   }
@@ -562,23 +535,11 @@ class _ListTileItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        if (title == 'Transaction History') {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const TransactionsPage()),
-          );
-        } else if (title == 'Credit/Debit Card') {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const SavedCardsPage()),
-          );
-        } else {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (context) => ProfileDetailPage(title: title)),
-          );
-        }
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (context) => ProfileDetailPage(title: title)),
+        );
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),

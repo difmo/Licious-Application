@@ -60,6 +60,9 @@ class ShopProduct {
     if (lower.contains('fish')) {
       return 'https://images.unsplash.com/photo-1551098134-8025287f3299?q=80&w=800&auto=format&fit=crop';
     }
+    if (lower.contains('squid') || lower.contains('ring')) {
+      return 'https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?q=80&w=800&auto=format&fit=crop';
+    }
     return '';
   }
 

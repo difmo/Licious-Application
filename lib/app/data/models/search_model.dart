@@ -44,6 +44,7 @@ class SearchProduct {
   final String stockStatus;
   final String shopId;
   final String shopName;
+  final bool isShopActive;
 
   const SearchProduct({
     required this.id,
@@ -54,6 +55,7 @@ class SearchProduct {
     this.stockStatus = 'In Stock',
     required this.shopId,
     required this.shopName,
+    this.isShopActive = true,
   });
 
   bool get isAvailable => stockStatus == 'In Stock';
@@ -74,9 +76,12 @@ class SearchProduct {
     final shopData = json['shop'];
     String shopId = '';
     String shopName = '';
+    bool isShopActiveRetailer = true;
+
     if (shopData is Map<String, dynamic>) {
       shopId = (shopData['id'] ?? shopData['_id'] ?? '').toString();
       shopName = (shopData['name'] ?? '').toString();
+      isShopActiveRetailer = shopData['isShopActive'] ?? true;
     }
 
     // Resolve image from various possible fields
@@ -99,6 +104,7 @@ class SearchProduct {
       stockStatus: (json['stockStatus'] ?? 'In Stock').toString(),
       shopId: shopId,
       shopName: shopName,
+      isShopActive: isShopActiveRetailer,
     );
   }
 }

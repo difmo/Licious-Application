@@ -105,8 +105,8 @@ class _CategoryCard extends StatelessWidget {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) =>
-                CategoryItemsPage(categoryName: category.name, categoryId: category.id),
+            builder: (_) => CategoryItemsPage(
+                categoryName: category.name, categoryId: category.id),
           ),
         );
       },
@@ -114,14 +114,7 @@ class _CategoryCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha:  0.08),
-              blurRadius: 15,
-              spreadRadius: 0,
-              offset: const Offset(0, 6),
-            ),
-          ],
+          border: Border.all(color: Colors.grey.shade200),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -357,5 +350,3 @@ class _EmptyView extends StatelessWidget {
     );
   }
 }
-
-

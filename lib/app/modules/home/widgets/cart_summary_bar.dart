@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../data/services/db_service.dart';
-import '../../home/controller/main_controller.dart';
+import '../../cart/view/cart_page.dart';
 
 class CartSummaryBar extends StatelessWidget {
   final CartProvider cart;
@@ -18,12 +18,10 @@ class CartSummaryBar extends StatelessWidget {
 
     return GestureDetector(
       onTap: onTap ?? () {
-        // Default behavior: navigate to cart tab and pop current page if it's nested
-        final mainController = MainControllerScope.of(context);
-        mainController.changePage(2);
-        if (Navigator.canPop(context)) {
-          Navigator.popUntil(context, (route) => route.isFirst);
-        }
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const CartPage()),
+        );
       },
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),

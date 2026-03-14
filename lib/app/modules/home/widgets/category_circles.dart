@@ -33,7 +33,10 @@ class CategoryCircles extends StatelessWidget {
               ),
             ],
           ),
-        ).animate().fadeIn(duration: 400.ms).slideX(begin: -0.1, duration: 400.ms),
+        )
+            .animate()
+            .fadeIn(duration: 400.ms)
+            .slideX(begin: -0.1, duration: 400.ms),
         // Distributed Categories Row
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -59,7 +62,8 @@ class CategoryCircles extends StatelessWidget {
             width: 70,
             height: 70,
             decoration: BoxDecoration(
-              color: Color(category.colorValue),
+              color: Colors.white,
+              border: Border.all(color: Colors.grey.shade200),
               shape: BoxShape.circle,
             ),
             child: ClipOval(
@@ -82,6 +86,9 @@ class CategoryCircles extends StatelessWidget {
           ),
         ],
       ),
-    ).animate(delay: (50 * index).ms).scale(duration: 400.ms, curve: Curves.easeOutBack).fadeIn(duration: 400.ms);
+    )
+        .animate(delay: (50 * index).ms)
+        .scale(duration: 400.ms, curve: Curves.easeOutBack)
+        .fadeIn(duration: 400.ms);
   }
 }

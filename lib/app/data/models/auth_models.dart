@@ -4,6 +4,7 @@ class UserModel {
   final String email;
   final String phoneNumber;
   final String role;
+  final bool isShopActive;
 
   UserModel({
     required this.id,
@@ -11,6 +12,7 @@ class UserModel {
     required this.email,
     required this.phoneNumber,
     this.role = 'customer',
+    this.isShopActive = true,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -20,6 +22,7 @@ class UserModel {
       email: json['email'] ?? '',
       phoneNumber: json['phoneNumber'] ?? json['phone'] ?? '',
       role: json['role'] ?? 'customer',
+      isShopActive: json['isShopActive'] ?? json['isActive'] ?? true,
     );
   }
 
@@ -30,6 +33,7 @@ class UserModel {
       'email': email,
       'phoneNumber': phoneNumber,
       'role': role,
+      'isShopActive': isShopActive,
     };
   }
 }
