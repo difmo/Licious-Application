@@ -148,6 +148,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   // ── Google Sign-In action ────────────────────────────────────────────────
   Future<void> _handleGoogleSignIn() async {
     try {
+      debugPrint('[GOOGLE AUTH] Sign-in process started...');
       // Cancel any previous sign-in first to avoid stale data
       await _googleSignIn.signOut();
 
@@ -158,6 +159,18 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         return;
       }
 
+      // ── LOG GOOGLE SIGN-IN SUCCESS ──────────────────────────────────────────
+      debugPrint('');
+      debugPrint('╔══════════════════════════════════════════════════════════════╗');
+      debugPrint('║              GOOGLE SIGN-IN SUCCESS                          ║');
+      debugPrint('╟──────────────────────────────────────────────────────────────╢');
+      debugPrint('║  Name  : ${account.displayName?.padRight(44) ?? "N/A"}║');
+      debugPrint('║  Email : ${account.email.padRight(44)}║');
+      debugPrint('║  ID    : ${account.id.padRight(44)}║');
+      debugPrint('╚══════════════════════════════════════════════════════════════╝');
+      debugPrint('');
+      // ───────────────────────────────────────────────────────────────────────
+
       // Success! Navigate to the detail page (or perform backend sync)
       if (mounted) {
         Navigator.push(
@@ -167,7 +180,16 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           ),
         );
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('');
+      debugPrint('╔══════════════════════════════════════════════════════════════╗');
+      debugPrint('║              GOOGLE SIGN-IN FAILED                           ║');
+      debugPrint('╟──────────────────────────────────────────────────────────────╢');
+      debugPrint('║  Error: ${e.toString().padRight(52)}║');
+      debugPrint('╚══════════════════════════════════════════════════════════════╝');
+      debugPrint('Stacktrace: $stackTrace');
+      debugPrint('');
+
       if (mounted) {
         _showSnackBar(
           'Google Sign-In Failed: $e',
@@ -364,7 +386,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     child: OutlinedButton(
                       onPressed: _handleGoogleSignIn,
                       style: OutlinedButton.styleFrom(
-                        side: BorderSide(color: Colors.grey.shade200, width: 1.5),
+                        side:
+                            BorderSide(color: Colors.grey.shade200, width: 1.5),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),

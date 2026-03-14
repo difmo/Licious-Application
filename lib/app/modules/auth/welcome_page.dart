@@ -21,6 +21,18 @@ class WelcomePage extends StatelessWidget {
         return;
       }
 
+      // ── LOG GOOGLE SIGN-IN SUCCESS ──────────────────────────────────────────
+      debugPrint('');
+      debugPrint('╔══════════════════════════════════════════════════════════════╗');
+      debugPrint('║              GOOGLE SIGN-IN SUCCESS                          ║');
+      debugPrint('╟──────────────────────────────────────────────────────────────╢');
+      debugPrint('║  Name  : ${account.displayName?.padRight(44) ?? "N/A"}║');
+      debugPrint('║  Email : ${account.email.padRight(44)}║');
+      debugPrint('║  ID    : ${account.id.padRight(44)}║');
+      debugPrint('╚══════════════════════════════════════════════════════════════╝');
+      debugPrint('');
+      // ───────────────────────────────────────────────────────────────────────
+
       // Sign-in succeeded — navigate to the Google profile page
       if (context.mounted) {
         Navigator.push(
@@ -30,7 +42,16 @@ class WelcomePage extends StatelessWidget {
           ),
         );
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('');
+      debugPrint('╔══════════════════════════════════════════════════════════════╗');
+      debugPrint('║              GOOGLE SIGN-IN FAILED                           ║');
+      debugPrint('╟──────────────────────────────────────────────────────────────╢');
+      debugPrint('║  Error: ${e.toString().padRight(52)}║');
+      debugPrint('╚══════════════════════════════════════════════════════════════╝');
+      debugPrint('Stacktrace: $stackTrace');
+      debugPrint('');
+
       if (context.mounted) {
         _showErrorDialog(
           context,

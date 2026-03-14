@@ -19,6 +19,7 @@ class _SplashPageState extends ConsumerState<SplashPage>
   late Animation<double> _fadeAnim;
   late Animation<double> _scaleAnim;
   bool _navigated = false;
+  bool _minimumTimePassed = false;
 
   @override
   void initState() {
@@ -42,10 +43,11 @@ class _SplashPageState extends ConsumerState<SplashPage>
       ref.read(authProvider.notifier).init();
     });
 
-    // Enforce a minimum display time for the splash screen (e.g., 500ms)
+    // Enforce a minimum display time for the splash screen (3 seconds)
     // and then navigate based on current state.
-    Future.delayed(const Duration(milliseconds: 500), () {
-      if (!mounted || _navigated) return;
+    Future.delayed(const Duration(seconds: 3), () {
+      if (!mounted) return;
+      setState(() => _minimumTimePassed = true);
       _handleNavigation(ref.read(authProvider));
     });
   }
@@ -60,9 +62,9 @@ class _SplashPageState extends ConsumerState<SplashPage>
       _navigated = true;
       Navigator.pushReplacementNamed(context, AppRoutes.initialRoute);
     } else if (state is AuthSuccess) {
-      // Success state from registration or forgot password usually goes to welcome or login
+      // Success state from registration or forgot password usually goes to login
       _navigated = true;
-      Navigator.pushReplacementNamed(context, AppRoutes.welcome);
+      Navigator.pushReplacementNamed(context, AppRoutes.login);
     }
   }
 
@@ -97,15 +99,13 @@ class _SplashPageState extends ConsumerState<SplashPage>
       // If we already navigated or are still in a loading/initial state, wait
       if (_navigated) return;
 
-      // We only navigate automatically if the 2-second logo animation is likely visible
-      // but to be safe, we let the Future.delayed handle the first attempt,
-      // and this listener handle any concurrent or subsequent resolution.
+      // We only navigate automatically if the minimum display time has passed
       if (next is AuthAuthenticated ||
           next is AuthUnauthenticated ||
           next is AuthError) {
-        // Only navigate if the logo has had some time to shine
-        // If we want it even MORE direct (as user requested), we could skip the delay check
-        _handleNavigation(next);
+        if (_minimumTimePassed) {
+          _handleNavigation(next);
+        }
       }
     });
 

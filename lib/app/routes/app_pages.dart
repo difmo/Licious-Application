@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'app_routes.dart';
 import '../modules/splash/splash_page.dart';
 import '../modules/auth/deals_page.dart';
-import '../modules/auth/onboarding_page.dart';
-import '../modules/auth/welcome_page.dart';
+
+
 import '../modules/auth/login_page.dart';
 import '../modules/auth/register_page.dart';
 import '../modules/auth/forgot_password_page.dart';
@@ -27,9 +27,9 @@ import '../modules/home/view/search_page.dart';
 class AppPages {
   static Map<String, WidgetBuilder> get routes => {
         AppRoutes.splash: (context) => const SplashPage(),
-        AppRoutes.initialRoute: (context) => const OnboardingPage(),
+        AppRoutes.initialRoute: (context) => const LoginPage(),
         AppRoutes.deals: (context) => const DealsPage(),
-        AppRoutes.welcome: (context) => const WelcomePage(),
+        AppRoutes.welcome: (context) => const LoginPage(),
         AppRoutes.login: (context) => const LoginPage(),
         AppRoutes.signup: (context) => const RegisterPage(),
         AppRoutes.forgotPassword: (context) => const ForgotPasswordPage(),

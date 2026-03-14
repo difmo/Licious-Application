@@ -56,11 +56,11 @@ class _OnboardingPageState extends State<OnboardingPage> {
         curve: Curves.easeInOut,
       );
     } else {
-      Navigator.pushReplacementNamed(context, AppRoutes.welcome);
+      Navigator.pushReplacementNamed(context, AppRoutes.login);
     }
   }
 
-  void _skip() => Navigator.pushReplacementNamed(context, AppRoutes.welcome);
+  void _skip() => Navigator.pushReplacementNamed(context, AppRoutes.login);
 
   // ---------- build ----------
   @override

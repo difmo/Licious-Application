@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'home_page.dart';
 import '../../cart/view/cart_page.dart';
 import '../../profile/view/profile_page.dart';
@@ -17,6 +18,7 @@ class MainPage extends StatefulWidget {
 
 class _MainPageState extends State<MainPage> {
   final MainController _controller = MainController();
+  DateTime? _lastPressedAt;
 
   final List<Widget> _pages = [
     const HomePage(),
@@ -52,27 +54,61 @@ class _MainPageState extends State<MainPage> {
 
     return MainControllerScope(
       controller: _controller,
-      child: Scaffold(
-        backgroundColor: const Color(0xFFEBFFD7),
-        extendBody: true,
-        body: Stack(
-          children: [
-            Positioned.fill(
-              child: IndexedStack(
-                index: _controller.currentIndex,
-                children: _pages,
+      child: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (bool didPop, Object? result) async {
+          if (didPop) return;
+
+          if (_controller.currentIndex != 0) {
+            _controller.changePage(0);
+            return;
+          }
+
+          final now = DateTime.now();
+          if (_lastPressedAt == null ||
+              now.difference(_lastPressedAt!) > const Duration(seconds: 2)) {
+            _lastPressedAt = now;
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Press back again to exit the app.',
+                  style: TextStyle(color: Colors.white, fontSize: 13),
+                ),
+                backgroundColor: Color(0xFF114F3B),
+                duration: Duration(seconds: 2),
+                behavior: SnackBarBehavior.floating,
+                margin: EdgeInsets.all(20),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(10)),
+                ),
               ),
-            ),
-            if (showSummary)
-              Positioned(
-                bottom: 110, // Just above the custom bottom bar (height ~100)
-                left: 0,
-                right: 0,
-                child: CartSummaryBar(cart: cart),
+            );
+            return;
+          }
+          SystemNavigator.pop();
+        },
+        child: Scaffold(
+          backgroundColor: const Color(0xFFEBFFD7),
+          extendBody: true,
+          body: Stack(
+            children: [
+              Positioned.fill(
+                child: IndexedStack(
+                  index: _controller.currentIndex,
+                  children: _pages,
+                ),
               ),
-          ],
+              if (showSummary)
+                Positioned(
+                  bottom: 110, // Just above the custom bottom bar (height ~100)
+                  left: 0,
+                  right: 0,
+                  child: CartSummaryBar(cart: cart),
+                ),
+            ],
+          ),
+          bottomNavigationBar: _buildCustomBottomBar(),
         ),
-        bottomNavigationBar: _buildCustomBottomBar(),
       ),
     );
   }

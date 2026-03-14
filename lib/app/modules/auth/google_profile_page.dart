@@ -207,11 +207,14 @@ class _GoogleProfilePageState extends State<GoogleProfilePage> {
                     width: double.infinity,
                     height: 54,
                     child: ElevatedButton(
-                      onPressed: () => Navigator.pushNamedAndRemoveUntil(
-                        context,
-                        '/home',
-                        (r) => false,
-                      ),
+                      onPressed: () {
+                        debugPrint('[GOOGLE AUTH] User proceeding from Profile to Home Page: ${account.email}');
+                        Navigator.pushNamedAndRemoveUntil(
+                          context,
+                          '/home',
+                          (r) => false,
+                        );
+                      },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF2E7D32),
                         foregroundColor: Colors.white,
