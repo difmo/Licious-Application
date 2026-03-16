@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
@@ -41,14 +42,14 @@ class SocketService {
     final apiBaseUrl = dotenv.maybeGet('API_BASE_URL') ?? '';
 
     // 1. Poke Render (both API and Socket URLs) to wake up
-    await _wakeUpRender(baseUrl);
+    unawaited(_wakeUpRender(baseUrl));
     if (apiBaseUrl.isNotEmpty) {
-      await _wakeUpRender(apiBaseUrl);
+      unawaited(_wakeUpRender(apiBaseUrl));
     }
 
-    // Give the server a 5-second head start to boot up
-    debugPrint('⏳ Giving Render 5s head start to boot...');
-    await Future.delayed(const Duration(seconds: 5));
+    // Give the server more time to boot up if it's cold
+    debugPrint('⏳ Giving Render 12s head start to boot...');
+    await Future.delayed(const Duration(seconds: 12));
 
     _socket?.disconnect();
     _socket?.dispose();
@@ -64,11 +65,12 @@ class SocketService {
         'autoConnect': true,
         'extraHeaders': headers,
         'reconnection': true,
-        'reconnectionAttempts': 15,
-        'reconnectionDelay': 5000,
-        'timeout': 120000, // 2 minutes timeout for slow cold starts
+        'reconnectionAttempts': 30, // Increase for very slow cold starts
+        'reconnectionDelay': 8000,
+        'timeout': 180000, // 3 minutes timeout
       },
     );
+
 
     _socket!.onConnect((_) {
       debugPrint('✅ SocketService connected');

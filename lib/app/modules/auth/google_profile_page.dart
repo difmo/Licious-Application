@@ -1,17 +1,68 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'provider/auth_provider.dart';
+import '../../routes/app_routes.dart';
+import 'dart:async';
 
-class GoogleProfilePage extends StatefulWidget {
+class GoogleProfilePage extends ConsumerStatefulWidget {
   final GoogleSignInAccount account;
   const GoogleProfilePage({super.key, required this.account});
 
   @override
-  State<GoogleProfilePage> createState() => _GoogleProfilePageState();
+  ConsumerState<GoogleProfilePage> createState() => _GoogleProfilePageState();
 }
 
-class _GoogleProfilePageState extends State<GoogleProfilePage> {
+class _GoogleProfilePageState extends ConsumerState<GoogleProfilePage> {
   bool _notificationsEnabled = true;
   bool _darkModeEnabled = false;
+  bool _isAuthenticating = false;
+
+  void _showSnackBar(String message, {Color color = Colors.black87}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: color,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  Future<void> _proceedToApp() async {
+    setState(() => _isAuthenticating = true);
+    try {
+      final auth = await widget.account.authentication;
+      final idToken = auth.idToken;
+
+      if (idToken == null) {
+        _showSnackBar('Could not retrieve ID token from Google', color: Colors.red);
+        setState(() => _isAuthenticating = false);
+        return;
+      }
+
+      await ref.read(authProvider.notifier).googleAuth(idToken: idToken);
+
+      if (!mounted) return;
+      final authState = ref.read(authProvider);
+
+      if (authState is AuthAuthenticated) {
+        _showSnackBar('Successfully signed in!', color: Colors.green);
+        if (authState.user.role == 'rider') {
+          Navigator.pushNamedAndRemoveUntil(context, AppRoutes.riderHome, (r) => false);
+        } else {
+          Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (r) => false);
+        }
+      } else if (authState is AuthError) {
+        _showSnackBar(authState.message, color: Colors.red);
+        ref.read(authProvider.notifier).reset();
+      }
+    } catch (e) {
+      _showSnackBar('Authentication failed: $e', color: Colors.red);
+    } finally {
+      if (mounted) setState(() => _isAuthenticating = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -73,13 +124,13 @@ class _GoogleProfilePageState extends State<GoogleProfilePage> {
                                   fit: BoxFit.cover,
                                   errorBuilder: (context, error, stackTrace) =>
                                       Text(
-                                        initials,
-                                        style: const TextStyle(
-                                          fontSize: 32,
-                                          fontWeight: FontWeight.bold,
-                                          color: Color(0xFF2E7D32),
-                                        ),
-                                      ),
+                                    initials,
+                                    style: const TextStyle(
+                                      fontSize: 32,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF2E7D32),
+                                    ),
+                                  ),
                                 ),
                               )
                             : Text(
@@ -104,7 +155,7 @@ class _GoogleProfilePageState extends State<GoogleProfilePage> {
                       Text(
                         account.email,
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha:  0.85),
+                          color: Colors.white.withValues(alpha: 0.85),
                           fontSize: 14,
                         ),
                       ),
@@ -207,14 +258,7 @@ class _GoogleProfilePageState extends State<GoogleProfilePage> {
                     width: double.infinity,
                     height: 54,
                     child: ElevatedButton(
-                      onPressed: () {
-                        debugPrint('[GOOGLE AUTH] User proceeding from Profile to Home Page: ${account.email}');
-                        Navigator.pushNamedAndRemoveUntil(
-                          context,
-                          '/home',
-                          (r) => false,
-                        );
-                      },
+                      onPressed: _isAuthenticating ? null : _proceedToApp,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF2E7D32),
                         foregroundColor: Colors.white,
@@ -223,13 +267,22 @@ class _GoogleProfilePageState extends State<GoogleProfilePage> {
                           borderRadius: BorderRadius.circular(14),
                         ),
                       ),
-                      child: const Text(
-                        'Continue to App',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
+                      child: _isAuthenticating
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Text(
+                              'Continue to App',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -279,7 +332,7 @@ class _SectionCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(14),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha:  0.3),
+                color: Colors.black.withValues(alpha: 0.3),
                 blurRadius: 15,
                 spreadRadius: 0,
                 offset: const Offset(0, 8),
@@ -402,7 +455,7 @@ class _ActionTile extends StatelessWidget {
         width: 36,
         height: 36,
         decoration: BoxDecoration(
-          color: color.withValues(alpha:  0.12),
+          color: color.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(icon, color: color, size: 20),
@@ -415,5 +468,3 @@ class _ActionTile extends StatelessWidget {
     );
   }
 }
-
-

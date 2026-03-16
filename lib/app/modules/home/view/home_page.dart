@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../data/services/db_service.dart';
 import '../widgets/home_header.dart';
-import '../widgets/category_circles.dart';
 import '../widgets/home_banner.dart';
 import '../widgets/restaurant_list_section.dart';
-import '../../categories/view/category_items_page.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../provider/shop_provider.dart';
@@ -15,9 +13,6 @@ class HomePage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final cart = CartProviderScope.of(context);
-    final categories = cart.foodCategories;
-
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.white,
@@ -42,29 +37,12 @@ class HomePage extends ConsumerWidget {
                 // Header: Location & Search
                 const SliverToBoxAdapter(child: HomeHeader()),
 
-                // Categories
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(vertical: 2),
-                  sliver: SliverToBoxAdapter(
-                    child: CategoryCircles(
-                      categories: categories,
-                      onCategorySelected: (name) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                CategoryItemsPage(categoryName: name),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
                 // Banner (Horizontal Scrolling Carousel)
                 const SliverToBoxAdapter(child: HomeBanner()),
 
-                const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                const SliverToBoxAdapter(child: SizedBox(height: 8)),
 
                 // Restaurants Section
                 const SliverToBoxAdapter(child: RestaurantListSection()),
@@ -131,7 +109,7 @@ class _AnimatedFooterTextState extends State<AnimatedFooterText>
         );
       },
       child: const Padding(
-        padding: EdgeInsets.symmetric(vertical: 1),
+        padding: EdgeInsets.symmetric(vertical: 0),
         child: Text(
           'With love,\nfrom Shrimp.',
           textAlign: TextAlign.center,

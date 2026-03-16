@@ -35,7 +35,7 @@ class _HomeHeaderState extends State<HomeHeader> {
                         Text(
                           'Vibhav Khand -4',
                           style: TextStyle(
-                            fontSize: 10.6,
+                            fontSize: 14.6,
                             fontWeight: FontWeight.bold,
                             color: Color(0xFF1A1A1A),
                           ),
@@ -45,7 +45,7 @@ class _HomeHeaderState extends State<HomeHeader> {
                     ),
                     Text(
                       'Vibhav Khand, Gomti Nagar, L...',
-                      style: TextStyle(fontSize: 8.2, color: Colors.grey),
+                      style: TextStyle(fontSize: 10.2, color: Colors.grey),
                     ),
                   ],
                 ),
@@ -62,10 +62,10 @@ class _HomeHeaderState extends State<HomeHeader> {
                   tag: 'profile_pic',
                   child: CircleAvatar(
                     radius: 18,
-                    backgroundColor: const Color(0xFFE54141),
+                    backgroundColor: Colors.green.shade200,
                     child: const Icon(
                       Icons.person,
-                      color: Colors.white,
+                      color: Color(0xFFE54141),
                       size: 20,
                     ),
                   ),

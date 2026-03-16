@@ -32,7 +32,8 @@ class _RiderStats {
 }
 
 final riderStatsProvider = FutureProvider.autoDispose<_RiderStats>((ref) async {
-  final result = await ref.read(riderServiceProvider).getEarnings();
+  final riderService = ref.read(riderServiceProvider);
+  final result = await riderService.getEarnings();
 
   // Unwrap: { success: true, data: {...} } OR flat map
   Map<String, dynamic> data;
@@ -67,32 +68,56 @@ final riderStatsProvider = FutureProvider.autoDispose<_RiderStats>((ref) async {
     return 0;
   }
 
+  int orders = parseInt([
+    'deliveries',
+    'totalDeliveries',
+    'total_deliveries',
+    'deliveryCount',
+    'orders',
+    'totalOrders',
+    'total_orders',
+    'totalOrder',
+    'total_order',
+  ]);
+
+  double earnings = parseNum([
+    'weekly',
+    'weeklyEarnings',
+    'weekly_earnings',
+    'earnings',
+    'walletBalance',
+    'balance',
+    'totalEarnings',
+    'total_earnings',
+    'totalEarning',
+    'total_earning',
+    'totalEarninag',
+  ]);
+
+  double rating = parseNum(['rating', 'avgRating', 'avg_rating', 'riderRating']);
+
+  // ── Fallback Calculation from History ──────────────────────────────────────
+  // If backend returns zeros (common with cold starts or unlinked tables),
+  // we try to calculate them from the delivery history.
+  if (orders == 0 && earnings == 0) {
+    try {
+      final history = await riderService.getDeliveryHistory();
+      if (history.isNotEmpty) {
+        orders = history.length;
+        earnings = 0.0;
+        for (final item in history) {
+          earnings += (item['commission'] ?? item['earnings'] ?? 30.0);
+        }
+      }
+    } catch (_) {
+      // ignore
+    }
+  }
+
   return _RiderStats(
-    orders: parseInt([
-      'deliveries',
-      'totalDeliveries',
-      'total_deliveries',
-      'deliveryCount',
-      'orders',
-      'totalOrders',
-      'total_orders',
-      'totalOrder',
-      'total_order',
-    ]),
-    rating: parseNum(['rating', 'avgRating', 'avg_rating', 'riderRating']),
-    earnings: parseNum([
-      'weekly',
-      'weeklyEarnings',
-      'weekly_earnings',
-      'earnings',
-      'walletBalance',
-      'balance',
-      'totalEarnings',
-      'total_earnings',
-      'totalEarning',
-      'total_earning',
-      'totalEarninag',
-    ]),
+    orders: orders,
+    rating: rating,
+    earnings: earnings,
   );
 });
 
@@ -114,6 +139,7 @@ final riderStatusProvider =
 
 class _RiderHomePageState extends ConsumerState<RiderHomePage> {
   bool _isTogglingStatus = false;
+  final Set<String> _processingIds = {};
 
   bool get _isOnline => ref.watch(riderStatusProvider);
   set _isOnline(bool value) =>
@@ -372,36 +398,71 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
   */
 
   Future<void> _handleResponse(String orderId, String response) async {
-    final riderService = ref.read(riderServiceProvider);
-    final result =
-        await riderService.respondToOrder(orderId: orderId, response: response);
+    if (_processingIds.contains(orderId)) return;
+    setState(() => _processingIds.add(orderId));
 
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result['message'] ?? 'Action successful'),
-          backgroundColor:
-              result['success'] ? AppColors.accentGreen : Colors.red,
+    try {
+      final riderService = ref.read(riderServiceProvider);
+      final result = await riderService.respondToOrder(
+          orderId: orderId, response: response);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? 'Action successful'),
+            backgroundColor:
+                result['success'] ? AppColors.accentGreen : Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+        if (result['success']) {
+          ref.invalidate(riderOrdersProvider);
+        }
+      }
+    } finally {
+      if (mounted) setState(() => _processingIds.remove(orderId));
+    }
+  }
+
+  Future<void> _markOutForDelivery(String orderId) async {
+    if (_processingIds.contains(orderId)) return;
+    setState(() => _processingIds.add(orderId));
+
+    try {
+      final result = await ref.read(riderServiceProvider).updateDeliveryStatus(
+            orderId: orderId,
+            status: 'Out for Delivery',
+          );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(result['message'] ?? '🚚 Out for Delivery!'),
+          backgroundColor: AppColors.accentGreen,
           behavior: SnackBarBehavior.floating,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-      );
-      if (result['success']) {
+        ));
         ref.invalidate(riderOrdersProvider);
       }
+    } finally {
+      if (mounted) setState(() => _processingIds.remove(orderId));
     }
   }
 
   Future<void> _markDelivered(String orderId) async {
-    final riderService = ref.read(riderServiceProvider);
-    final result = await riderService.markAsDelivered(orderId: orderId);
+    if (_processingIds.contains(orderId)) return;
+    setState(() => _processingIds.add(orderId));
 
-    if (mounted) {
-      final isSuccess = result['success'] != false;
-      ScaffoldMessenger.of(context).clearSnackBars();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+    try {
+      final riderService = ref.read(riderServiceProvider);
+      final result = await riderService.markAsDelivered(orderId: orderId);
+
+      if (mounted) {
+        final isSuccess = result['success'] != false;
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
           content: Row(
             children: [
               Icon(
@@ -432,6 +493,9 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
         ref.invalidate(deliveryHistoryProvider);
       }
     }
+    } finally {
+      if (mounted) setState(() => _processingIds.remove(orderId));
+    }
   }
 
   @override
@@ -457,13 +521,7 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
         centerTitle: true,
         iconTheme: const IconThemeData(color: Color(0xFF1A1A1A)),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            onPressed: () {
-              ref.invalidate(riderOrdersProvider);
-              ref.invalidate(riderStatsProvider);
-            },
-          ),
+
           IconButton(
             icon: const Icon(Icons.logout_rounded),
             onPressed: () async {
@@ -781,6 +839,7 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
     final isAccepted = assignmentStatus == 'Accepted';
     final isDelivered =
         orderStatus == 'delivered' || orderStatus == 'completed';
+    final bool isProcessing = _processingIds.contains(order['orderId']);
 
     return GestureDetector(
       onTap: () => Navigator.push(
@@ -956,10 +1015,13 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
                   children: [
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: () =>
-                            _handleResponse(order['orderId'], 'Accepted'),
+                        onPressed: isProcessing
+                            ? null
+                            : () =>
+                                _handleResponse(order['orderId'], 'Accepted'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF68B92E),
+                          backgroundColor:
+                              isProcessing ? Colors.grey : const Color(0xFF68B92E),
                           foregroundColor: Colors.white,
                           elevation: 0,
                           shape: RoundedRectangleBorder(
@@ -973,11 +1035,14 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: OutlinedButton(
-                        onPressed: () =>
-                            _handleResponse(order['orderId'], 'Rejected'),
+                        onPressed: isProcessing
+                            ? null
+                            : () =>
+                                _handleResponse(order['orderId'], 'Rejected'),
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.red,
-                          side: const BorderSide(color: Colors.red),
+                          foregroundColor: isProcessing ? Colors.grey : Colors.red,
+                          side: BorderSide(
+                              color: isProcessing ? Colors.grey : Colors.red),
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12)),
                           padding: const EdgeInsets.symmetric(vertical: 12),
@@ -996,25 +1061,9 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
                     // Left: Out for Delivery
                     Expanded(
                       child: OutlinedButton.icon(
-                        onPressed: () async {
-                          final result = await ref
-                              .read(riderServiceProvider)
-                              .updateDeliveryStatus(
-                                orderId: order['orderId'],
-                                status: 'Out for Delivery',
-                              );
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                              content: Text(
-                                  result['message'] ?? '🚚 Out for Delivery!'),
-                              backgroundColor: AppColors.accentGreen,
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10)),
-                            ));
-                            ref.invalidate(riderOrdersProvider);
-                          }
-                        },
+                        onPressed: isProcessing
+                            ? null
+                            : () => _markOutForDelivery(order['orderId']),
                         icon:
                             const Icon(Icons.delivery_dining_rounded, size: 16),
                         label: const Text('Out for\nDelivery',
@@ -1022,8 +1071,13 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
                             style: TextStyle(
                                 fontSize: 11, fontWeight: FontWeight.bold)),
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.accentGreen,
-                          side: BorderSide(color: AppColors.accentGreen),
+                          foregroundColor: isProcessing
+                              ? Colors.grey
+                              : AppColors.accentGreen,
+                          side: BorderSide(
+                              color: isProcessing
+                                  ? Colors.grey
+                                  : AppColors.accentGreen),
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12)),
                           padding: const EdgeInsets.symmetric(vertical: 12),
@@ -1034,14 +1088,17 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
                     // Right: Mark as Delivered
                     Expanded(
                       child: ElevatedButton.icon(
-                        onPressed: () => _markDelivered(order['orderId']),
+                        onPressed: isProcessing
+                            ? null
+                            : () => _markDelivered(order['orderId']),
                         icon: const Icon(Icons.check_circle_rounded, size: 16),
                         label: const Text('Mark as\nDelivered',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                                 fontSize: 11, fontWeight: FontWeight.bold)),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF68B92E),
+                          backgroundColor:
+                              isProcessing ? Colors.grey : const Color(0xFF68B92E),
                           foregroundColor: Colors.white,
                           elevation: 0,
                           shape: RoundedRectangleBorder(
