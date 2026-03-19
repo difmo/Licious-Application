@@ -27,13 +27,20 @@ class PaymentService {
   }) async {
     try {
       // 1. Create order on backend
+      print("Starting openCheckout... amount is $amount");
+      print("Contact: '$contact', Email: '$email'");
+
       final orderResponse = await _apiClient.post(
         '${ApiClient.paymentBaseUrl}/create-order',
         data: {'amount': amount},
         requiresAuth: true,
       );
 
+      print("orderResponse type: ${orderResponse.runtimeType}");
+      print("orderResponse data: $orderResponse");
+
       final orderId = orderResponse['order']['id'];
+      print("Extracted orderId: $orderId");
 
       // 2. Open Razorpay Checkout
       var options = {
@@ -48,8 +55,14 @@ class PaymentService {
         }
       };
 
+      print("Opening Razorpay with options: $options");
       _razorpay.open(options);
-    } catch (e) {
+      print("Razorpay open() called successfully.");
+    } catch (e, stacktrace) {
+      print("=====================================");
+      print("ERROR IN PAYMENT SERVICE: ${e.toString()}");
+      print("STACKTRACE: $stacktrace");
+      print("=====================================");
       rethrow;
     }
   }

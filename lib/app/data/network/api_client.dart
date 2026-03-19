@@ -34,15 +34,15 @@ final apiClientProvider = Provider<ApiClient>((ref) {
   final storage = ref.watch(storageServiceProvider);
   dio.interceptors.addAll([
     AuthInterceptor(dio, storage),
-    PrettyDioLogger(
-      requestHeader: true,
-      requestBody: true,
-      responseBody: true,
-      responseHeader: false,
-      error: true,
-      compact: true,
-      maxWidth: 90,
-    ),
+    // PrettyDioLogger(
+    //   requestHeader: true,
+    //   requestBody: true,
+    //   responseBody: true,
+    //   responseHeader: false,
+    //   error: true,
+    //   compact: true,
+    //   maxWidth: 90,
+    // ),
   ]);
 
   return ApiClient(dio);
@@ -178,8 +178,7 @@ class ApiClient {
           message = data;
         }
       }
-      return ApiException(
-          statusCode: e.response?.statusCode, message: message);
+      return ApiException(statusCode: e.response?.statusCode, message: message);
     }
     return ApiException(message: e.message ?? 'Network error');
   }
