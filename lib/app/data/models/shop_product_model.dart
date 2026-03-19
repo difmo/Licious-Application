@@ -60,6 +60,9 @@ class ShopProduct {
     if (lower.contains('fish')) {
       return 'https://images.unsplash.com/photo-1551098134-8025287f3299?q=80&w=800&auto=format&fit=crop';
     }
+    if (lower.contains('squid') || lower.contains('ring')) {
+      return 'https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?q=80&w=800&auto=format&fit=crop';
+    }
     return '';
   }
 
@@ -125,6 +128,28 @@ class ShopModel {
     this.deliveryTime = '30-45 mins',
     this.isShopActive = true,
   });
+
+  ShopModel copyWith({
+    String? id,
+    String? name,
+    String? businessName,
+    String? image,
+    String? location,
+    double? rating,
+    String? deliveryTime,
+    bool? isShopActive,
+  }) {
+    return ShopModel(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      businessName: businessName ?? this.businessName,
+      image: image ?? this.image,
+      location: location ?? this.location,
+      rating: rating ?? this.rating,
+      deliveryTime: deliveryTime ?? this.deliveryTime,
+      isShopActive: isShopActive ?? this.isShopActive,
+    );
+  }
 
   factory ShopModel.fromJson(Map<String, dynamic> json) {
     return ShopModel(

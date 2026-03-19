@@ -32,7 +32,8 @@ class _RiderStats {
 }
 
 final riderStatsProvider = FutureProvider.autoDispose<_RiderStats>((ref) async {
-  final result = await ref.read(riderServiceProvider).getEarnings();
+  final riderService = ref.read(riderServiceProvider);
+  final result = await riderService.getEarnings();
 
   // Unwrap: { success: true, data: {...} } OR flat map
   Map<String, dynamic> data;
@@ -67,32 +68,56 @@ final riderStatsProvider = FutureProvider.autoDispose<_RiderStats>((ref) async {
     return 0;
   }
 
+  int orders = parseInt([
+    'deliveries',
+    'totalDeliveries',
+    'total_deliveries',
+    'deliveryCount',
+    'orders',
+    'totalOrders',
+    'total_orders',
+    'totalOrder',
+    'total_order',
+  ]);
+
+  double earnings = parseNum([
+    'weekly',
+    'weeklyEarnings',
+    'weekly_earnings',
+    'earnings',
+    'walletBalance',
+    'balance',
+    'totalEarnings',
+    'total_earnings',
+    'totalEarning',
+    'total_earning',
+    'totalEarninag',
+  ]);
+
+  double rating = parseNum(['rating', 'avgRating', 'avg_rating', 'riderRating']);
+
+  // ── Fallback Calculation from History ──────────────────────────────────────
+  // If backend returns zeros (common with cold starts or unlinked tables),
+  // we try to calculate them from the delivery history.
+  if (orders == 0 && earnings == 0) {
+    try {
+      final history = await riderService.getDeliveryHistory();
+      if (history.isNotEmpty) {
+        orders = history.length;
+        earnings = 0.0;
+        for (final item in history) {
+          earnings += (item['commission'] ?? item['earnings'] ?? 30.0);
+        }
+      }
+    } catch (_) {
+      // ignore
+    }
+  }
+
   return _RiderStats(
-    orders: parseInt([
-      'deliveries',
-      'totalDeliveries',
-      'total_deliveries',
-      'deliveryCount',
-      'orders',
-      'totalOrders',
-      'total_orders',
-      'totalOrder',
-      'total_order',
-    ]),
-    rating: parseNum(['rating', 'avgRating', 'avg_rating', 'riderRating']),
-    earnings: parseNum([
-      'weekly',
-      'weeklyEarnings',
-      'weekly_earnings',
-      'earnings',
-      'walletBalance',
-      'balance',
-      'totalEarnings',
-      'total_earnings',
-      'totalEarning',
-      'total_earning',
-      'totalEarninag',
-    ]),
+    orders: orders,
+    rating: rating,
+    earnings: earnings,
   );
 });
 
@@ -103,9 +128,22 @@ class RiderHomePage extends ConsumerStatefulWidget {
   ConsumerState<RiderHomePage> createState() => _RiderHomePageState();
 }
 
+class RiderStatusNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+  void toggle(bool value) => state = value;
+}
+
+final riderStatusProvider =
+    NotifierProvider<RiderStatusNotifier, bool>(RiderStatusNotifier.new);
+
 class _RiderHomePageState extends ConsumerState<RiderHomePage> {
-  bool _isOnline = false;
   bool _isTogglingStatus = false;
+  final Set<String> _processingIds = {};
+
+  bool get _isOnline => ref.watch(riderStatusProvider);
+  set _isOnline(bool value) =>
+      ref.read(riderStatusProvider.notifier).toggle(value);
 
   @override
   void initState() {
@@ -136,19 +174,42 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
     // 🔄 Any order status changed (accept/pickup/deliver)
     socket.onOrderUpdate((data) {
       if (!mounted) return;
+
+      // Handle "Rider Assigned" specifically as a new task alert
+      if (data is Map &&
+          (data['status'] == 'Rider Assigned' ||
+              data['status'] == 'Rider_Assigned')) {
+        _showNewOrderBanner(data['data'] ?? data);
+      }
+
       ref.invalidate(riderOrdersProvider);
+      ref.invalidate(riderStatsProvider);
     });
   }
 
   void _showNewOrderBanner(dynamic data) {
-    final orderId = data?['orderId']?.toString() ?? '';
+    if (data == null) return;
+
+    // Support flat payload or nested { order: {...} }
+    final order = (data is Map && data['order'] is Map) ? data['order'] : data;
+
+    final orderId = order?['orderId']?.toString() ??
+        order?['id']?.toString() ??
+        order?['_id']?.toString() ??
+        '';
     final shortId = orderId.length >= 6
         ? orderId.substring(orderId.length - 6).toUpperCase()
         : orderId.toUpperCase();
-    final customer = data?['customerName']?.toString() ?? 'A customer';
-    final address = (data?['deliveryAddress'] is Map)
-        ? data['deliveryAddress']['address']?.toString() ?? ''
-        : data?['deliveryAddress']?.toString() ?? '';
+
+    final customer = order?['customerName']?.toString() ??
+        order?['customer']?['fullName']?.toString() ??
+        order?['user']?['fullName']?.toString() ??
+        'New Customer';
+
+    final addressRaw = order?['deliveryAddress'] ?? order?['address'];
+    final address = (addressRaw is Map)
+        ? addressRaw['address']?.toString() ?? ''
+        : addressRaw?.toString() ?? '';
 
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
@@ -168,6 +229,11 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
   @override
   void dispose() {
     final socket = ref.read(socketServiceProvider);
+    final authState = ref.read(authProvider);
+    if (authState is AuthAuthenticated) {
+      socket.leaveRiderRoom(authState.user.id);
+      socket.leaveUserRoom(authState.user.id);
+    }
     socket.offNewOrderAssigned();
     socket.offOrderUpdate();
     super.dispose();
@@ -217,6 +283,15 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
         if (mounted) {
           setState(() => _isOnline = true);
           _showSnack('You are now ONLINE ✅');
+
+          // Explicitly join rooms again on manual toggle to be safe
+          final authState = ref.read(authProvider);
+          if (authState is AuthAuthenticated) {
+            final socket = ref.read(socketServiceProvider);
+            socket.joinRiderRoom(authState.user.id);
+            socket.joinUserRoom(authState.user.id);
+          }
+
           ref.invalidate(riderOrdersProvider);
           ref.invalidate(riderStatsProvider);
         }
@@ -323,36 +398,71 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
   */
 
   Future<void> _handleResponse(String orderId, String response) async {
-    final riderService = ref.read(riderServiceProvider);
-    final result =
-        await riderService.respondToOrder(orderId: orderId, response: response);
+    if (_processingIds.contains(orderId)) return;
+    setState(() => _processingIds.add(orderId));
 
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result['message'] ?? 'Action successful'),
-          backgroundColor:
-              result['success'] ? AppColors.accentGreen : Colors.red,
+    try {
+      final riderService = ref.read(riderServiceProvider);
+      final result = await riderService.respondToOrder(
+          orderId: orderId, response: response);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? 'Action successful'),
+            backgroundColor:
+                result['success'] ? AppColors.accentGreen : Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+        if (result['success']) {
+          ref.invalidate(riderOrdersProvider);
+        }
+      }
+    } finally {
+      if (mounted) setState(() => _processingIds.remove(orderId));
+    }
+  }
+
+  Future<void> _markOutForDelivery(String orderId) async {
+    if (_processingIds.contains(orderId)) return;
+    setState(() => _processingIds.add(orderId));
+
+    try {
+      final result = await ref.read(riderServiceProvider).updateDeliveryStatus(
+            orderId: orderId,
+            status: 'Out for Delivery',
+          );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(result['message'] ?? '🚚 Out for Delivery!'),
+          backgroundColor: AppColors.accentGreen,
           behavior: SnackBarBehavior.floating,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-      );
-      if (result['success']) {
+        ));
         ref.invalidate(riderOrdersProvider);
       }
+    } finally {
+      if (mounted) setState(() => _processingIds.remove(orderId));
     }
   }
 
   Future<void> _markDelivered(String orderId) async {
-    final riderService = ref.read(riderServiceProvider);
-    final result = await riderService.markAsDelivered(orderId: orderId);
+    if (_processingIds.contains(orderId)) return;
+    setState(() => _processingIds.add(orderId));
 
-    if (mounted) {
-      final isSuccess = result['success'] != false;
-      ScaffoldMessenger.of(context).clearSnackBars();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+    try {
+      final riderService = ref.read(riderServiceProvider);
+      final result = await riderService.markAsDelivered(orderId: orderId);
+
+      if (mounted) {
+        final isSuccess = result['success'] != false;
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
           content: Row(
             children: [
               Icon(
@@ -383,6 +493,9 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
         ref.invalidate(deliveryHistoryProvider);
       }
     }
+    } finally {
+      if (mounted) setState(() => _processingIds.remove(orderId));
+    }
   }
 
   @override
@@ -408,13 +521,7 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
         centerTitle: true,
         iconTheme: const IconThemeData(color: Color(0xFF1A1A1A)),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            onPressed: () {
-              ref.invalidate(riderOrdersProvider);
-              ref.invalidate(riderStatsProvider);
-            },
-          ),
+
           IconButton(
             icon: const Icon(Icons.logout_rounded),
             onPressed: () async {
@@ -562,7 +669,8 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
                           error: (_, __) => Row(
                             mainAxisAlignment: MainAxisAlignment.spaceAround,
                             children: [
-                              _buildStat('Total Orders', '—', Icons.delivery_dining),
+                              _buildStat(
+                                  'Total Orders', '—', Icons.delivery_dining),
                               _buildStat('Rating', '—', Icons.star_rounded),
                               _buildStat('Total Earnings', '₹—',
                                   Icons.account_balance_wallet_rounded),
@@ -592,65 +700,111 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
                 ),
               ),
 
-              const SizedBox(height: 4),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Assigned Tasks',
-                      style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF1B2D1F)),
-                    ),
-                    if (_isOnline)
+              if (!_isOnline)
+                _buildOfflineState()
+              else ...[
+                const SizedBox(height: 4),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Assigned Tasks',
+                        style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF1B2D1F)),
+                      ),
                       Text(
                         'Live Tracking Active',
                         style: TextStyle(
                             fontSize: 12,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w700,
                             color: AppColors.accentGreen),
                       )
                           .animate(onPlay: (controller) => controller.repeat())
-                          .fadeIn(duration: 1.seconds)
-                          .fadeOut(delay: 1.seconds),
-                  ],
+                          .shimmer(
+                              duration: 2.seconds,
+                              color: Colors.white.withValues(alpha: 0.5))
+                          .scale(
+                              begin: const Offset(1, 1),
+                              end: const Offset(1.05, 1.05),
+                              duration: 1.seconds,
+                              curve: Curves.easeInOut)
+                          .then()
+                          .scale(
+                              begin: const Offset(1.05, 1.05),
+                              end: const Offset(1, 1),
+                              duration: 1.seconds,
+                              curve: Curves.easeInOut),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
-
-              ordersAsync.when(
-                data: (orders) {
-                  if (orders.isEmpty) {
-                    return _buildEmptyState();
-                  }
-                  return ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    itemCount: orders.length,
-                    itemBuilder: (context, index) {
-                      final order = orders[index];
-                      return _buildOrderCard(order);
-                    },
-                  );
-                },
-                loading: () => const Padding(
-                  padding: EdgeInsets.all(50),
-                  child: Center(
-                      child: CircularProgressIndicator(
-                          color: AppColors.accentGreen)),
+                const SizedBox(height: 16),
+                ordersAsync.when(
+                  data: (orders) {
+                    if (orders.isEmpty) {
+                      return _buildEmptyState();
+                    }
+                    return ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      itemCount: orders.length,
+                      itemBuilder: (context, index) {
+                        final order = orders[index];
+                        return _buildOrderCard(order);
+                      },
+                    );
+                  },
+                  loading: () => const Padding(
+                    padding: EdgeInsets.all(50),
+                    child: Center(
+                        child: CircularProgressIndicator(
+                            color: AppColors.accentGreen)),
+                  ),
+                  error: (err, stack) => Center(child: Text('Error: $err')),
                 ),
-                error: (err, stack) => Center(child: Text('Error: $err')),
-              ),
+              ],
               const SizedBox(height: 40),
             ],
           ),
         ),
       ),
     );
+  }
+
+  Widget _buildOfflineState() {
+    return Center(
+      child: Column(
+        children: [
+          const SizedBox(height: 60),
+          Container(
+            padding: const EdgeInsets.all(30),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.power_settings_new_rounded,
+                size: 80, color: Colors.grey.shade400),
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            'You are currently Offline',
+            style: TextStyle(
+                color: Color(0xFF1B2D1F),
+                fontSize: 16,
+                fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Go online to see your assigned tasks',
+            style: TextStyle(color: Colors.grey.shade500, fontSize: 14),
+          ),
+        ],
+      ),
+    ).animate().fadeIn();
   }
 
   Widget _buildStat(String label, String value, IconData icon) {
@@ -685,6 +839,7 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
     final isAccepted = assignmentStatus == 'Accepted';
     final isDelivered =
         orderStatus == 'delivered' || orderStatus == 'completed';
+    final bool isProcessing = _processingIds.contains(order['orderId']);
 
     return GestureDetector(
       onTap: () => Navigator.push(
@@ -803,29 +958,52 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
                   _buildOrderInfoRow(
                     Icons.location_on_rounded,
                     'Delivery Address',
-                    (order['deliveryAddress'] is Map)
-                        ? (order['deliveryAddress']['address']?.toString() ??
-                            'No address provided')
-                        : 'No address provided',
+                    (order['deliveryAddress'] == null)
+                        ? 'No address provided'
+                        : (order['deliveryAddress'] is Map)
+                            ? (order['deliveryAddress']['fullAddress'] ??
+                                    order['deliveryAddress']['address'] ??
+                                    order['deliveryAddress']['street'] ??
+                                    'No address provided')
+                                .toString()
+                            : order['deliveryAddress'].toString(),
                   ),
                   const SizedBox(height: 12),
                   _buildOrderInfoRow(
                     Icons.person_rounded,
                     'Customer',
                     (order['user'] is Map)
-                        ? (order['user']['fullName']?.toString() ??
-                                order['user']['name']?.toString() ??
+                        ? (order['user']['fullName'] ??
+                                order['user']['name'] ??
                                 'Customer')
+                            .toString()
                             .toUpperCase()
-                        : 'CUSTOMER',
+                        : (order['customerName'] ?? 'CUSTOMER')
+                            .toString()
+                            .toUpperCase(),
                   ),
                   _buildOrderInfoRow(
                     Icons.shopping_bag_rounded,
                     'Order Type',
-                    (order['orderType']?.toString() ??
-                            order['order_type']?.toString() ??
-                            'Regular')
+                    (order['orderType'] ?? order['order_type'] ?? 'Regular')
+                        .toString()
                         .toUpperCase(),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildOrderInfoRow(
+                    Icons.list_alt_rounded,
+                    'Items',
+                    (() {
+                      final items = (order['items'] as List<dynamic>?) ?? [];
+                      if (items.isEmpty) return 'No items';
+                      return items.map((i) {
+                        final p = i['product'];
+                        final name = (p is Map)
+                            ? (p['name'] ?? 'Item')
+                            : (i['name'] ?? 'Item');
+                        return '${i['quantity']}x $name';
+                      }).join(', ');
+                    })(),
                   ),
                 ],
               ),
@@ -837,10 +1015,13 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
                   children: [
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: () =>
-                            _handleResponse(order['orderId'], 'Accepted'),
+                        onPressed: isProcessing
+                            ? null
+                            : () =>
+                                _handleResponse(order['orderId'], 'Accepted'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF68B92E),
+                          backgroundColor:
+                              isProcessing ? Colors.grey : const Color(0xFF68B92E),
                           foregroundColor: Colors.white,
                           elevation: 0,
                           shape: RoundedRectangleBorder(
@@ -854,11 +1035,14 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: OutlinedButton(
-                        onPressed: () =>
-                            _handleResponse(order['orderId'], 'Rejected'),
+                        onPressed: isProcessing
+                            ? null
+                            : () =>
+                                _handleResponse(order['orderId'], 'Rejected'),
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.red,
-                          side: const BorderSide(color: Colors.red),
+                          foregroundColor: isProcessing ? Colors.grey : Colors.red,
+                          side: BorderSide(
+                              color: isProcessing ? Colors.grey : Colors.red),
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12)),
                           padding: const EdgeInsets.symmetric(vertical: 12),
@@ -877,25 +1061,9 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
                     // Left: Out for Delivery
                     Expanded(
                       child: OutlinedButton.icon(
-                        onPressed: () async {
-                          final result = await ref
-                              .read(riderServiceProvider)
-                              .updateDeliveryStatus(
-                                orderId: order['orderId'],
-                                status: 'Out for Delivery',
-                              );
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                              content: Text(
-                                  result['message'] ?? '🚚 Out for Delivery!'),
-                              backgroundColor: AppColors.accentGreen,
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10)),
-                            ));
-                            ref.invalidate(riderOrdersProvider);
-                          }
-                        },
+                        onPressed: isProcessing
+                            ? null
+                            : () => _markOutForDelivery(order['orderId']),
                         icon:
                             const Icon(Icons.delivery_dining_rounded, size: 16),
                         label: const Text('Out for\nDelivery',
@@ -903,8 +1071,13 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
                             style: TextStyle(
                                 fontSize: 11, fontWeight: FontWeight.bold)),
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.accentGreen,
-                          side: BorderSide(color: AppColors.accentGreen),
+                          foregroundColor: isProcessing
+                              ? Colors.grey
+                              : AppColors.accentGreen,
+                          side: BorderSide(
+                              color: isProcessing
+                                  ? Colors.grey
+                                  : AppColors.accentGreen),
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12)),
                           padding: const EdgeInsets.symmetric(vertical: 12),
@@ -915,14 +1088,17 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
                     // Right: Mark as Delivered
                     Expanded(
                       child: ElevatedButton.icon(
-                        onPressed: () => _markDelivered(order['orderId']),
+                        onPressed: isProcessing
+                            ? null
+                            : () => _markDelivered(order['orderId']),
                         icon: const Icon(Icons.check_circle_rounded, size: 16),
                         label: const Text('Mark as\nDelivered',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                                 fontSize: 11, fontWeight: FontWeight.bold)),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF68B92E),
+                          backgroundColor:
+                              isProcessing ? Colors.grey : const Color(0xFF68B92E),
                           foregroundColor: Colors.white,
                           elevation: 0,
                           shape: RoundedRectangleBorder(

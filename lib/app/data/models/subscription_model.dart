@@ -62,6 +62,7 @@ class UserSubscription {
   final String status;
   final DateTime startDate;
   final DateTime? endDate;
+  final String retailerName;
   final List<DateTime> vacationDates;
 
   UserSubscription({
@@ -69,6 +70,7 @@ class UserSubscription {
     required this.productId,
     required this.productName,
     required this.productImage,
+    this.retailerName = '',
     required this.frequency,
     required this.quantity,
     required this.customDays,
@@ -89,12 +91,26 @@ class UserSubscription {
           : product['image']?.toString() ?? '';
     }
 
+    final retailer = json['retailer'] ?? (product is Map ? product['retailer'] : null);
+    String retailerName = '';
+    if (retailer is Map) {
+      final biz = retailer['businessDetails'];
+      if (biz is Map) {
+        retailerName = biz['storeDisplayName']?.toString() ??
+            biz['businessName']?.toString() ??
+            '';
+      } else {
+        retailerName = retailer['name']?.toString() ?? '';
+      }
+    }
+
     return UserSubscription(
       id: json['_id']?.toString() ?? '',
       productId: product is Map ? product['_id']?.toString() ?? '' : '',
       productName:
           product is Map ? product['name']?.toString() ?? 'Product' : 'Product',
       productImage: imageUrl,
+      retailerName: retailerName,
       frequency: json['frequency']?.toString() ?? 'Daily',
       quantity: (json['quantity'] as num?)?.toInt() ?? 1,
       customDays: (json['customDays'] as List<dynamic>?)

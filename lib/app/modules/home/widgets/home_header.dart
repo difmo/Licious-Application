@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import '../../../data/services/db_service.dart';
 import '../controller/main_controller.dart';
 import '../../../widgets/bounce_widget.dart';
+import '../../../routes/app_routes.dart';
 
 class HomeHeader extends StatefulWidget {
   const HomeHeader({super.key});
@@ -12,13 +12,10 @@ class HomeHeader extends StatefulWidget {
 }
 
 class _HomeHeaderState extends State<HomeHeader> {
-
   @override
   Widget build(BuildContext context) {
-    final cart = CartProviderScope.of(context);
-
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 20),
+      padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 16),
       decoration: const BoxDecoration(color: Colors.white),
       // decoration: const BoxDecoration(color: Color(0xFFF9FFF6)),
       child: Column(
@@ -38,7 +35,7 @@ class _HomeHeaderState extends State<HomeHeader> {
                         Text(
                           'Vibhav Khand -4',
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: 14.6,
                             fontWeight: FontWeight.bold,
                             color: Color(0xFF1A1A1A),
                           ),
@@ -48,7 +45,7 @@ class _HomeHeaderState extends State<HomeHeader> {
                     ),
                     Text(
                       'Vibhav Khand, Gomti Nagar, L...',
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                      style: TextStyle(fontSize: 10.2, color: Colors.grey),
                     ),
                   ],
                 ),
@@ -65,7 +62,12 @@ class _HomeHeaderState extends State<HomeHeader> {
                   tag: 'profile_pic',
                   child: CircleAvatar(
                     radius: 18,
-                    backgroundImage: AssetImage(cart.userProfile.profileImage),
+                    backgroundColor: Colors.green.shade200,
+                    child: const Icon(
+                      Icons.person,
+                      color: Color(0xFFE54141),
+                      size: 20,
+                    ),
                   ),
                 ),
               ),
@@ -84,6 +86,8 @@ class _HomeHeaderState extends State<HomeHeader> {
                     border: Border.all(color: Colors.grey.shade200),
                   ),
                   child: TextField(
+                    readOnly: true,
+                    onTap: () => Navigator.pushNamed(context, AppRoutes.search),
                     decoration: InputDecoration(
                       hintText: 'Search "curries"',
                       fillColor: Colors.white,
@@ -124,7 +128,9 @@ class _HomeHeaderState extends State<HomeHeader> {
           ),
         ],
       ),
-    ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.1, duration: 400.ms, curve: Curves.easeOut);
+    )
+        .animate()
+        .fadeIn(duration: 400.ms)
+        .slideY(begin: -0.1, duration: 400.ms, curve: Curves.easeOut);
   }
-
 }

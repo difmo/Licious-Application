@@ -9,36 +9,71 @@ import '../../../data/services/rider_service.dart';
 
 final riderEarningsProvider =
     FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
-  final result = await ref.read(riderServiceProvider).getEarnings();
+  final riderService = ref.read(riderServiceProvider);
+  final result = await riderService.getEarnings();
+
+  Map<String, dynamic> data = {};
 
   // ── Shape 1: { success: true, data: { today, weekly, ... } }
   if (result['success'] == true && result['data'] is Map) {
-    return Map<String, dynamic>.from(result['data'] as Map);
+    data = Map<String, dynamic>.from(result['data'] as Map);
   }
-
   // ── Shape 2: { success: true, today: ..., weekly: ... }  (flat)
-  if (result['success'] == true) {
-    final copy = Map<String, dynamic>.from(result);
-    copy.remove('success');
-    copy.remove('message');
-    return copy;
+  else if (result['success'] == true) {
+    data = Map<String, dynamic>.from(result);
+    data.remove('success');
+    data.remove('message');
+  }
+  // ── Shape 3: raw data object – no success flag but has numeric fields
+  else {
+    final hasData = result.keys.any((k) => [
+          'today',
+          'weekly',
+          'deliveries',
+          'walletBalance',
+          'balance',
+          'todayEarnings',
+          'weeklyEarnings',
+          'totalDeliveries'
+        ].contains(k));
+    if (hasData) {
+      data = Map<String, dynamic>.from(result);
+    }
   }
 
-  // ── Shape 3: raw data object – no success flag but has numeric fields
-  final hasData = result.keys.any((k) =>
-      ['today', 'weekly', 'deliveries', 'walletBalance', 'balance',
-       'todayEarnings', 'weeklyEarnings', 'totalDeliveries']
-          .contains(k));
-  if (hasData) return Map<String, dynamic>.from(result);
+  // ── Fallback: Calculate from History if empty ─────────────────────────────
+  final hasDeliveries =
+      data['deliveries'] != null || data['totalDeliveries'] != null;
+  final hasEarnings = data['weekly'] != null || data['walletBalance'] != null;
 
-  // ── Fallback: zeros
+  if (!hasDeliveries ||
+      !hasEarnings ||
+      (data['deliveries'] == 0 && data['weekly'] == 0)) {
+    try {
+      final history = await riderService.getDeliveryHistory();
+      if (history.isNotEmpty) {
+        data['deliveries'] = history.length;
+        double total = 0;
+        for (final item in history) {
+          total += (item['commission'] ?? item['earnings'] ?? 30.0);
+        }
+        data['weekly'] = total;
+        data['walletBalance'] = total;
+        data['today'] =
+            0.0; // Hard to guess today from history without checking dates
+      }
+    } catch (_) {}
+  }
+
+  // Ensure minimum defaults
   return {
-    'today': 0.0,
-    'weekly': 0.0,
-    'deliveries': 0,
-    'walletBalance': 0.0,
-    'avgPerOrder': 0.0,
-    'pendingBalance': 0.0,
+    'today': data['today'] ?? 0.0,
+    'weekly': data['weekly'] ?? 0.0,
+    'deliveries': data['deliveries'] ?? 0,
+    'walletBalance': data['walletBalance'] ?? 0.0,
+    'avgPerOrder': data['avgPerOrder'] ?? 0.0,
+    'pendingBalance': data['pendingBalance'] ?? 0.0,
+    ...data,
   };
 });
 
@@ -93,12 +128,7 @@ class RiderEarningsPage extends ConsumerWidget {
         foregroundColor: Colors.black,
         elevation: 0,
         centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            onPressed: () => ref.invalidate(riderEarningsProvider),
-          ),
-        ],
+        actions: const [],
       ),
       body: earningsAsync.when(
         loading: () => const Center(

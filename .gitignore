@@ -11,13 +11,13 @@
 .svn/
 .swiftpm/
 migrate_working_dir/
-
+.env
 # IntelliJ related
 *.iml
 *.ipr
 *.iws
 .idea/
-
+node_modules/
 # The .vscode folder contains launch configuration and tasks you configure in
 # VS Code which you may wish to be included in version control, so this line
 # is commented out by default.
@@ -53,4 +53,3 @@ android/local.properties
 # Firebase Config Files
 android/app/google-services.json
 ios/Runner/GoogleService-Info.plist
-lib/firebase_options.dart

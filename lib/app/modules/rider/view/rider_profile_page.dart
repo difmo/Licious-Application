@@ -49,16 +49,6 @@ class RiderProfilePage extends ConsumerWidget {
                           style: const TextStyle(fontSize: 38, fontWeight: FontWeight.bold, color: AppColors.accentGreen),
                         ),
                       ),
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: Container(
-                          width: 28,
-                          height: 28,
-                          decoration: const BoxDecoration(color: AppColors.accentGreen, shape: BoxShape.circle),
-                          child: const Icon(Icons.edit, color: Colors.white, size: 14),
-                        ),
-                      ),
                     ],
                   ),
                   const SizedBox(height: 14),
@@ -109,16 +99,6 @@ class RiderProfilePage extends ConsumerWidget {
             ).animate(delay: 100.ms).fadeIn().slideY(begin: 0.1, end: 0),
 
             const SizedBox(height: 20),
-
-            // ── Actions ───────────────────────────────────────────────────
-            _ActionButton(
-              icon: Icons.edit_note_rounded,
-              label: 'Edit Profile',
-              color: const Color(0xFF4A90E2),
-              onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Edit Profile coming soon'))),
-            ).animate(delay: 150.ms).fadeIn().slideY(begin: 0.1, end: 0),
-
-            const SizedBox(height: 12),
 
             _ActionButton(
               icon: Icons.logout_rounded,

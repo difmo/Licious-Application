@@ -39,6 +39,15 @@ class ProductCard extends ConsumerWidget {
 
     return BounceWidget(
       onTap: () {
+        if (!product.isShopActive) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('This shop is currently closed.'),
+              backgroundColor: Colors.black87,
+            ),
+          );
+          return;
+        }
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -46,144 +55,189 @@ class ProductCard extends ConsumerWidget {
           ),
         );
       },
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.shade100),
-        ),
-        child: Stack(
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: Opacity(
+        opacity: product.isShopActive ? 1.0 : 0.8,
+        child: ColorFiltered(
+          colorFilter: product.isShopActive
+              ? const ColorFilter.mode(Colors.transparent, BlendMode.multiply)
+              : const ColorFilter.mode(Colors.grey, BlendMode.saturation),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey.shade100),
+            ),
+            child: Stack(
               children: [
-                // Product Image
-                Hero(
-                  tag: 'product_${product.id}',
-                  child: ClipRRect(
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(16),
-                    ),
-                    child: Image.asset(
-                      product.image,
-                      height: 100,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Product Image
+                    Hero(
+                      tag: 'product_${product.id}',
+                      child: ClipRRect(
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(16),
+                        ),
+                        child: Image.network(
+                          product.image,
                           height: 100,
-                          color: Colors.grey.shade200,
-                          child: const Center(
-                            child: Icon(Icons.broken_image, color: Colors.grey),
-                          ),
-                        );
-                      },
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              height: 100,
+                              color: Colors.grey.shade200,
+                              child: const Center(
+                                child:
+                                    Icon(Icons.broken_image, color: Colors.grey),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Title
-                      Text(
-                        product.name,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF1A1A1A),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      // Weight or description
-                      Text(
-                        product.weight,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      // Price & Add Area
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    Padding(
+                      padding: const EdgeInsets.all(10),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          // Title
                           Text(
-                            '₹${product.price.toStringAsFixed(0)}',
+                            product.name,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
                               color: Color(0xFF1A1A1A),
                             ),
                           ),
-                          // Dynamic Cart Controls
-                          if (!isInCart)
-                            BounceWidget(
-                              onTap: onAdd,
-                              scaleFactor: 0.9,
-                              child: Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF68B92E),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: const Icon(
-                                  Icons.add,
-                                  color: Colors.white,
-                                  size: 18,
+                          const SizedBox(height: 4),
+                          // Weight or description
+                          Text(
+                            product.weight,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          // Price & Add Area
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                '₹${product.price.toStringAsFixed(0)}',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFF1A1A1A),
                                 ),
                               ),
-                            )
-                          else
-                            QuantitySelector(
-                              quantity: cartItem.quantity,
-                              onIncrement: () => cart.increment(product.name),
-                              onDecrement: () => cart.decrement(product.name),
-                              size: 32, // Compact size for grid card
-                            ),
+                              // Dynamic Cart Controls
+                              if (!isInCart)
+                                BounceWidget(
+                                  onTap: product.isShopActive ? onAdd : () {},
+                                  scaleFactor: 0.9,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: BoxDecoration(
+                                      color: product.isShopActive
+                                          ? const Color(0xFF68B92E)
+                                          : Colors.grey,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Icon(
+                                      Icons.add,
+                                      color: Colors.white,
+                                      size: 18,
+                                    ),
+                                  ),
+                                )
+                              else
+                                QuantitySelector(
+                                  quantity: cartItem.quantity,
+                                  onIncrement: product.isShopActive
+                                      ? () => cart.increment(product.name)
+                                      : () {},
+                                  onDecrement: product.isShopActive
+                                      ? () => cart.decrement(product.name)
+                                      : () {},
+                                  size: 32, // Compact size for grid card
+                                ),
+                            ],
+                          ),
                         ],
                       ),
-                    ],
+                    ),
+                  ],
+                ),
+
+                // Closed Shop Badge
+                if (!product.isShopActive)
+                  Positioned.fill(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Center(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.black87,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text(
+                            'CLOSED',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
+
+                // Badge (Offer/New)
+                if (product.badgeText.isNotEmpty && product.isShopActive)
+                  Positioned(
+                    top: 8,
+                    left: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        product.badgeText,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                // Favorite Icon
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: _ProductHeart(productId: product.id),
                 ),
               ],
             ),
-
-            // Badge
-            if (product.badgeText.isNotEmpty)
-              Positioned(
-                top: 8,
-                left: 8,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.red,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    product.badgeText,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-
-            // Favorite Icon
-            Positioned(
-              top: 8,
-              right: 8,
-              child: _ProductHeart(productId: product.id),
-            ),
-          ],
+          ),
         ),
       ),
     ).animate().fadeIn(duration: 400.ms).slideY(

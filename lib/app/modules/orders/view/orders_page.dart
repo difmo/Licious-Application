@@ -298,7 +298,7 @@ class _LiveOrderCardState extends State<_LiveOrderCard>
     final items = widget.order['items'] as List<dynamic>? ?? [];
     if (items.isEmpty) return 'Order';
     final p = items.first['product'];
-    return p is Map ? p['name']?.toString() ?? 'Order' : 'Order';
+    return (p is Map && p['name'] != null) ? p['name'].toString() : 'Order';
   }
 
   String get _description {
@@ -353,7 +353,7 @@ class _LiveOrderCardState extends State<_LiveOrderCard>
     final p = items.first['product'];
     if (p is Map) {
       final imgs = p['images'] as List<dynamic>?;
-      return imgs != null && imgs.isNotEmpty ? imgs.first.toString() : '';
+      return (imgs != null && imgs.isNotEmpty) ? imgs.first.toString() : '';
     }
     return '';
   }

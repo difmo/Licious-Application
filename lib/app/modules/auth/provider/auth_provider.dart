@@ -110,6 +110,10 @@ class AuthNotifier extends Notifier<AuthState> {
         );
   }
 
+  Future<void> googleAuth({required String idToken}) async {
+    await ref.read(core.authStoreProvider.notifier).googleAuth(idToken: idToken);
+  }
+
   Future<void> forgotPassword({required String email}) async {
     await ref.read(core.authStoreProvider.notifier).forgotPassword(email: email);
   }

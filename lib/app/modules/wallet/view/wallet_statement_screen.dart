@@ -22,10 +22,9 @@ class WalletStatementScreen extends ConsumerStatefulWidget {
 class _WalletStatementScreenState extends ConsumerState<WalletStatementScreen> {
   String _searchQuery = '';
   String _selectedDateFilter = '7 Days';
-  String _selectedTypeFilter = 'All';
 
   final List<String> _dateFilters = ['Today', '7 Days', '30 Days'];
-  final List<String> _typeFilters = ['All', 'Payment', 'Top-up', 'Refund'];
+  final List<String> _typeFilters = ['All'];
 
   @override
   Widget build(BuildContext context) {
@@ -129,7 +128,7 @@ class _WalletStatementScreenState extends ConsumerState<WalletStatementScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          // Type Filters
+          // Type Filter (Only "All" allowed)
           SizedBox(
             height: 38,
             child: ListView.builder(
@@ -138,17 +137,15 @@ class _WalletStatementScreenState extends ConsumerState<WalletStatementScreen> {
               itemCount: _typeFilters.length,
               itemBuilder: (context, index) {
                 final filter = _typeFilters[index];
-                final isSelected = _selectedTypeFilter == filter;
                 return Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: ChoiceChip(
                     label: Text(filter,
-                        style: TextStyle(
+                        style: const TextStyle(
                             fontSize: 12,
-                            color: isSelected ? Colors.white : Colors.black87)),
-                    selected: isSelected,
-                    onSelected: (val) =>
-                        setState(() => _selectedTypeFilter = filter),
+                            color: Colors.white)),
+                    selected: true,
+                    onSelected: (val) {},
                     selectedColor: const Color(0xFF439462),
                     backgroundColor: const Color(0xFFF1F4F8),
                     elevation: 0,
@@ -276,11 +273,7 @@ class _WalletStatementScreenState extends ConsumerState<WalletStatementScreen> {
       // Search filter
       bool matchesSearch =
           tx.id.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-              tx.orderId.toLowerCase().contains(_searchQuery.toLowerCase());
-
-      // Type filter
-      bool matchesType =
-          _selectedTypeFilter == 'All' || tx.category == _selectedTypeFilter;
+          tx.orderId.toLowerCase().contains(_searchQuery.toLowerCase());
 
       // Date filter
       DateTime now = DateTime.now();
@@ -297,7 +290,7 @@ class _WalletStatementScreenState extends ConsumerState<WalletStatementScreen> {
             tx.createdAt.isAfter(now.subtract(const Duration(days: 30)));
       }
 
-      return matchesSearch && matchesType && matchesDate;
+      return matchesSearch && matchesDate;
     }).toList();
   }
 

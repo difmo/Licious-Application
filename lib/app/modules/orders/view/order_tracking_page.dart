@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
+import '../../../data/services/order_service.dart';
 import '../../../data/services/socket_service.dart';
 
 class OrderTrackingPage extends ConsumerStatefulWidget {
@@ -16,14 +16,49 @@ class OrderTrackingPage extends ConsumerStatefulWidget {
 class _OrderTrackingPageState extends ConsumerState<OrderTrackingPage> {
   late Map<String, dynamic> _order;
   List<dynamic> _statusHistory = [];
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
     _order = Map<String, dynamic>.from(widget.order);
     _statusHistory = List<dynamic>.from(_order['statusHistory'] ?? []);
+    
+    _loadOrderDetails();
+    _setupSocket();
+  }
 
-    // Join the order room to receive live updates
+  Future<void> _loadOrderDetails() async {
+    final mongoId = _order['_id']?.toString() ?? '';
+    if (mongoId.isEmpty) {
+      if (mounted) setState(() => _isLoading = false);
+      return;
+    }
+
+    try {
+      final service = ref.read(orderServiceProvider);
+      Map<String, dynamic> freshData = await service.trackOrder(mongoId);
+
+      // Fallback: some order types (e.g. subscription) may not be on /track
+      if (freshData.isEmpty) {
+        freshData = await service.getOrderById(mongoId);
+      }
+
+      if (freshData.isNotEmpty && mounted) {
+        setState(() {
+          _order = freshData;
+          _statusHistory = List<dynamic>.from(_order['statusHistory'] ?? []);
+          _isLoading = false;
+        });
+      } else if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _setupSocket() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final orderId = _order['orderId']?.toString() ?? '';
       if (orderId.isNotEmpty) {
@@ -71,29 +106,29 @@ class _OrderTrackingPageState extends ConsumerState<OrderTrackingPage> {
   ];
 
   Color _roleColor(String role) {
-    switch (role) {
+    switch (role.toLowerCase()) {
       case 'retailer':
-        return const Color(0xFF114F3B);
+        return const Color(0xFF68B92E);
       case 'rider':
         return const Color(0xFFE67E22);
       case 'user':
         return const Color(0xFF3498DB);
+      case 'system':
+        return const Color(0xFF95A5A6);
       default:
         return Colors.grey;
     }
   }
 
-  IconData _roleIcon(String role) {
-    switch (role) {
-      case 'retailer':
-        return Icons.store;
-      case 'rider':
-        return Icons.delivery_dining;
-      case 'user':
-        return Icons.person;
-      default:
-        return Icons.settings;
-    }
+  IconData _statusIcon(String status) {
+    final s = status.toLowerCase();
+    if (s.contains('pending') || s.contains('placed')) return Icons.receipt_long_rounded;
+    if (s.contains('accepted') && s.contains('rider')) return Icons.delivery_dining_rounded;
+    if (s.contains('accepted')) return Icons.check_circle_rounded;
+    if (s.contains('processing') || s.contains('preparing')) return Icons.restaurant_rounded;
+    if (s.contains('shipped') || s.contains('out for delivery')) return Icons.moped_rounded;
+    if (s.contains('delivered')) return Icons.home_rounded;
+    return Icons.radio_button_checked_rounded;
   }
 
   String _formatTimestamp(dynamic ts) {
@@ -106,188 +141,465 @@ class _OrderTrackingPageState extends ConsumerState<OrderTrackingPage> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final status = _order['status'] ?? 'Pending';
-    final rider = _order['rider'];
-    final items = _order['items'] as List<dynamic>? ?? [];
-    final retailer = items.isNotEmpty ? items.first['retailer'] : null;
-
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
-      appBar: AppBar(
-        title: const Text('Track Order',
-            style: TextStyle(
-                color: Color(0xFF114F3B), fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new,
-              color: Colors.black, size: 18),
-          onPressed: () => Navigator.pop(context),
-        ),
+  Widget _buildRoleBadge(String role) {
+    if (role == 'system') return const SizedBox();
+    final color = _roleColor(role);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(12),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Header Card ─────────────────────────────────────────────────
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF114F3B), Color(0xFF1A7A5B)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.receipt_long,
-                          color: Colors.white70, size: 16),
-                      const SizedBox(width: 6),
-                      Text('Order #${_order['orderId'] ?? ''}',
-                          style: const TextStyle(
-                              color: Colors.white70, fontSize: 12)),
-                      const Spacer(),
-                      if (_order['orderType'] == 'Subscription')
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: Colors.white24,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.repeat, size: 12, color: Colors.white),
-                              SizedBox(width: 4),
-                              Text('Sub',
-                                  style: TextStyle(
-                                      color: Colors.white, fontSize: 11)),
-                            ],
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Text(status,
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 28,
-                          fontWeight: FontWeight.w900)),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // ── Status History Timeline ─────────────────────────────────────
-            const Text('Status Timeline',
-                style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1A1A1A))),
-            const SizedBox(height: 16),
-            _buildTimeline(status),
-
-            const SizedBox(height: 24),
-
-            // ── Rider Info ──────────────────────────────────────────────────
-            if (rider != null) ...[
-              const Text('Rider',
-                  style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1A1A1A))),
-              const SizedBox(height: 12),
-              _buildContactCard(
-                icon: Icons.delivery_dining,
-                color: const Color(0xFFE67E22),
-                name: rider is Map
-                    ? (rider['name']?.toString() ?? 'Rider')
-                    : rider.toString(),
-                phone: rider is Map ? rider['phone']?.toString() : null,
-              ),
-              const SizedBox(height: 16),
-            ],
-
-            // ── Retailer Info ────────────────────────────────────────────────
-            if (retailer != null) ...[
-              const Text('Retailer',
-                  style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1A1A1A))),
-              const SizedBox(height: 12),
-              _buildContactCard(
-                icon: Icons.store,
-                color: const Color(0xFF114F3B),
-                name: retailer is Map
-                    ? (retailer['businessDetails']?['storeDisplayName'] ??
-                        retailer['name'] ??
-                        'Retailer')
-                    : 'Retailer',
-                phone: retailer is Map ? retailer['phone']?.toString() : null,
-              ),
-              const SizedBox(height: 16),
-            ],
-
-            // ── Items ────────────────────────────────────────────────────────
-            const Text('Items',
-                style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1A1A1A))),
-            const SizedBox(height: 12),
-            ...(items.map((item) {
-              final product = item['product'];
-              final name = product is Map
-                  ? product['name']?.toString() ?? 'Product'
-                  : 'Product';
-              final qty = item['quantity']?.toString() ?? '1';
-              final price = (item['price'] as num?)?.toDouble() ?? 0;
-              return Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.grey.shade100),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.set_meal,
-                        color: Color(0xFF114F3B), size: 24),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(name,
-                          style: const TextStyle(fontWeight: FontWeight.bold)),
-                    ),
-                    Text('${qty}x · ₹${price.toStringAsFixed(0)}',
-                        style:
-                            const TextStyle(color: Colors.grey, fontSize: 13)),
-                  ],
-                ),
-              );
-            })),
-
-            const SizedBox(height: 80),
-          ],
+      child: Text(
+        role.toUpperCase(),
+        style: TextStyle(
+          color: color,
+          fontSize: 10,
+          fontWeight: FontWeight.w900,
         ),
       ),
     );
   }
 
+  Widget _buildStatusBadge(String status) {
+    Color color;
+    switch (status.toLowerCase()) {
+      case 'delivered':
+        color = const Color(0xFF68B92E);
+        break;
+      case 'cancelled':
+        color = Colors.red;
+        break;
+      case 'out for delivery':
+      case 'rider accepted':
+        color = const Color(0xFFE67E22);
+        break;
+      default:
+        color = const Color(0xFF114F3B); // Dark green or grey
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        status.toUpperCase(),
+        style: TextStyle(
+          color: color,
+          fontSize: 12,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(color: Color(0xFF114F3B)),
+        ),
+      );
+    }
+
+    final status = _order['status'] ?? 'Pending';
+    final items = _order['items'] as List<dynamic>? ?? [];
+
+    String itemName = 'Items';
+    String qty = '';
+    String shopName = '';
+    
+    if (items.isNotEmpty) {
+      final item = items.first;
+      final product = item['product'];
+      itemName = (product is Map && product['name'] != null) ? product['name'].toString() : 'Item';
+      qty = item['quantity']?.toString() ?? '1';
+      
+      // Attempt to get retailer name
+      final retailer = item['retailer'];
+      if (retailer is Map) {
+        final bizDetails = retailer['businessDetails'];
+        if (bizDetails is Map) {
+          shopName = bizDetails['storeDisplayName']?.toString() ?? 
+                     bizDetails['businessName']?.toString() ?? '';
+        }
+      }
+    }
+    final subtitle = items.isNotEmpty ? '${qty}x $itemName' : '';
+
+    final isSub =
+        _order['orderType'] == 'Subscription' || _order['frequency'] != null;
+    final frequency = _order['frequency']?.toString() ?? 'Daily';
+    final customDaysList = _order['customDays'] as List<dynamic>? ?? [];
+    final customDaysStr = customDaysList.join(', ');
+
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text('', style: TextStyle(color: Colors.black)),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          onPressed: () => Navigator.pop(context),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.black),
+            onPressed: () {
+              setState(() => _isLoading = true);
+              _loadOrderDetails();
+            },
+          ),
+        ],
+      ),
+      body: RefreshIndicator(
+        onRefresh: _loadOrderDetails,
+        color: const Color(0xFF114F3B),
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── Header Information ─────────────────────────────────────────
+              Text('Order Details',
+                  style: TextStyle(
+                      color: Colors.grey.shade600,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5)),
+              const SizedBox(height: 4),
+              Text('#${_order['orderId'] ?? _order['_id'] ?? ''}',
+                  style: const TextStyle(
+                      color: Colors.black87,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900)),
+              const SizedBox(height: 8),
+              Text(
+                'Refresh to check the latest update on your order.',
+                style: TextStyle(
+                  color: Colors.grey.shade500,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              if (subtitle.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(subtitle,
+                    style: TextStyle(color: Colors.grey.shade500, fontSize: 16)),
+              ],
+              
+              if (shopName.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF68B92E).withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFF68B92E).withValues(alpha: 0.15)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF68B92E),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.storefront, color: Colors.white, size: 18),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'SOLD BY',
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              shopName,
+                              style: const TextStyle(
+                                color: Color(0xFF114F3B),
+                                fontWeight: FontWeight.w900,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: Divider(color: Color(0xFFEEEEEE), thickness: 1.5),
+              ),
+
+              // ── Current Status ─────────────────────────────────────────────
+              const Text('CURRENT STATUS',
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey)),
+              const SizedBox(height: 10),
+              _buildStatusBadge(status),
+
+              // ── Subscription Schedule ──────────────────────────────────────
+              if (isSub) ...[
+                const SizedBox(height: 20),
+                const Text('SUBSCRIPTION SCHEDULE',
+                    style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey)),
+                const SizedBox(height: 8),
+                Text(frequency,
+                    style: const TextStyle(
+                        color: Color(0xFF68B92E),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900)),
+                if (customDaysStr.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text('Days: $customDaysStr',
+                      style: const TextStyle(color: Colors.grey, fontSize: 14)),
+                ],
+              ],
+
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: Divider(color: Color(0xFFEEEEEE), thickness: 1.5),
+              ),
+
+              // ── Status History ─────────────────────────────────────────────
+              const Text('STATUS HISTORY',
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey)),
+              const SizedBox(height: 20),
+              _buildTimeline(status),
+
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: Divider(color: Color(0xFFEEEEEE), thickness: 1.5),
+              ),
+
+              // ── Delivery Address ───────────────────────────────────────────
+              const Text('DELIVERY ADDRESS',
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey)),
+              const SizedBox(height: 12),
+              _buildAddressSection(),
+
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: Divider(color: Color(0xFFEEEEEE), thickness: 1.5),
+              ),
+
+              // ── Order Summary (Payment) ─────────────────────────────────────
+              _buildOrderSummary(),
+
+              const SizedBox(height: 100),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOrderSummary() {
+    final totalAmount = _order['totalAmount'];
+    final paymentMethod = _order['paymentMethod']?.toString() ?? '';
+    final paymentStatus = _order['paymentStatus']?.toString() ?? '';
+    final orderType = _order['orderType']?.toString() ?? '';
+
+    if (totalAmount == null && paymentMethod.isEmpty) return const SizedBox();
+
+    Color payStatusColor;
+    switch (paymentStatus.toLowerCase()) {
+      case 'paid':
+        payStatusColor = const Color(0xFF68B92E);
+        break;
+      case 'pending':
+        payStatusColor = Colors.orange;
+        break;
+      case 'failed':
+        payStatusColor = Colors.red;
+        break;
+      default:
+        payStatusColor = Colors.grey;
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('ORDER SUMMARY',
+            style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey)),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF7F8FA),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFEEEEEE)),
+          ),
+          child: Column(
+            children: [
+              if (totalAmount != null)
+                _summaryRow(
+                  'Total Amount',
+                  '₹${totalAmount.toString()}',
+                  icon: Icons.receipt_long_outlined,
+                  valueStyle: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 18,
+                      color: Color(0xFF114F3B)),
+                ),
+              if (paymentMethod.isNotEmpty) ...[
+                const Divider(height: 20, color: Color(0xFFEEEEEE)),
+                _summaryRow(
+                  'Payment Method',
+                  paymentMethod,
+                  icon: Icons.account_balance_wallet_outlined,
+                ),
+              ],
+              if (paymentStatus.isNotEmpty) ...[
+                const Divider(height: 20, color: Color(0xFFEEEEEE)),
+                _summaryRow(
+                  'Payment Status',
+                  paymentStatus,
+                  icon: Icons.verified_outlined,
+                  valueStyle: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: payStatusColor),
+                ),
+              ],
+              if (orderType.isNotEmpty) ...[
+                const Divider(height: 20, color: Color(0xFFEEEEEE)),
+                _summaryRow(
+                  'Order Type',
+                  orderType,
+                  icon: Icons.category_outlined,
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _summaryRow(String label, String value,
+      {IconData? icon, TextStyle? valueStyle}) {
+    return Row(
+      children: [
+        if (icon != null) ...[
+          Icon(icon, size: 16, color: Colors.grey),
+          const SizedBox(width: 10),
+        ],
+        Expanded(
+          child: Text(label,
+              style: const TextStyle(color: Colors.grey, fontSize: 13)),
+        ),
+        Text(value,
+            style: valueStyle ??
+                const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: Colors.black87)),
+      ],
+    );
+  }
+
+  Widget _buildAddressSection() {
+    final addr = _order['deliveryAddress'];
+    if (addr == null || (addr is Map && addr.isEmpty)) {
+      return const Padding(
+        padding: EdgeInsets.only(left: 36),
+        child: Text('No delivery address specified.',
+            style: TextStyle(color: Colors.grey, fontSize: 13)),
+      );
+    }
+
+    final street = addr['address'] ?? addr['street'] ?? addr['flat'] ?? addr['houseNo'] ?? '';
+    final city = addr['city'] ?? '';
+    final state = addr['state'] ?? '';
+    final pincode = addr['pincode'] ?? '';
+    final landmark = addr['landmark'] ?? '';
+
+    if (street.toString().isEmpty && city.toString().isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.only(left: 36),
+        child: Text('Address details not available.',
+            style: TextStyle(color: Colors.grey, fontSize: 13)),
+      );
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: const Color(0xFF114F3B).withValues(alpha: 0.1),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.location_on, color: Color(0xFF114F3B), size: 20),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                street.toString(),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '${city.toString()}, ${state.toString()} - ${pincode.toString()}',
+                style: const TextStyle(
+                  color: Colors.grey,
+                  fontSize: 14,
+                ),
+              ),
+              if (landmark.toString().isNotEmpty) ...[
+                const SizedBox(height: 2),
+                Text(
+                  'Landmark: ${landmark.toString()}',
+                  style: TextStyle(
+                    color: Colors.grey.shade400,
+                    fontSize: 12,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildTimeline(String currentStatus) {
-    // Show history entries if available, otherwise show inferred timeline
     if (_statusHistory.isNotEmpty) {
       return _buildHistoryTimeline();
     }
@@ -295,15 +607,27 @@ class _OrderTrackingPageState extends ConsumerState<OrderTrackingPage> {
   }
 
   Widget _buildHistoryTimeline() {
+    // Filter duplicates and sequential identical statuses
+    final filteredHistory = <dynamic>[];
+    String lastStatus = '';
+    
+    for (var item in _statusHistory) {
+      final currentStatus = item['status']?.toString() ?? '';
+      if (currentStatus != lastStatus) {
+        filteredHistory.add(item);
+        lastStatus = currentStatus;
+      }
+    }
+
     return Column(
-      children: _statusHistory.asMap().entries.map((entry) {
+      children: filteredHistory.asMap().entries.map((entry) {
         final i = entry.key;
         final item = entry.value;
-        final isLast = i == _statusHistory.length - 1;
+        final isLast = i == filteredHistory.length - 1;
         final role = item['role']?.toString() ?? 'system';
         final statusText = item['status']?.toString() ?? '';
         final ts = _formatTimestamp(item['timestamp']);
-        final color = _roleColor(role);
+        final color = isLast ? const Color(0xFF68B92E) : Colors.grey.shade400;
 
         return Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -311,36 +635,66 @@ class _OrderTrackingPageState extends ConsumerState<OrderTrackingPage> {
             Column(
               children: [
                 Container(
-                  width: 38,
-                  height: 38,
+                  width: 32,
+                  height: 32,
                   decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.12),
+                    color: color.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
-                    border: Border.all(color: color, width: 2),
+                    border: Border.all(
+                      color: color.withValues(alpha: 0.2),
+                      width: 1,
+                    ),
                   ),
-                  child: Icon(_roleIcon(role), size: 18, color: color),
+                  child: Center(
+                    child: Icon(
+                      _statusIcon(statusText),
+                      size: 16,
+                      color: color,
+                    ),
+                  ),
                 ),
                 if (!isLast)
-                  Container(width: 2, height: 40, color: Colors.grey.shade200),
+                  Container(
+                    width: 2,
+                    height: 45,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          color.withValues(alpha: 0.2),
+                          Colors.grey.shade100,
+                        ],
+                      ),
+                    ),
+                  ),
               ],
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 20),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.only(top: 6, bottom: 20),
+                padding: const EdgeInsets.only(bottom: 28),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(statusText,
                         style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                            color: color)),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${role[0].toUpperCase()}${role.substring(1)} · $ts',
-                      style:
-                          TextStyle(color: Colors.grey.shade500, fontSize: 12),
+                            fontWeight: FontWeight.w900,
+                            fontSize: 16,
+                            color: isLast ? const Color(0xFF114F3B) : const Color(0xFF2C3E50))),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        if (role != 'system') ...[
+                          _buildRoleBadge(role),
+                          const SizedBox(width: 8),
+                        ],
+                        Text(ts,
+                            style: TextStyle(
+                                color: Colors.grey.shade500, 
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500)),
+                      ],
                     ),
                   ],
                 ),
@@ -358,10 +712,22 @@ class _OrderTrackingPageState extends ConsumerState<OrderTrackingPage> {
       children: _allStatuses.asMap().entries.map((entry) {
         final idx = entry.key;
         final s = entry.value;
+        if (idx > currentIdx && currentIdx != -1) return const SizedBox();
+
         final isDone = idx <= currentIdx;
-        final isCurrent = idx == currentIdx;
-        final isLast = idx == _allStatuses.length - 1;
-        final color = isDone ? const Color(0xFF114F3B) : Colors.grey.shade300;
+        if (!isDone) return const SizedBox();
+
+        final isLast = idx == currentIdx;
+
+        String role = 'system';
+        if (s == 'Accepted' || s == 'Processing') role = 'retailer';
+        if (s == 'Out for Delivery' ||
+            s == 'Delivered' ||
+            s.contains('Rider Accepted')) {
+          role = 'rider';
+        }
+
+        final color = isLast ? const Color(0xFF68B92E) : Colors.grey.shade400;
 
         return Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -369,98 +735,72 @@ class _OrderTrackingPageState extends ConsumerState<OrderTrackingPage> {
             Column(
               children: [
                 Container(
-                  width: 38,
-                  height: 38,
+                  width: 32,
+                  height: 32,
                   decoration: BoxDecoration(
-                    color: isDone
-                        ? const Color(0xFF114F3B).withValues(alpha: 0.1)
-                        : Colors.grey.shade100,
+                    color: color.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
-                    border: Border.all(color: color, width: 2),
+                    border: Border.all(
+                      color: color.withValues(alpha: 0.2),
+                      width: 1,
+                    ),
                   ),
-                  child: Icon(
-                    isDone ? Icons.check_circle : Icons.radio_button_unchecked,
-                    size: 18,
-                    color: color,
+                  child: Center(
+                    child: Icon(
+                      _statusIcon(s),
+                      size: 16,
+                      color: color,
+                    ),
                   ),
                 ),
                 if (!isLast)
-                  Container(width: 2, height: 40, color: Colors.grey.shade200),
+                  Container(
+                    width: 2,
+                    height: 45,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          color.withValues(alpha: 0.2),
+                          Colors.grey.shade100,
+                        ],
+                      ),
+                    ),
+                  ),
               ],
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 20),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.only(top: 6, bottom: 20),
-                child: Text(s,
-                    style: TextStyle(
-                        fontWeight:
-                            isCurrent ? FontWeight.bold : FontWeight.normal,
-                        fontSize: isCurrent ? 15 : 14,
-                        color: isDone
-                            ? const Color(0xFF114F3B)
-                            : Colors.grey.shade400)),
+                padding: const EdgeInsets.only(bottom: 28),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(s,
+                        style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 16,
+                            color: isLast ? const Color(0xFF114F3B) : const Color(0xFF2C3E50))),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        if (role != 'system') ...[
+                          _buildRoleBadge(role),
+                          const SizedBox(width: 8),
+                        ],
+                        const Text('Done',
+                            style: TextStyle(
+                                color: Colors.grey, fontSize: 13)),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
         );
       }).toList(),
-    );
-  }
-
-  Widget _buildContactCard({
-    required IconData icon,
-    required Color color,
-    required String name,
-    String? phone,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade100),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 8,
-              offset: const Offset(0, 2))
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: color, size: 22),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(name,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 15)),
-                if (phone != null && phone.isNotEmpty)
-                  Text(phone,
-                      style: const TextStyle(color: Colors.grey, fontSize: 13)),
-              ],
-            ),
-          ),
-          if (phone != null && phone.isNotEmpty)
-            IconButton(
-              icon: Icon(Icons.call, color: color),
-              onPressed: () async {
-                final uri = Uri.parse('tel:$phone');
-                if (await canLaunchUrl(uri)) launchUrl(uri);
-              },
-            ),
-        ],
-      ),
     );
   }
 }

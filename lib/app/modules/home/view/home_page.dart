@@ -2,20 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../data/services/db_service.dart';
 import '../widgets/home_header.dart';
-import '../widgets/category_circles.dart';
-import '../widgets/filter_bar.dart';
 import '../widgets/home_banner.dart';
 import '../widgets/restaurant_list_section.dart';
-import '../../categories/view/category_items_page.dart';
 
-class HomePage extends StatelessWidget {
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../provider/shop_provider.dart';
+
+class HomePage extends ConsumerWidget {
   const HomePage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final cart = CartProviderScope.of(context);
-    final categories = cart.foodCategories;
-
+  Widget build(BuildContext context, WidgetRef ref) {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.white,
@@ -26,61 +23,42 @@ class HomePage extends StatelessWidget {
         backgroundColor: const Color(0xFFF7F8FA),
         body: SafeArea(
           bottom: false,
-          child: CustomScrollView(
-            slivers: [
-              // Header: Location & Search
-              const SliverToBoxAdapter(child: HomeHeader()),
+          child: RefreshIndicator(
+            onRefresh: () async {
+              await ref.read(shopsListProvider.notifier).refresh();
+              // Proactively refresh other related data if needed
+              CartProviderScope.of(context).loadAddresses();
+              CartProviderScope.of(context).syncWallet();
+            },
+            color: const Color(0xFF68B92E),
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                // Header: Location & Search
+                const SliverToBoxAdapter(child: HomeHeader()),
 
-              // Categories
-              SliverPadding(
-                padding: const EdgeInsets.only(top: 10, bottom: 20),
-                sliver: SliverToBoxAdapter(
-                  child: CategoryCircles(
-                    categories: categories,
-                    onCategorySelected: (name) {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              CategoryItemsPage(categoryName: name),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ),
+                const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
-              // Filters
-              const SliverToBoxAdapter(child: FilterBar()),
+                // Banner (Horizontal Scrolling Carousel)
+                const SliverToBoxAdapter(child: HomeBanner()),
 
-              // Divider
-              const SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  child: Divider(height: 1, color: Color(0xFFEEEEEE)),
-                ),
-              ),
+                const SliverToBoxAdapter(child: SizedBox(height: 8)),
 
-              // Banner (Horizontal Scrolling Carousel)
-              const SliverToBoxAdapter(child: HomeBanner()),
+                // Restaurants Section
+                const SliverToBoxAdapter(child: RestaurantListSection()),
 
-              const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                // Footer
+                const SliverToBoxAdapter(child: AnimatedFooterText()),
 
-              // Restaurants Section
-              const SliverToBoxAdapter(child: RestaurantListSection()),
-
-              // Footer
-              const SliverToBoxAdapter(child: AnimatedFooterText()),
-
-              // Bottom Spacing for Navigation Bar
-              const SliverPadding(padding: EdgeInsets.only(bottom: 100)),
-            ],
+                // Bottom Spacing for Navigation Bar
+                const SliverPadding(padding: EdgeInsets.only(bottom: 100)),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
-
 }
 
 class AnimatedFooterText extends StatefulWidget {
@@ -131,12 +109,12 @@ class _AnimatedFooterTextState extends State<AnimatedFooterText>
         );
       },
       child: const Padding(
-        padding: EdgeInsets.symmetric(vertical: 15),
+        padding: EdgeInsets.symmetric(vertical: 0),
         child: Text(
           'With love,\nfrom Shrimp.',
           textAlign: TextAlign.center,
           style: TextStyle(
-            fontSize: 48,
+            fontSize: 28,
             fontWeight: FontWeight.w900,
             color: Color(0xFFB4B4B4),
             height: 1.1,

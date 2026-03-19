@@ -66,19 +66,8 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
     final authState = ref.read(authProvider);
 
     if (authState is AuthSuccess) {
-      final otp = authState.otp;
-
-      // ── LOG OTP TO TERMINAL ──────────────────────────────────────────────
-      debugPrint('');
-      debugPrint('╔══════════════════════════════════════╗');
-      debugPrint('║           OTP RECEIVED                ║');
-      debugPrint('║  Phone : ${widget.phoneNumber.padRight(26)}║');
-      debugPrint('║  OTP   : ${(otp ?? 'N/A').padRight(26)}║');
-      debugPrint('╚══════════════════════════════════════╝');
-      debugPrint('');
-      // ─────────────────────────────────────────────────────────────────────
-
-      _showSnackBar(authState.message, backgroundColor: Colors.green);
+      _showSnackBar('OTP has been sent to your phone via SMS',
+          backgroundColor: Colors.green);
       ref.read(authProvider.notifier).reset();
     } else if (authState is AuthError) {
       debugPrint('[OTP ERROR] ${authState.message}');
@@ -205,25 +194,25 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
                     fontSize: 14, color: Colors.black54, height: 1.5),
               ),
               const SizedBox(height: 8),
-              // ── Debug hint ───────────────────────────────────────────────
+              // ── Info Hint ───────────────────────────────────────────────
               Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFF8E1),
+                  color: const Color(0xFFE3F2FD),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFFFFD54F)),
+                  border: Border.all(color: const Color(0xFF64B5F6)),
                 ),
                 child: const Row(
                   children: [
-                    Icon(Icons.terminal, size: 14, color: Color(0xFFF57F17)),
-                    SizedBox(width: 6),
+                    Icon(Icons.sms_outlined, size: 14, color: Color(0xFF1976D2)),
+                    SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'OTP is logged to the terminal — check your run console.',
+                        'We have sent an SMS with a 6-digit verification code to your phone. Please enter it below.',
                         style: TextStyle(
                           fontSize: 11,
-                          color: Color(0xFFF57F17),
+                          color: Color(0xFF1976D2),
                           fontWeight: FontWeight.w500,
                         ),
                       ),

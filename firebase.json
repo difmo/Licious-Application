@@ -1,8 +1,1 @@
-{
-  "firestore": {
-    "database": "(default)",
-    "location": "asia-northeast1",
-    "rules": "firestore.rules",
-    "indexes": "firestore.indexes.json"
-  }
-}
+{"flutter":{"platforms":{"android":{"default":{"projectId":"shrimpbite","appId":"1:246944187312:android:9e709ec88c5d1a41994c75","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"shrimpbite","configurations":{"android":"1:246944187312:android:9e709ec88c5d1a41994c75","ios":"1:246944187312:ios:1c0948f6a18630dc994c75","macos":"1:246944187312:ios:fe1480df51616526994c75","web":"1:246944187312:web:4b9be407cad8648e994c75","windows":"1:246944187312:web:5900891e0b7f1eb7994c75"}}}}}}

@@ -19,7 +19,7 @@ class _SplashPageState extends ConsumerState<SplashPage>
   late Animation<double> _fadeAnim;
   late Animation<double> _scaleAnim;
   bool _navigated = false;
-  int _retryCount = 0;
+  bool _minimumTimePassed = false;
 
   @override
   void initState() {
@@ -27,58 +27,49 @@ class _SplashPageState extends ConsumerState<SplashPage>
 
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1200),
+      duration: const Duration(milliseconds: 1000),
     );
 
     _fadeAnim = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
     _scaleAnim = Tween<double>(
-      begin: 0.7,
+      begin: 0.8,
       end: 1.0,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
 
     _controller.forward();
 
-    // Explicitly trigger session restoration
-    ref.read(authProvider.notifier).init();
+    // Trigger session restoration
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(authProvider.notifier).init();
+    });
 
-    // Start checking auth state after the splash animation begins.
-    // We poll every 300ms so we react as soon as session restore completes.
-    Future.delayed(const Duration(seconds: 2), _checkAuthAndNavigate);
+    // Enforce a minimum display time for the splash screen (3 seconds)
+    // and then navigate based on current state.
+    Future.delayed(const Duration(seconds: 3), () {
+      if (!mounted) return;
+      setState(() => _minimumTimePassed = true);
+      _handleNavigation(ref.read(authProvider));
+    });
   }
 
-  void _checkAuthAndNavigate() {
+  void _handleNavigation(AuthState state) {
     if (!mounted || _navigated) return;
-    final authState = ref.read(authProvider);
 
-    if (authState is AuthAuthenticated) {
+    if (state is AuthAuthenticated) {
       _navigated = true;
-      _syncAndNavigate(authState);
-    } else if (authState is AuthUnauthenticated ||
-        authState is AuthError ||
-        authState is AuthSuccess) {
-      // Session restoration ended or terminal state reached → navigate to Login/Onboarding
+      _syncAndNavigate(state);
+    } else if (state is AuthUnauthenticated || state is AuthError) {
       _navigated = true;
-      if (mounted) {
-        Navigator.pushReplacementNamed(context, AppRoutes.initialRoute);
-      }
-    } else if (authState is AuthLoading || authState is AuthInitial) {
-      // Session is still being restored — check again shortly
-      _retryCount++;
-      if (_retryCount <= 50) { // Increased to 50 (10 seconds total) for slow backend cold starts
-        Future.delayed(
-            const Duration(milliseconds: 200), _checkAuthAndNavigate);
-      } else {
-        // Hard timeout: force navigate
-        _navigated = true;
-        if (mounted) {
-          Navigator.pushReplacementNamed(context, AppRoutes.initialRoute);
-        }
-      }
+      Navigator.pushReplacementNamed(context, AppRoutes.initialRoute);
+    } else if (state is AuthSuccess) {
+      // Success state from registration or forgot password usually goes to login
+      _navigated = true;
+      Navigator.pushReplacementNamed(context, AppRoutes.login);
     }
   }
 
   void _syncAndNavigate(AuthAuthenticated auth) {
-    // Sync the legacy provider
+    // Sync the legacy provider for UI components that rely on it
     CartProviderScope.of(context).updateUserProfile(
       UserProfile(
         name: auth.user.fullName,
@@ -103,6 +94,21 @@ class _SplashPageState extends ConsumerState<SplashPage>
 
   @override
   Widget build(BuildContext context) {
+    // Watch state change to navigate immediately if the minimum delay has passed
+    ref.listen<AuthState>(authProvider, (previous, next) {
+      // If we already navigated or are still in a loading/initial state, wait
+      if (_navigated) return;
+
+      // We only navigate automatically if the minimum display time has passed
+      if (next is AuthAuthenticated ||
+          next is AuthUnauthenticated ||
+          next is AuthError) {
+        if (_minimumTimePassed) {
+          _handleNavigation(next);
+        }
+      }
+    });
+
     return Scaffold(
       backgroundColor: const Color(0xFFEFEFEF),
       body: Center(
@@ -115,16 +121,14 @@ class _SplashPageState extends ConsumerState<SplashPage>
               children: [
                 Image.asset(
                   'assets/images/logowithoutback.png',
-                  width: 350,
-                  height: 350,
+                  width: 300,
+                  height: 300,
                   fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) {
-                    return const Icon(
-                      Icons.set_meal,
-                      size: 100,
-                      color: Color(0xFF38B24D),
-                    );
-                  },
+                  errorBuilder: (context, error, stackTrace) => const Icon(
+                    Icons.set_meal,
+                    size: 100,
+                    color: Color(0xFF38B24D),
+                  ),
                 ),
               ],
             ),

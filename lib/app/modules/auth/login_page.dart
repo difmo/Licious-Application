@@ -6,6 +6,10 @@ import '../../data/services/db_service.dart';
 import '../../widgets/common_button.dart';
 import 'provider/auth_provider.dart';
 import 'widgets/input_field.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'google_profile_page.dart';
+
+final GoogleSignIn _googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -138,6 +142,60 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       // but usually redirects to home. We'll stick to home as fallback.
       Navigator.pushNamedAndRemoveUntil(
           context, AppRoutes.home, (route) => false);
+    }
+  }
+
+  // ── Google Sign-In action ────────────────────────────────────────────────
+  Future<void> _handleGoogleSignIn() async {
+    try {
+      debugPrint('[GOOGLE AUTH] Sign-in process started...');
+      // Cancel any previous sign-in first to avoid stale data
+      await _googleSignIn.signOut();
+
+      final GoogleSignInAccount? account = await _googleSignIn.signIn();
+
+      if (account == null) {
+        // User cancelled the sign-in
+        return;
+      }
+
+      // ── LOG GOOGLE SIGN-IN SUCCESS ──────────────────────────────────────────
+      debugPrint('');
+      debugPrint('╔══════════════════════════════════════════════════════════════╗');
+      debugPrint('║              GOOGLE SIGN-IN SUCCESS                          ║');
+      debugPrint('╟──────────────────────────────────────────────────────────────╢');
+      debugPrint('║  Name  : ${account.displayName?.padRight(44) ?? "N/A"}║');
+      debugPrint('║  Email : ${account.email.padRight(44)}║');
+      debugPrint('║  ID    : ${account.id.padRight(44)}║');
+      debugPrint('╚══════════════════════════════════════════════════════════════╝');
+      debugPrint('');
+      // ───────────────────────────────────────────────────────────────────────
+
+      // Success! Navigate to the detail page (or perform backend sync)
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => GoogleProfilePage(account: account),
+          ),
+        );
+      }
+    } catch (e, stackTrace) {
+      debugPrint('');
+      debugPrint('╔══════════════════════════════════════════════════════════════╗');
+      debugPrint('║              GOOGLE SIGN-IN FAILED                           ║');
+      debugPrint('╟──────────────────────────────────────────────────────────────╢');
+      debugPrint('║  Error: ${e.toString().padRight(52)}║');
+      debugPrint('╚══════════════════════════════════════════════════════════════╝');
+      debugPrint('Stacktrace: $stackTrace');
+      debugPrint('');
+
+      if (mounted) {
+        _showSnackBar(
+          'Google Sign-In Failed: $e',
+          backgroundColor: Colors.red,
+        );
+      }
     }
   }
 
@@ -301,6 +359,59 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     text: 'Login',
                     onPressed: _login,
                     isLoading: isLoading,
+                  ),
+                  const SizedBox(height: 24),
+
+                  // ── Divider ──
+                  Row(
+                    children: [
+                      Expanded(child: Divider(color: Colors.grey.shade300)),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Text(
+                          'Or continue with',
+                          style: TextStyle(
+                              color: Colors.grey.shade500, fontSize: 13),
+                        ),
+                      ),
+                      Expanded(child: Divider(color: Colors.grey.shade300)),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+
+                  // ── Google Button ──
+                  SizedBox(
+                    width: double.infinity,
+                    height: 54,
+                    child: OutlinedButton(
+                      onPressed: _handleGoogleSignIn,
+                      style: OutlinedButton.styleFrom(
+                        side:
+                            BorderSide(color: Colors.grey.shade200, width: 1.5),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Image.asset(
+                            'assets/images/google_logo.png',
+                            width: 24,
+                            height: 24,
+                          ),
+                          const SizedBox(width: 12),
+                          const Text(
+                            'Continue with Google',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 28),
 

@@ -476,7 +476,7 @@ class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
                             context: context,
                             builder: (context) => ReviewDialog(
                               orderId: order.id,
-                              productName: order.items.isNotEmpty
+                              productName: (order.items.isNotEmpty && order.items[0].isNotEmpty)
                                   ? order.items[0].split('x ').last
                                   : 'Shrimp Product',
                               retailerId:

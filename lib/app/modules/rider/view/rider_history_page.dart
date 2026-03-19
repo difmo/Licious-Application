@@ -30,12 +30,8 @@ class RiderHistoryPage extends ConsumerWidget {
         foregroundColor: const Color(0xFF114F3B),
         elevation: 0,
         centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: Color(0xFF114F3B)),
-            onPressed: () => ref.invalidate(deliveryHistoryProvider),
-          )
-        ],
+        actions: const [],
+
       ),
       body: historyAsync.when(
         data: (deliveries) {
