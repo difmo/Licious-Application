@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
 import '../../app/data/models/auth_models.dart';
@@ -81,56 +82,54 @@ class AuthStore extends Notifier<AuthState> {
     return AuthState.initial();
   }
 
-  /// App Launch: Check if tokens exist and validate/refresh access token.
   Future<void> init() async {
-    // Only set loading if we haven't already
     if (state.status != AuthStatus.loading) {
       state = AuthState.loading();
     }
 
     try {
       final String? token = await _storage.getAccessToken();
-      // final String? refreshToken = await _storage.getRefreshToken(); // Interceptor handles refresh during profile fetch
-
-      debugPrint('AuthStore: Initializing session check...');
+      final String? cachedUserJson = await _storage.getUser();
 
       if (token != null && token.isNotEmpty) {
-        debugPrint('AuthStore: Access token found. Validating via profile...');
-        // Validate by fetching profile
+         debugPrint('AuthStore: Token detected. Attempting profile fetch...');
+        
         final response = await ref.read(authServiceProvider).getProfile();
 
         if (response.success && response.data != null) {
-          debugPrint(
-              'AuthStore: Session restored successfully for ${response.data!.phoneNumber}');
+          debugPrint('AuthStore: Session verified online.');
+          // Update cache
+          await _storage.saveUser(jsonEncode(response.data!.toJson()));
           state = AuthState.authenticated(response.data!);
         } else {
-          debugPrint('AuthStore: Profile fetch failed: ${response.message}');
-          // If the profile fetch failed, the interceptor might have already tried
-          // to refresh and failed. If we still have a refresh token, we technically
-          // might want to try one last definitive logout or check the error type.
-
-          // For now, if we have a token but profile fails, it usually means
-          // either no network (we should retry or stay in local state)
-          // or invalid token (should logout).
-
-          if (response.message.contains('401') ||
-              response.message.contains('Unauthorized')) {
-            debugPrint('AuthStore: Token definitely invalid. Logging out.');
+          debugPrint('AuthStore: Online verification failed: ${response.message}');
+          
+          if (response.message.contains('401') || response.message.contains('Unauthorized')) {
+            debugPrint('AuthStore: Credentials invalid. Clearing session.');
             await logout();
+          } else if (cachedUserJson != null) {
+            // OPTIMISTIC RESTORE: We have a token that isn't definitely 401, 
+            // and we have a cached user. Let's log them in.
+            debugPrint('AuthStore: Possible network error. Restoring from cache...');
+            final user = UserModel.fromJson(jsonDecode(cachedUserJson));
+            state = AuthState.authenticated(user);
           } else {
-            // Likely a network error — we'll stay unauthenticated for now but
-            // tell the user why if they are on splash.
             state = AuthState.unauthenticated(error: response.message);
           }
         }
       } else {
-        debugPrint('AuthStore: No access token found. User must login.');
         state = AuthState.unauthenticated();
       }
     } catch (e) {
-      debugPrint('AuthStore: Critical error during init: $e');
+      debugPrint('AuthStore: Fatal recovery error $e');
       state = AuthState.unauthenticated(error: e.toString());
     }
+  }
+
+  Future<void> _persistAuth(UserModel user, String access, String refresh) async {
+    await _storage.saveTokens(access: access, refresh: refresh);
+    await _storage.saveUser(jsonEncode(user.toJson()));
+    state = AuthState.authenticated(user);
   }
 
   Future<void> login({required String phone, required String password}) async {
@@ -144,16 +143,12 @@ class AuthStore extends Notifier<AuthState> {
           );
 
       if (response.success && response.data != null && response.token != null) {
-        // Save tokens securely
-        await _storage.saveTokens(
-          access: response.token!,
-          refresh: response.refreshToken ?? '',
+        await _persistAuth(
+          response.data!,
+          response.token!,
+          response.refreshToken ?? '',
         );
-        
-        // Sync FCM token if not already done by login payload
         unawaited(FCMService.sendTokenToBackend());
-        
-        state = AuthState.authenticated(response.data!);
       } else {
         state = AuthState.unauthenticated(error: response.message);
       }
@@ -168,10 +163,11 @@ class AuthStore extends Notifier<AuthState> {
       String formattedPhone = phoneNumber.trim();
       if (formattedPhone.length == 10) {
         formattedPhone = '+91$formattedPhone';
-      } else if (formattedPhone.length == 12 && formattedPhone.startsWith('91')) {
+      } else if (formattedPhone.length == 12 &&
+          formattedPhone.startsWith('91')) {
         formattedPhone = '+$formattedPhone';
       }
-      
+
       debugPrint('AuthStore: Requesting OTP for $formattedPhone');
 
       await FirebaseAuth.instance.verifyPhoneNumber(
@@ -182,12 +178,14 @@ class AuthStore extends Notifier<AuthState> {
           await _signInWithFirebaseCredential(formattedPhone, credential);
         },
         verificationFailed: (FirebaseAuthException e) {
-          debugPrint('AuthStore: Phone verification failed: ${e.code} - ${e.message}');
+          debugPrint(
+              'AuthStore: Phone verification failed: ${e.code} - ${e.message}');
           state = AuthState.unauthenticated(
               error: e.message ?? 'Phone verification failed');
         },
         codeSent: (String verificationId, int? resendToken) {
-          debugPrint('AuthStore: OTP code sent. Verification ID: $verificationId');
+          debugPrint(
+              'AuthStore: OTP code sent. Verification ID: $verificationId');
           state = state.copyWith(
             status: AuthStatus.initial,
             successMessage: 'OTP sent to your phone via SMS',
@@ -228,11 +226,11 @@ class AuthStore extends Notifier<AuthState> {
           );
 
       if (response.success && response.data != null && response.token != null) {
-        await _storage.saveTokens(
-          access: response.token!,
-          refresh: response.refreshToken ?? '',
+        await _persistAuth(
+          response.data!,
+          response.token!,
+          response.refreshToken ?? '',
         );
-        state = AuthState.authenticated(response.data!);
         unawaited(syncFcmToken());
       } else {
         state = AuthState.unauthenticated(error: response.message);
@@ -274,22 +272,46 @@ class AuthStore extends Notifier<AuthState> {
     }
   }
 
-  Future<void> googleAuth({required String idToken}) async {
+  Future<void> googleAuth(
+      {required String idToken,
+      String? accessToken,
+      String? phoneNumber}) async {
     state = AuthState.loading();
     try {
+      String finalToken = idToken;
+
+      // ── Firebase Token Exchange ──────────────────────────────────────────
+      // Backends usually require a *Firebase* ID Token, not a plain *Google* ID Token.
+      if (accessToken != null) {
+        debugPrint('AuthStore: Exchanging Google token for Firebase token...');
+        final AuthCredential credential = GoogleAuthProvider.credential(
+          accessToken: accessToken,
+          idToken: idToken,
+        );
+        final userCredential =
+            await FirebaseAuth.instance.signInWithCredential(credential);
+        final firebaseIdToken = await userCredential.user?.getIdToken();
+
+        if (firebaseIdToken != null) {
+          finalToken = firebaseIdToken;
+          debugPrint('AuthStore: Firebase token exchange successful.');
+        }
+      }
+
       final fcmToken = await FCMService().getToken();
       final response = await ref.read(authServiceProvider).googleAuth(
-            idToken: idToken,
+            idToken: finalToken,
+            phoneNumber: phoneNumber,
             fcmToken: fcmToken,
           );
 
       if (response.success && response.data != null && response.token != null) {
-        await _storage.saveTokens(
-          access: response.token!,
-          refresh: response.refreshToken ?? '',
+        await _persistAuth(
+          response.data!,
+          response.token!,
+          response.refreshToken ?? '',
         );
         unawaited(FCMService.sendTokenToBackend());
-        state = AuthState.authenticated(response.data!);
       } else {
         state = AuthState.unauthenticated(error: response.message);
       }

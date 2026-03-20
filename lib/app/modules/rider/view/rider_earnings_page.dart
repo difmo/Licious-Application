@@ -199,8 +199,14 @@ class RiderEarningsPage extends ConsumerWidget {
                   'averagePerOrder',
                   'avgOrder'
                 ]);
-          final pendingBalance = _parseNum(
-              earnings, ['pendingBalance', 'pending_balance', 'pending']);
+          final pendingBalance = _parseNum(earnings, [
+            'pendingBalance',
+            'pending_balance',
+            'pending',
+            'walletBalance',
+            'wallet_balance',
+            'balance'
+          ]);
           final nextSettlement = earnings['nextSettlement'] as String? ??
               earnings['next_settlement'] as String? ??
               _nextSettlementDate();
@@ -261,9 +267,7 @@ class RiderEarningsPage extends ConsumerWidget {
                   // ── Payout Section ────────────────────────────────────────
                   _PayoutCard(
                     nextSettlement: nextSettlement,
-                    pendingBalance: pendingBalance > 0
-                        ? pendingBalance
-                        : weekly, // fallback to weekly if no pending field
+                    pendingBalance: pendingBalance,
                   ).animate(delay: 200.ms).fadeIn().slideY(begin: 0.1, end: 0),
                 ],
               ),

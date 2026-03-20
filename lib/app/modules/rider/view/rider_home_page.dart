@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../auth/provider/auth_provider.dart';
 import '../../../data/services/rider_service.dart';
+import '../../../data/services/review_service.dart';
 import '../../../data/services/socket_service.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../routes/app_routes.dart';
@@ -26,14 +27,34 @@ final riderOrdersProvider =
 class _RiderStats {
   final int orders;
   final double rating;
+  final int totalReviews;
   final double earnings;
-  const _RiderStats(
-      {required this.orders, required this.rating, required this.earnings});
+  final double avgPerOrder;
+  const _RiderStats({
+    required this.orders,
+    required this.rating,
+    required this.totalReviews,
+    required this.earnings,
+    required this.avgPerOrder,
+  });
 }
 
 final riderStatsProvider = FutureProvider.autoDispose<_RiderStats>((ref) async {
   final riderService = ref.read(riderServiceProvider);
+  final reviewService = ref.read(reviewServiceProvider);
+  final authState = ref.read(authProvider);
+  
   final result = await riderService.getEarnings();
+  
+  // Fetch rating from review service
+  double rating = 0.0;
+  int totalReviews = 0;
+  
+  if (authState is AuthAuthenticated) {
+    final ratingData = await reviewService.getRiderRating(authState.user.id);
+    rating = (ratingData['averageRating'] as num?)?.toDouble() ?? 0.0;
+    totalReviews = (ratingData['totalReviews'] as num?)?.toInt() ?? 0;
+  }
 
   // Unwrap: { success: true, data: {...} } OR flat map
   Map<String, dynamic> data;
@@ -94,7 +115,10 @@ final riderStatsProvider = FutureProvider.autoDispose<_RiderStats>((ref) async {
     'totalEarninag',
   ]);
 
-  double rating = parseNum(['rating', 'avgRating', 'avg_rating', 'riderRating']);
+  // If review service didn't provide a rating, try the earnings response
+  if (rating == 0) {
+    rating = parseNum(['rating', 'avgRating', 'avg_rating', 'riderRating']);
+  }
 
   // ── Fallback Calculation from History ──────────────────────────────────────
   // If backend returns zeros (common with cold starts or unlinked tables),
@@ -117,7 +141,9 @@ final riderStatsProvider = FutureProvider.autoDispose<_RiderStats>((ref) async {
   return _RiderStats(
     orders: orders,
     rating: rating,
+    totalReviews: totalReviews,
     earnings: earnings,
+    avgPerOrder: orders > 0 ? (earnings / orders) : 0.0,
   );
 });
 
@@ -463,36 +489,37 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
         ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-          content: Row(
-            children: [
-              Icon(
-                isSuccess ? Icons.check_circle_rounded : Icons.error_rounded,
-                color: Colors.white,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  isSuccess
-                      ? '✅ Order Delivered Successfully!'
-                      : result['message'] ?? 'Failed to mark as delivered',
-                  style: const TextStyle(fontWeight: FontWeight.w600),
+            content: Row(
+              children: [
+                Icon(
+                  isSuccess ? Icons.check_circle_rounded : Icons.error_rounded,
+                  color: Colors.white,
                 ),
-              ),
-            ],
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    isSuccess
+                        ? '✅ Order Delivered Successfully!'
+                        : result['message'] ?? 'Failed to mark as delivered',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor:
+                isSuccess ? AppColors.accentGreen : Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            duration: const Duration(seconds: 3),
           ),
-          backgroundColor: isSuccess ? AppColors.accentGreen : Colors.redAccent,
-          behavior: SnackBarBehavior.floating,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          duration: const Duration(seconds: 3),
-        ),
-      );
-      if (isSuccess) {
-        // Refresh assigned orders (removes this order) AND history tab
-        ref.invalidate(riderOrdersProvider);
-        ref.invalidate(deliveryHistoryProvider);
+        );
+        if (isSuccess) {
+          // Refresh assigned orders (removes this order) AND history tab
+          ref.invalidate(riderOrdersProvider);
+          ref.invalidate(deliveryHistoryProvider);
+        }
       }
-    }
     } finally {
       if (mounted) setState(() => _processingIds.remove(orderId));
     }
@@ -521,17 +548,42 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
         centerTitle: true,
         iconTheme: const IconThemeData(color: Color(0xFF1A1A1A)),
         actions: [
-
           IconButton(
             icon: const Icon(Icons.logout_rounded),
             onPressed: () async {
-              await ref.read(authProvider.notifier).logout();
-              if (context.mounted) {
-                Navigator.pushNamedAndRemoveUntil(
-                  context,
-                  AppRoutes.login,
-                  (route) => false,
-                );
+              final shouldLogout = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16)),
+                  title: const Text('Are you sure?',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
+                  content: const Text('Do you really want to sign out?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('No',
+                          style: TextStyle(color: Colors.grey)),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text('Yes',
+                          style: TextStyle(
+                              color: Colors.red, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+              );
+
+              if (shouldLogout == true) {
+                await ref.read(authProvider.notifier).logout();
+                if (context.mounted) {
+                  Navigator.pushNamedAndRemoveUntil(
+                    context,
+                    AppRoutes.login,
+                    (route) => false,
+                  );
+                }
               }
             },
           ),
@@ -671,7 +723,9 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
                             children: [
                               _buildStat(
                                   'Total Orders', '—', Icons.delivery_dining),
-                              _buildStat('Rating', '—', Icons.star_rounded),
+                              _buildStat('Avg/Order', '₹—', Icons.star_rounded,
+                                  color: Colors.amber,
+                                  bgColor: const Color(0xFFFFF8E1)),
                               _buildStat('Total Earnings', '₹—',
                                   Icons.account_balance_wallet_rounded),
                             ],
@@ -682,11 +736,11 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
                               _buildStat('Total Orders', '${stats.orders}',
                                   Icons.delivery_dining),
                               _buildStat(
-                                  'Rating',
-                                  stats.rating > 0
-                                      ? stats.rating.toStringAsFixed(1)
-                                      : '—',
-                                  Icons.star_rounded),
+                                  'Avg/Order',
+                                  '₹${stats.avgPerOrder.toStringAsFixed(0)}',
+                                  Icons.star_rounded,
+                                  color: Colors.amber,
+                                  bgColor: const Color(0xFFFFF8E1)),
                               _buildStat(
                                   'Total Earnings',
                                   '₹${stats.earnings.toStringAsFixed(0)}',
@@ -807,16 +861,19 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
     ).animate().fadeIn();
   }
 
-  Widget _buildStat(String label, String value, IconData icon) {
+  Widget _buildStat(String label, String value, IconData icon,
+      {Color? color, Color? bgColor}) {
+    final themeColor = color ?? AppColors.accentGreen;
+    final themeBg = bgColor ?? const Color(0xFFF1F8EB);
     return Column(
       children: [
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: const Color(0xFFF1F8EB),
+            color: themeBg,
             borderRadius: BorderRadius.circular(10),
           ),
-          child: Icon(icon, color: AppColors.accentGreen, size: 20),
+          child: Icon(icon, color: themeColor, size: 20),
         ),
         const SizedBox(height: 8),
         Text(value,
@@ -1020,8 +1077,9 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
                             : () =>
                                 _handleResponse(order['orderId'], 'Accepted'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor:
-                              isProcessing ? Colors.grey : const Color(0xFF68B92E),
+                          backgroundColor: isProcessing
+                              ? Colors.grey
+                              : const Color(0xFF68B92E),
                           foregroundColor: Colors.white,
                           elevation: 0,
                           shape: RoundedRectangleBorder(
@@ -1040,7 +1098,8 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
                             : () =>
                                 _handleResponse(order['orderId'], 'Rejected'),
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: isProcessing ? Colors.grey : Colors.red,
+                          foregroundColor:
+                              isProcessing ? Colors.grey : Colors.red,
                           side: BorderSide(
                               color: isProcessing ? Colors.grey : Colors.red),
                           shape: RoundedRectangleBorder(
@@ -1097,8 +1156,9 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
                             style: TextStyle(
                                 fontSize: 11, fontWeight: FontWeight.bold)),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor:
-                              isProcessing ? Colors.grey : const Color(0xFF68B92E),
+                          backgroundColor: isProcessing
+                              ? Colors.grey
+                              : const Color(0xFF68B92E),
                           foregroundColor: Colors.white,
                           elevation: 0,
                           shape: RoundedRectangleBorder(

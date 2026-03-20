@@ -165,8 +165,9 @@ class _ProfileHeader extends StatelessWidget {
                         width: 8,
                         height: 8,
                         decoration: BoxDecoration(
-                          color:
-                              user.isShopActive ? const Color(0xFF68B92E) : Colors.red,
+                          color: user.isShopActive
+                              ? const Color(0xFF68B92E)
+                              : Colors.red,
                           shape: BoxShape.circle,
                         ),
                       ),
@@ -198,16 +199,8 @@ class _ProfileHeader extends StatelessWidget {
           child: Container(
             width: 80,
             height: 80,
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF114F3B).withValues(alpha: 0.3),
-                  blurRadius: 20,
-                  spreadRadius: 2,
-                  offset: const Offset(0, 5),
-                ),
-              ],
             ),
             child: CircleAvatar(
               backgroundColor: const Color(0xFFEBFFD7),
@@ -271,7 +264,8 @@ class _ActiveOrdersAndSubscriptions extends ConsumerWidget {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: const Color(0xFFEBFFD7),
-                border: Border.all(color: const Color(0xFF114F3B).withOpacity(0.1)),
+                border:
+                    Border.all(color: const Color(0xFF114F3B).withOpacity(0.1)),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Column(
@@ -306,8 +300,8 @@ class _ActiveOrdersAndSubscriptions extends ConsumerWidget {
                   ),
                   const SizedBox(height: 12),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(20),
@@ -434,7 +428,7 @@ class _QuickActionBtn extends StatelessWidget {
         } else if (isFavBtn) {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => const FavoritesPage()),
+            MaterialPageRoute(builder: (context) => FavoritesPage()),
           );
         } else {
           Navigator.push(
@@ -576,14 +570,39 @@ class _SignOutButton extends ConsumerWidget {
       alignment: Alignment.centerRight,
       child: GestureDetector(
         onTap: () async {
-          CartProviderScope.of(context).clearSession();
-          await ref.read(authProvider.notifier).logout();
-          if (context.mounted) {
-            Navigator.pushNamedAndRemoveUntil(
-              context,
-              AppRoutes.login,
-              (route) => false,
-            );
+          final shouldLogout = await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
+              title: const Text('Are you sure?',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+              content: const Text('Do you really want to sign out?'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('No', style: TextStyle(color: Colors.grey)),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('Yes',
+                      style: TextStyle(
+                          color: Colors.red, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+          );
+
+          if (shouldLogout == true) {
+            CartProviderScope.of(context).clearSession();
+            await ref.read(authProvider.notifier).logout();
+            if (context.mounted) {
+              Navigator.pushNamedAndRemoveUntil(
+                context,
+                AppRoutes.login,
+                (route) => false,
+              );
+            }
           }
         },
         child: Row(

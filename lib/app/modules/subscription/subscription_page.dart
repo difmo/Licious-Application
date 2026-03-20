@@ -329,7 +329,8 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
                         ),
                       ),
                       child: Text(
-                        (ordersForDate.isNotEmpty && ordersForDate.first['status'] != null
+                        (ordersForDate.isNotEmpty &&
+                                    ordersForDate.first['status'] != null
                                 ? ordersForDate.first['status'].toString()
                                 : 'PENDING')
                             .toUpperCase(),
@@ -389,9 +390,10 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
     final product = item['product'];
     final name =
         product is Map ? product['name']?.toString() ?? 'Item' : 'Item';
-    final image = (product is Map && (product['images'] as List?)?.isNotEmpty == true)
-        ? (product['images'] as List).first.toString()
-        : '';
+    final image =
+        (product is Map && (product['images'] as List?)?.isNotEmpty == true)
+            ? (product['images'] as List).first.toString()
+            : '';
     final qty = item['quantity']?.toString() ?? '1';
     final status = order['status']?.toString() ?? 'Pending';
     final isDelivered = status.toLowerCase() == 'delivered';

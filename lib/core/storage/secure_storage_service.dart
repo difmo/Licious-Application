@@ -3,6 +3,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 class SecureStorageService {
   static const _accessTokenKey = 'access_token';
   static const _refreshTokenKey = 'refresh_token';
+  static const _userKey = 'cached_user';
 
   final FlutterSecureStorage _storage;
 
@@ -23,6 +24,12 @@ class SecureStorageService {
 
   Future<String?> getAccessToken() => _storage.read(key: _accessTokenKey);
   Future<String?> getRefreshToken() => _storage.read(key: _refreshTokenKey);
+
+  Future<void> saveUser(String userJson) async {
+    await _storage.write(key: _userKey, value: userJson);
+  }
+
+  Future<String?> getUser() => _storage.read(key: _userKey);
 
   Future<void> clearAll() async {
     await _storage.deleteAll();

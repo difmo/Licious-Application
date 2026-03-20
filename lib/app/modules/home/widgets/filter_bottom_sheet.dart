@@ -191,11 +191,9 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                   const SizedBox(height: 16),
                   Row(
                     children: [
-                      _buildRatingChip('★ 4+'),
+                      _buildRatingChip(4),
                       const SizedBox(width: 12),
-                      _buildRatingChip('★ 3+'),
-                      const SizedBox(width: 12),
-                      _buildRatingChip('★ 2+'),
+                      _buildRatingChip(3),
                     ],
                   ),
                 ]),
@@ -296,7 +294,8 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
     color: Colors.black87,
   );
 
-  Widget _buildRatingChip(String label) {
+  Widget _buildRatingChip(int ratingValue) {
+    String label = '★ $ratingValue+';
     bool isSelected = _selectedRating == label;
     return GestureDetector(
       onTap: () {
@@ -306,22 +305,25 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected ? _primaryColor.withValues(alpha:  0.1) : Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          color: isSelected ? _primaryColor.withValues(alpha: 0.1) : Colors.white,
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected ? _primaryColor : Colors.grey.shade300,
             width: isSelected ? 1.5 : 1,
           ),
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? _primaryColor : Colors.black87,
-            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-            fontSize: 14,
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: List.generate(5, (index) {
+            bool isFilled = index < ratingValue;
+            return Icon(
+              isFilled ? Icons.star_rounded : Icons.star_outline_rounded,
+              color: isFilled ? const Color(0xFF68B92E) : Colors.grey.shade300,
+              size: 20,
+            );
+          }),
         ),
       ),
     );

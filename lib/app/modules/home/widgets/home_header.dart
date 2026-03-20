@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../controller/main_controller.dart';
 import '../../../widgets/bounce_widget.dart';
+import '../../../data/services/db_service.dart';
 import '../../../routes/app_routes.dart';
+import './location_bottom_sheet.dart';
+import '../../profile/view/profile_detail_page.dart';
 
 class HomeHeader extends StatefulWidget {
   const HomeHeader({super.key});
@@ -14,64 +17,97 @@ class HomeHeader extends StatefulWidget {
 class _HomeHeaderState extends State<HomeHeader> {
   @override
   Widget build(BuildContext context) {
+    final cart = CartProviderScope.of(context);
+    final selectedAddress = cart.selectedAddress;
+
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 16),
       decoration: const BoxDecoration(color: Colors.white),
-      // decoration: const BoxDecoration(color: Color(0xFFF9FFF6)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Location Picker Row
-          Row(
-            children: [
-              const Icon(Icons.location_on, color: Color(0xFF1A1A1A), size: 18),
-              const SizedBox(width: 4),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          'Vibhav Khand -4',
-                          style: TextStyle(
-                            fontSize: 14.6,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF1A1A1A),
+          InkWell(
+            onTap: () => LocationBottomSheet.show(context),
+            child: Row(
+              children: [
+                const Icon(Icons.location_on,
+                    color: Color(0xFF1A1A1A), size: 18),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              selectedAddress?.title ?? 'Set Location',
+                              style: const TextStyle(
+                                fontSize: 17.6,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF1A1A1A),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                        ),
-                        Icon(Icons.keyboard_arrow_down, size: 20),
-                      ],
-                    ),
-                    Text(
-                      'Vibhav Khand, Gomti Nagar, L...',
-                      style: TextStyle(fontSize: 10.2, color: Colors.grey),
-                    ),
-                  ],
+                          const Icon(Icons.keyboard_arrow_down, size: 20),
+                        ],
+                      ),
+                      Text(
+                        selectedAddress != null
+                            ? '${selectedAddress.street}\n${selectedAddress.details}'
+                            : 'Add address to start ordering',
+                        style: const TextStyle(
+                            fontSize: 15.2, color: Colors.grey, height: 1.2),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              // Header Buttons
-              const SizedBox(width: 8),
+                // Header Buttons
+                const SizedBox(width: 8),
 
-              // Cart Icon removed from here
-              BounceWidget(
-                onTap: () {
-                  MainControllerScope.of(context).changePage(4);
-                },
-                child: Hero(
-                  tag: 'profile_pic',
-                  child: CircleAvatar(
-                    radius: 18,
-                    backgroundColor: Colors.green.shade200,
-                    child: const Icon(
-                      Icons.person,
-                      color: Color(0xFFE54141),
-                      size: 20,
+                BounceWidget(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            const ProfileDetailPage(title: 'Notifications'),
+                      ),
+                    );
+                  },
+                  child: const Icon(
+                    Icons.notifications_none_outlined,
+                    color: Color(0xFF1A1A1A),
+                    size: 26,
+                  ),
+                ),
+
+                const SizedBox(width: 12),
+
+                BounceWidget(
+                  onTap: () {
+                    MainControllerScope.of(context).changePage(4);
+                  },
+                  child: Hero(
+                    tag: 'profile_pic',
+                    child: CircleAvatar(
+                      radius: 18,
+                      backgroundColor: Colors.green.shade200,
+                      child: const Icon(
+                        Icons.person,
+                        color: Color(0xFFE54141),
+                        size: 20,
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           const SizedBox(height: 20),
           // Search Bar Row

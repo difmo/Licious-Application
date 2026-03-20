@@ -58,6 +58,7 @@ dependencies:
   firebase_auth: ^6.2.0
   firebase_app_check: ^0.4.1+5
   confetti: ^0.8.0
+  share_plus: ^12.0.1
 
 
 dev_dependencies:

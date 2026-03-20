@@ -6,7 +6,9 @@ import '../../../data/services/subscription_service.dart';
 import '../../../data/models/subscription_model.dart';
 import '../../../data/models/food_models.dart';
 import 'address_form_page.dart';
-import '../widgets/review_dialog.dart';
+import '../widgets/order_review_dialog.dart';
+import '../../../data/services/notification_api_service.dart';
+import '../../../data/models/notification_model.dart';
 
 class ProfileDetailPage extends ConsumerStatefulWidget {
   final String title;
@@ -20,6 +22,8 @@ class ProfileDetailPage extends ConsumerStatefulWidget {
 class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
   int? _expandedOrderIndex = 0; // Default first one expanded as in Image 3
   bool _makeDefaultCard = true;
+
+
 
   // ── Subscriptions state ───────────────────────────────────────────────────
   final SubscriptionService _subscriptionService = SubscriptionService();
@@ -443,8 +447,7 @@ class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
                     Icons.inventory_2_outlined,
                     true,
                     true,
-                  ),
-                  _buildTimelineItem(
+                  ),_buildTimelineItem(
                     'Order Confirmed',
                     order.date,
                     Icons.check_circle_outline,
@@ -474,15 +477,8 @@ class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
                         onPressed: () {
                           showDialog(
                             context: context,
-                            builder: (context) => ReviewDialog(
-                              orderId: order.id,
-                              productName: (order.items.isNotEmpty && order.items[0].isNotEmpty)
-                                  ? order.items[0].split('x ').last
-                                  : 'Shrimp Product',
-                              retailerId:
-                                  '65e9f8f8f8f8f8f8f8f8f8f8', // Mock retailer ID
-                              productId:
-                                  '65e9f8f8f8f8f8f8f8f8f8f9', // Mock product ID
+                            builder: (context) => OrderReviewDialog(
+                              order: order,
                             ),
                           );
                         },
@@ -511,33 +507,216 @@ class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
     );
   }
 
-  // --- NOTIFICATIONS DESIGN (Image 4) ---
+  // --- NOTIFICATIONS DESIGN (Dynamic API Integration) ---
   Widget _buildNotificationsDetail() {
-    return Column(
-      children: [
-        _buildNotificationCard(
-          'Allow Notifications',
-          'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed diam nonummym',
-          true,
+    final notificationsAsync = ref.watch(notificationsProvider);
+
+    return notificationsAsync.when(
+      loading: () => const Center(
+          child: Padding(
+        padding: EdgeInsets.all(40),
+        child: CircularProgressIndicator(color: Color(0xFF68B92E)),
+      )),
+      error: (err, stack) => Center(
+          child: Column(
+        children: [
+          const Icon(Icons.error_outline, color: Colors.red, size: 40),
+          const SizedBox(height: 12),
+          Text('Failed to load notifications: $err'),
+          TextButton(
+              onPressed: () => ref.refresh(notificationsProvider),
+              child: const Text('Retry')),
+        ],
+      )),
+      data: (notifications) {
+        final list = notifications.take(20).toList();
+        final unreadCount = list.where((n) => !n.isRead).length;
+
+        if (list.isEmpty) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 60),
+              child: Column(
+                children: [
+                  Icon(Icons.notifications_none, size: 64, color: Colors.grey),
+                  SizedBox(height: 16),
+                  Text('No notifications found',
+                      style: TextStyle(color: Colors.grey, fontSize: 16)),
+                ],
+              ),
+            ),
+          );
+        }
+
+        return Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    'Recent Notifications (${unreadCount} new)',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                TextButton(
+                  onPressed: () {
+                    ref.invalidate(notificationsProvider);
+                  },
+                  child: const Text('Refresh',
+                      style: TextStyle(fontSize: 12, color: Colors.blue)),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    await ref
+                        .read(notificationApiServiceProvider)
+                        .markAllAsRead();
+                    ref.invalidate(notificationsProvider);
+                  },
+                  child: const Text('Mark all as read',
+                      style: TextStyle(fontSize: 12, color: Color(0xFF68B92E))),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            ...list.map((n) => _buildIncomingNotificationItem(n)).toList(),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildIncomingNotificationItem(NotificationModel n) {
+    bool isRead = n.isRead;
+    IconData icon;
+    Color iconColor;
+    switch (n.type) {
+      case 'order':
+        icon = Icons.check_circle_outline_rounded;
+        iconColor = const Color(0xFF68B92E);
+        break;
+      case 'delivery':
+        icon = Icons.moped_rounded;
+        iconColor = Colors.blue;
+        break;
+      case 'promotion':
+        icon = Icons.local_offer_outlined;
+        iconColor = Colors.orange;
+        break;
+      case 'billing':
+        icon = Icons.account_balance_wallet_outlined;
+        iconColor = Colors.purple;
+        break;
+      default:
+        icon = Icons.notifications_none_rounded;
+        iconColor = Colors.grey;
+    }
+
+    return GestureDetector(
+      onTap: () async {
+        if (!isRead) {
+          await ref.read(notificationApiServiceProvider).markAsRead(n.id);
+          ref.invalidate(notificationsProvider);
+        }
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isRead ? Colors.white : const Color(0xFFF1F8E9),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isRead ? 0.05 : 0.08),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+          border: isRead
+              ? null
+              : Border.all(color: const Color(0xFF68B92E).withOpacity(0.2)),
         ),
-        _buildNotificationCard(
-          'Email Notifications',
-          'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed diam nonummym',
-          false,
+        child: Stack(
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: iconColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, color: iconColor, size: 24),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              n.title,
+                              style: TextStyle(
+                                fontWeight:
+                                    isRead ? FontWeight.w600 : FontWeight.bold,
+                                fontSize: 15,
+                                color: const Color(0xFF1A1A1A),
+                              ),
+                            ),
+                          ),
+                          Text(
+                            n.timeAgo,
+                            style: TextStyle(
+                              color: isRead
+                                  ? Colors.grey.shade500
+                                  : const Color(0xFF68B92E),
+                              fontSize: 11,
+                              fontWeight:
+                                  isRead ? FontWeight.normal : FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        n.body,
+                        style: TextStyle(
+                          color: isRead ? Colors.grey.shade600 : Colors.black87,
+                          fontSize: 13,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            if (!isRead)
+              Positioned(
+                right: 0,
+                top: 0,
+                child: Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF68B92E),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+          ],
         ),
-        _buildNotificationCard(
-          'Order Notifications',
-          'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed diam nonummym',
-          false,
-        ),
-        _buildNotificationCard(
-          'General Notifications',
-          'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed diam nonummym',
-          true,
-        ),
-        const SizedBox(height: 60),
-        _buildSaveButton('Save settings'),
-      ],
+      ),
     );
   }
 
@@ -786,50 +965,7 @@ class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
     );
   }
 
-  Widget _buildNotificationCard(String title, String desc, bool value) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  desc,
-                  style: const TextStyle(
-                    color: Colors.grey,
-                    fontSize: 12,
-                    height: 1.4,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          Switch(
-            value: value,
-            onChanged: (v) {},
-            activeThumbColor: const Color(0xFF68B92E),
-          ),
-        ],
-      ),
-    );
-  }
+
 
   Widget _buildCardItem(
     String title,

@@ -26,6 +26,8 @@ class ShopProduct {
   final String retailerId;
   final String status; // "Published" | "Draft"
   final DateTime createdAt;
+  final double rating;
+  final int ratingsCount;
 
   const ShopProduct({
     required this.id,
@@ -39,6 +41,8 @@ class ShopProduct {
     required this.retailerId,
     required this.status,
     required this.createdAt,
+    this.rating = 0.0,
+    this.ratingsCount = 0,
   });
 
   bool get isAvailable =>
@@ -103,6 +107,8 @@ class ShopProduct {
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
           : DateTime.now(),
+      rating: (json['rating'] as num?)?.toDouble() ?? (json['avgRating'] as num?)?.toDouble() ?? 0.0,
+      ratingsCount: (json['ratingsCount'] as num?)?.toInt() ?? (json['reviewsCount'] as num?)?.toInt() ?? 0,
     );
   }
 }
@@ -117,6 +123,7 @@ class ShopModel {
   final double rating;
   final String deliveryTime;
   final bool isShopActive;
+  final int ratingsCount;
 
   const ShopModel({
     required this.id,
@@ -124,9 +131,10 @@ class ShopModel {
     this.businessName = '',
     this.image = '',
     this.location = '',
-    this.rating = 4.5,
+    this.rating = 0.0,
     this.deliveryTime = '30-45 mins',
     this.isShopActive = true,
+    this.ratingsCount = 0,
   });
 
   ShopModel copyWith({
@@ -138,6 +146,7 @@ class ShopModel {
     double? rating,
     String? deliveryTime,
     bool? isShopActive,
+    int? ratingsCount,
   }) {
     return ShopModel(
       id: id ?? this.id,
@@ -148,6 +157,7 @@ class ShopModel {
       rating: rating ?? this.rating,
       deliveryTime: deliveryTime ?? this.deliveryTime,
       isShopActive: isShopActive ?? this.isShopActive,
+      ratingsCount: ratingsCount ?? this.ratingsCount,
     );
   }
 
@@ -158,9 +168,14 @@ class ShopModel {
       businessName: (json['businessName'] ?? '').toString(),
       image: (json['image'] ?? json['logo'] ?? json['banner'] ?? '').toString(),
       location: (json['location'] ?? json['address'] ?? '').toString(),
-      rating: (json['rating'] as num?)?.toDouble() ?? 4.5,
+      rating: (json['rating'] as num?)?.toDouble() ?? 
+              (json['avgRating'] as num?)?.toDouble() ?? 
+              (json['shopRating'] as num?)?.toDouble() ?? 0.0,
       deliveryTime: (json['deliveryTime'] ?? '30-45 mins').toString(),
       isShopActive: json['isShopActive'] ?? json['isActive'] ?? true,
+      ratingsCount: (json['ratingsCount'] as num?)?.toInt() ?? 
+                    (json['reviewsCount'] as num?)?.toInt() ?? 
+                    (json['reviews'] as num?)?.toInt() ?? 0,
     );
   }
 }

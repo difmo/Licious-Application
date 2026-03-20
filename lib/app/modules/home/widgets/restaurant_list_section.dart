@@ -179,16 +179,9 @@ class _ShopCard extends StatelessWidget {
   String get _heroImage => _heroImages[index % _heroImages.length];
   String get _cuisine => _cuisineTypes[index % _cuisineTypes.length];
 
-  // Generate a deterministic rating from shop ID
-  double get _rating {
-    final code = shop.id.codeUnits.fold<int>(0, (a, b) => a + b);
-    return 3.8 + (code % 9) * 0.1; // 3.8 – 4.6
-  }
 
-  int get _reviews {
-    final code = shop.id.codeUnits.fold<int>(0, (a, b) => a + b);
-    return 600 + (code % 40) * 100; // realistic range
-  }
+
+
 
   String get _deliveryTime {
     final mins = 50 + (index * 5) % 40;
@@ -391,7 +384,7 @@ class _ShopCard extends StatelessWidget {
                           Text(
                             shop.rating > 0
                                 ? shop.rating.toStringAsFixed(1)
-                                : _rating.toStringAsFixed(1),
+                                : 'New', 
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 12,
@@ -401,11 +394,14 @@ class _ShopCard extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const SizedBox(width: 6),
-                    Text(
-                      _formatReviews(_reviews),
-                      style: const TextStyle(fontSize: 11, color: Colors.grey),
-                    ),
+                    if (shop.ratingsCount > 0) ...[
+                      const SizedBox(width: 6),
+                      Text(
+                        _formatReviews(shop.ratingsCount),
+                        style:
+                            const TextStyle(fontSize: 11, color: Colors.grey),
+                      ),
+                    ],
                   ],
                 ),
               ),

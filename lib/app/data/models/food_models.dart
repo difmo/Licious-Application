@@ -55,7 +55,7 @@ class UserOrder {
   final String? deliveryDate; // For upcoming subscription deliveries
   final double total;
   final String status;
-  final List<String> items;
+  final List<OrderItem> items;
   final bool isSubscription;
 
   const UserOrder({
@@ -72,18 +72,43 @@ class UserOrder {
   factory UserOrder.fromJson(Map<String, dynamic> json) {
     // Backend returns orderId, createdAt, totalAmount, status, items
     return UserOrder(
-      id: json['orderId'] ?? '',
-      restaurantName: 'Shrimpbite Retailer', // Placeholder as it's not directly in Order model top level
+      id: (json['orderId'] ?? json['_id'] ?? '').toString(),
+      restaurantName: 'Shrimpbite Retailer', // Placeholder
       date: json['createdAt'] != null 
           ? DateTime.parse(json['createdAt']).toLocal().toString().split('.').first
           : '',
       total: double.tryParse(json['totalAmount']?.toString() ?? '0') ?? 0.0,
-      status: json['paymentStatus'] == 'Paid' ? 'Accepted' : 'Pending',
-      items: (json['items'] as List<dynamic>?)?.map((item) => 
-          "${item['quantity']}x ${item['product']?['name'] ?? 'Product'}"
-      ).toList() ?? [],
+      status: json['status'] ?? (json['paymentStatus'] == 'Paid' ? 'Accepted' : 'Pending'),
+      items: (json['items'] as List<dynamic>?)?.map((item) => OrderItem.fromJson(item)).toList() ?? [],
     );
   }
+}
+
+class OrderItem {
+  final String productId;
+  final String name;
+  final int quantity;
+  final double price;
+
+  const OrderItem({
+    required this.productId,
+    required this.name,
+    required this.quantity,
+    required this.price,
+  });
+
+  factory OrderItem.fromJson(Map<String, dynamic> json) {
+    final product = json['product'] is Map ? json['product'] : {};
+    return OrderItem(
+      productId: (product['_id'] ?? product['id'] ?? '').toString(),
+      name: (product['name'] ?? 'Product').toString(),
+      quantity: (json['quantity'] as num?)?.toInt() ?? 1,
+      price: (json['price'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+
+  @override
+  String toString() => '${quantity}x $name';
 }
 
 class UserAddress {
@@ -225,3 +250,39 @@ class WalletTransaction {
     );
   }
 }
+
+class Review {
+  final String id;
+  final String userId;
+  final String userName;
+  final String userImage;
+  final String productId;
+  final double rating;
+  final String comment;
+  final DateTime createdAt;
+
+  const Review({
+    required this.id,
+    required this.userId,
+    required this.userName,
+    required this.userImage,
+    required this.productId,
+    required this.rating,
+    required this.comment,
+    required this.createdAt,
+  });
+
+  factory Review.fromJson(Map<String, dynamic> json) {
+    return Review(
+      id: json['_id']?.toString() ?? json['id']?.toString() ?? '',
+      userId: json['user']?['_id']?.toString() ?? '',
+      userName: json['user']?['fullName']?.toString() ?? 'User',
+      userImage: json['user']?['avatar']?.toString() ?? '',
+      productId: json['product']?.toString() ?? '',
+      rating: double.tryParse(json['rating']?.toString() ?? '5') ?? 5.0,
+      comment: json['comment']?.toString() ?? '',
+      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : DateTime.now(),
+    );
+  }
+}
+

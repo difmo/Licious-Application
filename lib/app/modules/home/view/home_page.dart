@@ -20,7 +20,7 @@ class HomePage extends ConsumerWidget {
         statusBarBrightness: Brightness.light,
       ),
       child: Scaffold(
-        backgroundColor: const Color(0xFFF7F8FA),
+        backgroundColor: Colors.white,
         body: SafeArea(
           bottom: false,
           child: RefreshIndicator(
@@ -111,7 +111,7 @@ class _AnimatedFooterTextState extends State<AnimatedFooterText>
       child: const Padding(
         padding: EdgeInsets.symmetric(vertical: 0),
         child: Text(
-          'With love,\nfrom Shrimp.',
+          'With love from Shrimp.',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 28,

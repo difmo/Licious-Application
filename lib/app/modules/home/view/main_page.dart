@@ -7,16 +7,24 @@ import '../../subscription/subscription_page.dart';
 import '../../wallet/view/wallet_page.dart';
 import '../controller/main_controller.dart';
 import '../../../data/services/db_service.dart';
+import '../../../data/services/socket_service.dart';
+import '../../../data/services/order_service.dart';
+import '../../auth/provider/auth_provider.dart';
+import '../../profile/widgets/order_review_dialog.dart';
+import '../../../data/models/food_models.dart';
+import '../../../data/models/notification_model.dart';
+import '../../../data/services/notification_api_service.dart';
 import '../widgets/cart_summary_bar.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class MainPage extends StatefulWidget {
+class MainPage extends ConsumerStatefulWidget {
   const MainPage({super.key});
 
   @override
-  State<MainPage> createState() => _MainPageState();
+  ConsumerState<MainPage> createState() => _MainPageState();
 }
 
-class _MainPageState extends State<MainPage> {
+class _MainPageState extends ConsumerState<MainPage> {
   final MainController _controller = MainController();
   DateTime? _lastPressedAt;
 
@@ -37,12 +45,76 @@ class _MainPageState extends State<MainPage> {
     // Initial cart sync from API
     WidgetsBinding.instance.addPostFrameCallback((_) {
       CartProviderScope.of(context).loadCartFromApi();
+      _initSocketListeners();
     });
+  }
+
+  void _initSocketListeners() {
+    final authState = ref.read(authProvider);
+    if (authState is! AuthAuthenticated) return;
+
+    final socket = ref.read(socketServiceProvider);
+    final userId = authState.user.id;
+
+    // Join the user's personal room to receive order updates
+    socket.joinUserRoom(userId);
+
+    // Listen for order status changes
+    socket.onOrderUpdate((data) {
+      if (!mounted) return;
+
+      debugPrint('🔔 Order update in MainPage: $data');
+
+      // Determine if the order has been delivered
+      final status = (data['status']?.toString() ?? '').toLowerCase();
+      if (status == 'delivered' || status == 'completed') {
+        _handleOrderDelivered(data);
+
+        // Add to notifications list locally for persistent history
+        final orderId = data['orderId']?.toString() ?? 'Order';
+        ref.read(notificationsProvider.notifier).addNotification(
+              NotificationModel(
+                id: 'ord-${DateTime.now().millisecondsSinceEpoch}',
+                title: 'Order Delivered! 🎉',
+                body:
+                    'Package #$orderId has been delivered successfully. Enjoy!',
+                type: 'order',
+                isRead: false,
+                createdAt: DateTime.now(),
+              ),
+            );
+      }
+    });
+  }
+
+  Future<void> _handleOrderDelivered(dynamic data) async {
+    // If we have orderId, fetch full details for the dialog
+    final orderId = data['orderId']?.toString();
+    if (orderId == null) return;
+
+    try {
+      final orderService = ref.read(orderServiceProvider);
+      final rawOrder = await orderService.getOrderById(orderId);
+
+      if (rawOrder.isNotEmpty && mounted) {
+        final order = UserOrder.fromJson(rawOrder);
+
+        // Show the review dialog automatically
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => OrderReviewDialog(order: order),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error fetching order for review dialog: $e');
+    }
   }
 
   @override
   void dispose() {
     _controller.dispose();
+    ref.read(socketServiceProvider).offOrderUpdate();
     super.dispose();
   }
 
@@ -88,7 +160,7 @@ class _MainPageState extends State<MainPage> {
           SystemNavigator.pop();
         },
         child: Scaffold(
-          backgroundColor: const Color(0xFFEBFFD7),
+          backgroundColor: Colors.white,
           extendBody: true,
           body: Stack(
             children: [
@@ -126,7 +198,7 @@ class _MainPageState extends State<MainPage> {
             height: 70,
             margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
             decoration: BoxDecoration(
-              color: const Color(0xFFEBFFD7),
+              color: Colors.white,
               borderRadius: BorderRadius.circular(35),
               border: Border.all(
                   color: const Color(0xFF68B92E).withValues(alpha: 0.1)),
@@ -146,6 +218,7 @@ class _MainPageState extends State<MainPage> {
           Positioned(
             top: 5,
             child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
               onTap: () => _controller.changePage(2),
               child: Container(
                 width: 68,
@@ -181,27 +254,33 @@ class _MainPageState extends State<MainPage> {
     bool isSelected = _controller.currentIndex == index;
     return GestureDetector(
       onTap: () => _controller.changePage(index),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            color:
-                isSelected ? const Color(0xFF68B92E) : const Color(0xFF4A4A4A),
-            size: 24,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
               color: isSelected
                   ? const Color(0xFF68B92E)
                   : const Color(0xFF4A4A4A),
-              fontSize: 10,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              size: 24,
             ),
-          ),
-        ],
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected
+                    ? const Color(0xFF68B92E)
+                    : const Color(0xFF4A4A4A),
+                fontSize: 10,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

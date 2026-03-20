@@ -15,8 +15,14 @@ class GoogleProfilePage extends ConsumerStatefulWidget {
 
 class _GoogleProfilePageState extends ConsumerState<GoogleProfilePage> {
   bool _notificationsEnabled = true;
-  bool _darkModeEnabled = false;
   bool _isAuthenticating = false;
+  final TextEditingController _phoneController = TextEditingController();
+
+  @override
+  void dispose() {
+    _phoneController.dispose();
+    super.dispose();
+  }
 
   void _showSnackBar(String message, {Color color = Colors.black87}) {
     if (!mounted) return;
@@ -36,12 +42,19 @@ class _GoogleProfilePageState extends ConsumerState<GoogleProfilePage> {
       final idToken = auth.idToken;
 
       if (idToken == null) {
-        _showSnackBar('Could not retrieve ID token from Google', color: Colors.red);
+        _showSnackBar('Could not retrieve ID token from Google',
+            color: Colors.red);
         setState(() => _isAuthenticating = false);
         return;
       }
 
-      await ref.read(authProvider.notifier).googleAuth(idToken: idToken);
+      await ref.read(authProvider.notifier).googleAuth(
+            idToken: idToken,
+            accessToken: auth.accessToken,
+            phoneNumber: _phoneController.text.isNotEmpty
+                ? _phoneController.text.trim()
+                : null,
+          );
 
       if (!mounted) return;
       final authState = ref.read(authProvider);
@@ -49,11 +62,14 @@ class _GoogleProfilePageState extends ConsumerState<GoogleProfilePage> {
       if (authState is AuthAuthenticated) {
         _showSnackBar('Successfully signed in!', color: Colors.green);
         if (authState.user.role == 'rider') {
-          Navigator.pushNamedAndRemoveUntil(context, AppRoutes.riderHome, (r) => false);
+          Navigator.pushNamedAndRemoveUntil(
+              context, AppRoutes.riderHome, (r) => false);
         } else {
-          Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (r) => false);
+          Navigator.pushNamedAndRemoveUntil(
+              context, AppRoutes.home, (r) => false);
         }
       } else if (authState is AuthError) {
+        // Show detailed error including potential 404 path
         _showSnackBar(authState.message, color: Colors.red);
         ref.read(authProvider.notifier).reset();
       }
@@ -106,24 +122,42 @@ class _GoogleProfilePageState extends ConsumerState<GoogleProfilePage> {
                     end: Alignment.bottomRight,
                   ),
                 ),
-                child: SafeArea(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const SizedBox(height: 24),
-                      // Profile photo or initials avatar
-                      CircleAvatar(
-                        radius: 52,
-                        backgroundColor: Colors.white,
-                        child: account.photoUrl != null
-                            ? ClipOval(
-                                child: Image.network(
-                                  account.photoUrl!,
-                                  width: 100,
-                                  height: 100,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) =>
-                                      Text(
+                child: Consumer(
+                  builder: (context, ref, child) {
+                    final currentUser = ref.watch(currentUserProvider);
+                    final displayName = currentUser?.fullName ??
+                        account.displayName ??
+                        'Google User';
+                    final email = currentUser?.email ?? account.email;
+
+                    return SafeArea(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const SizedBox(height: 24),
+                          // Profile photo or initials avatar
+                          CircleAvatar(
+                            radius: 52,
+                            backgroundColor: Colors.white,
+                            child: account.photoUrl != null
+                                ? ClipOval(
+                                    child: Image.network(
+                                      account.photoUrl!,
+                                      width: 100,
+                                      height: 100,
+                                      fit: BoxFit.cover,
+                                      errorBuilder:
+                                          (context, error, stackTrace) => Text(
+                                        initials,
+                                        style: const TextStyle(
+                                          fontSize: 32,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFF2E7D32),
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                : Text(
                                     initials,
                                     style: const TextStyle(
                                       fontSize: 32,
@@ -131,36 +165,28 @@ class _GoogleProfilePageState extends ConsumerState<GoogleProfilePage> {
                                       color: Color(0xFF2E7D32),
                                     ),
                                   ),
-                                ),
-                              )
-                            : Text(
-                                initials,
-                                style: const TextStyle(
-                                  fontSize: 32,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF2E7D32),
-                                ),
-                              ),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            displayName,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            email,
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.85),
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 12),
-                      Text(
-                        account.displayName ?? 'Google User',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        account.email,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.85),
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
+                    );
+                  },
                 ),
               ),
             ),
@@ -174,23 +200,83 @@ class _GoogleProfilePageState extends ConsumerState<GoogleProfilePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Account info card
+                  Consumer(
+                    builder: (context, ref, child) {
+                      final currentUser = ref.watch(currentUserProvider);
+                      return _SectionCard(
+                        title: 'Account Details',
+                        children: [
+                          _InfoTile(
+                            icon: Icons.person_outline,
+                            label: 'Full Name',
+                            value: currentUser?.fullName ??
+                                account.displayName ??
+                                'Not available',
+                          ),
+                          _InfoTile(
+                            icon: Icons.email_outlined,
+                            label: 'Email Address',
+                            value: currentUser?.email ?? account.email,
+                          ),
+                          if (currentUser != null)
+                            _InfoTile(
+                              icon: Icons.phone_outlined,
+                              label: 'Phone Number',
+                              value: currentUser.phoneNumber,
+                            ),
+                          _InfoTile(
+                            icon: Icons.badge_outlined,
+                            label: 'Google ID',
+                            value: account.id,
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Phone Number Input Card
                   _SectionCard(
-                    title: 'Account Details',
+                    title: 'Contact Information',
                     children: [
-                      _InfoTile(
-                        icon: Icons.person_outline,
-                        label: 'Full Name',
-                        value: account.displayName ?? 'Not available',
-                      ),
-                      _InfoTile(
-                        icon: Icons.email_outlined,
-                        label: 'Email Address',
-                        value: account.email,
-                      ),
-                      _InfoTile(
-                        icon: Icons.badge_outlined,
-                        label: 'Google ID',
-                        value: account.id,
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Phone Number',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            TextField(
+                              controller: _phoneController,
+                              keyboardType: TextInputType.phone,
+                              decoration: InputDecoration(
+                                hintText:
+                                    'Enter phone (required for new users)',
+                                prefixIcon: const Icon(Icons.phone, size: 20),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide:
+                                      BorderSide(color: Colors.grey.shade300),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide:
+                                      BorderSide(color: Colors.grey.shade200),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 12),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -207,12 +293,7 @@ class _GoogleProfilePageState extends ConsumerState<GoogleProfilePage> {
                         onChanged: (v) =>
                             setState(() => _notificationsEnabled = v),
                       ),
-                      _ToggleTile(
-                        icon: Icons.dark_mode_outlined,
-                        label: 'Dark Mode',
-                        value: _darkModeEnabled,
-                        onChanged: (v) => setState(() => _darkModeEnabled = v),
-                      ),
+
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -296,9 +377,30 @@ class _GoogleProfilePageState extends ConsumerState<GoogleProfilePage> {
   }
 
   Future<void> _signOut(BuildContext context) async {
-    await GoogleSignIn().signOut();
-    if (context.mounted) {
-      Navigator.pushNamedAndRemoveUntil(context, '/', (r) => false);
+    final bool? shouldSignOut = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Are you sure?', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: const Text('Do you really want to sign out?'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('No', style: TextStyle(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Yes', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldSignOut == true) {
+      await GoogleSignIn().signOut();
+      if (context.mounted) {
+        Navigator.pushNamedAndRemoveUntil(context, '/', (r) => false);
+      }
     }
   }
 }
@@ -330,14 +432,7 @@ class _SectionCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(14),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.3),
-                blurRadius: 15,
-                spreadRadius: 0,
-                offset: const Offset(0, 8),
-              ),
-            ],
+            border: Border.all(color: Colors.grey.shade200),
           ),
           child: Column(children: children),
         ),

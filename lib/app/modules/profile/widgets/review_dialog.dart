@@ -94,24 +94,24 @@ class _ReviewDialogState extends State<ReviewDialog> {
                       final messenger = ScaffoldMessenger.of(context);
                       final navigator = Navigator.of(context);
                       
-                      final success = await reviewService.submitReview(
+                      final res = await reviewService.postReview(
                         productId: widget.productId,
                         retailerId: widget.retailerId,
-                        rating: _rating,
+                        rating: _rating.toDouble(),
                         comment: _commentController.text,
                         tags: [], // Could add tag selection chips here
                       );
 
                       if (mounted) {
                         setState(() => _isSubmitting = false);
-                        if (success) {
+                        if (res['success'] == true) {
                           navigator.pop();
                           messenger.showSnackBar(
                             const SnackBar(content: Text('Thank you for your review!')),
                           );
                         } else {
                           messenger.showSnackBar(
-                            const SnackBar(content: Text('Failed to submit review. Try again.')),
+                            SnackBar(content: Text(res['message'] ?? 'Failed to submit review.')),
                           );
                         }
                       }

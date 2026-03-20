@@ -14,11 +14,7 @@ class RestaurantMenuPage extends ConsumerWidget {
   final ShopModel shop;
   const RestaurantMenuPage({super.key, required this.shop});
 
-  // Deterministic display metadata (same logic as the card)
-  double get _rating {
-    final code = shop.id.codeUnits.fold<int>(0, (a, b) => a + b);
-    return 3.8 + (code % 9) * 0.1;
-  }
+
 
   String get _deliveryTime {
     final code = shop.id.codeUnits.fold<int>(0, (a, b) => a + b);
@@ -156,16 +152,16 @@ class RestaurantMenuPage extends ConsumerWidget {
                                     const Icon(Icons.star,
                                         size: 14, color: Colors.white),
                                     const SizedBox(width: 4),
-                                    Text(
-                                      shop.rating > 0
-                                          ? shop.rating.toStringAsFixed(1)
-                                          : _rating.toStringAsFixed(1),
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14,
+                                      Text(
+                                        shop.rating > 0
+                                            ? shop.rating.toStringAsFixed(1)
+                                            : 'New',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                        ),
                                       ),
-                                    ),
                                   ],
                                 ),
                               ),
@@ -473,14 +469,39 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
                     color: Color(0xFF1A1A1A),
                   ),
                 ),
-                const SizedBox(height: 2),
-                if (p.category != null)
-                  Text(
-                    p.category!.name,
-                    style: const TextStyle(fontSize: 11, color: Colors.grey),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    if (p.category != null)
+                      Flexible(
+                        child: Text(
+                          p.category!.name,
+                          style:
+                              const TextStyle(fontSize: 11, color: Colors.grey),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    if (p.rating > 0)
+                      Row(
+                        children: [
+                          const Icon(Icons.star, size: 10, color: Colors.amber),
+                          const SizedBox(width: 2),
+                          Text(
+                            p.rating.toStringAsFixed(1),
+                            style: const TextStyle(
+                                fontSize: 10, fontWeight: FontWeight.bold),
+                          ),
+                          if (p.ratingsCount > 0)
+                            Text(
+                              ' (${p.ratingsCount})',
+                              style: const TextStyle(
+                                  fontSize: 9, color: Colors.grey),
+                            ),
+                        ],
+                      ),
+                  ],
+                ),
                 if (p.description.isNotEmpty)
                   Text(
                     p.description,

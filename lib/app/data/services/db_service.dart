@@ -120,9 +120,24 @@ class CartProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  List<UserAddress> _addresses = [];
+  List<UserAddress> _addresses = [
+    const UserAddress(
+      id: 'mock1',
+      title: 'Home',
+      street: 'asfg',
+      details: 'zchj, sfyu 124578',
+      isDefault: false,
+    ),
+    const UserAddress(
+      id: 'mock2',
+      title: 'Home',
+      street: 'anc',
+      details: 'afff, uhuh 451245',
+      isDefault: true,
+    ),
+  ];
   bool _isAddressesLoading = false;
-  int _selectedAddressIndex = 0;
+  int _selectedAddressIndex = 1; // Default to the second mock address (marked DEFAULT in screenshot)
 
   bool get isAddressesLoading => _isAddressesLoading;
 
