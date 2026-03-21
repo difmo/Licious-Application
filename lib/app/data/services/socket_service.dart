@@ -48,8 +48,8 @@ class SocketService {
     }
 
     // Give the server more time to boot up if it's cold
-    debugPrint('⏳ Giving Render 12s head start to boot...');
-    await Future.delayed(const Duration(seconds: 12));
+    debugPrint('⏳ Giving Render 30s head start to boot...');
+    await Future.delayed(const Duration(seconds: 30));
 
     _socket?.disconnect();
     _socket?.dispose();
@@ -57,23 +57,23 @@ class SocketService {
     final Map<String, dynamic> headers =
         token != null ? {'Authorization': 'Bearer $token'} : {};
 
-    debugPrint('🔌 Initializing socket with autoConnect...');
+    debugPrint('🔌 Initializing socket for $baseUrl ...');
     _socket = io.io(
       baseUrl,
       <String, dynamic>{
-        'transports': ['polling', 'websocket'],
+        'transports': ['websocket', 'polling'], // favor websocket for health
         'autoConnect': true,
         'extraHeaders': headers,
         'reconnection': true,
-        'reconnectionAttempts': 30, // Increase for very slow cold starts
-        'reconnectionDelay': 8000,
-        'timeout': 180000, // 3 minutes timeout
+        'reconnectionAttempts': 100, // Be persistent with free tier
+        'reconnectionDelay': 5000,
+        'timeout': 60000, // Reduce timeout so it retries faster
       },
     );
 
-
+    _socket!.on('connecting', (_) => debugPrint('🔄 SocketService connecting to $baseUrl...'));
     _socket!.onConnect((_) {
-      debugPrint('✅ SocketService connected');
+      debugPrint('✅ SocketService connected to $baseUrl');
       _flushQueue();
     });
     _socket!.onDisconnect((_) => debugPrint('🔌 SocketService disconnected'));
@@ -174,6 +174,20 @@ class SocketService {
       _socket?.off(_orderUpdateEvent, callback);
     } else {
       _socket?.off(_orderUpdateEvent);
+    }
+  }
+
+  /// `orderDelivered` — explicitly fires when a rider marks the order as delivered.
+  /// Payload: `{ "status": "Delivered", "orderId": "ORD-..." }`
+  void onOrderDelivered(void Function(dynamic) callback) {
+    _socket?.on('orderDelivered', callback);
+  }
+
+  void offOrderDelivered([void Function(dynamic)? callback]) {
+    if (callback != null) {
+      _socket?.off('orderDelivered', callback);
+    } else {
+      _socket?.off('orderDelivered');
     }
   }
 

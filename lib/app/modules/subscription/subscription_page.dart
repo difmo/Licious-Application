@@ -607,61 +607,8 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
           const Text('No active plans. Subscribe to a product to get started!',
               style: TextStyle(color: Colors.grey))
         else
-          ...subs.map((sub) => _buildPlanItem(sub)),
+          ...subs.map((sub) => _PlanItemWidget(sub: sub)),
       ],
-    );
-  }
-
-  Widget _buildPlanItem(UserSubscription sub) {
-    final isActive = sub.status == 'Active';
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.12)),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 8,
-              offset: const Offset(0, 2))
-        ],
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            backgroundColor: (isActive ? const Color(0xFF68B92E) : Colors.grey)
-                .withValues(alpha: 0.12),
-            child: Icon(isActive ? Icons.check : Icons.pause,
-                color: isActive ? const Color(0xFF68B92E) : Colors.grey),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(sub.productName,
-                    style: const TextStyle(fontWeight: FontWeight.bold)),
-                Text(sub.frequency,
-                    style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-              ],
-            ),
-          ),
-          // Pause / Resume toggle
-          Switch(
-            value: isActive,
-            activeThumbColor: const Color(0xFF68B92E),
-            onChanged: (val) async {
-              final newStatus = val ? 'Active' : 'Paused';
-              final ok = await ref
-                  .read(subscriptionServiceProvider)
-                  .updateStatus(sub.id, newStatus);
-              if (ok) ref.invalidate(mySubscriptionsProvider);
-            },
-          ),
-        ],
-      ),
     );
   }
 
@@ -810,6 +757,104 @@ class _ActionButton extends StatelessWidget {
                     fontSize: 12)),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _PlanItemWidget extends ConsumerStatefulWidget {
+  final UserSubscription sub;
+
+  const _PlanItemWidget({required this.sub});
+
+  @override
+  ConsumerState<_PlanItemWidget> createState() => _PlanItemWidgetState();
+}
+
+class _PlanItemWidgetState extends ConsumerState<_PlanItemWidget> {
+  bool? _optimisticIsActive;
+
+  @override
+  void didUpdateWidget(covariant _PlanItemWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.sub.status != widget.sub.status) {
+      // Clear optimistic state when actual state arrives
+      _optimisticIsActive = null;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isActive = _optimisticIsActive ?? (widget.sub.status == 'Active');
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.12)),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 8,
+              offset: const Offset(0, 2))
+        ],
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            backgroundColor: (isActive ? const Color(0xFF68B92E) : Colors.grey)
+                .withValues(alpha: 0.12),
+            child: Icon(isActive ? Icons.check : Icons.pause,
+                color: isActive ? const Color(0xFF68B92E) : Colors.grey),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(widget.sub.productName,
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text(widget.sub.frequency,
+                    style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+              ],
+            ),
+          ),
+          // Pause / Resume toggle
+          Switch(
+            value: isActive,
+            activeThumbColor: const Color(0xFF68B92E),
+            onChanged: (val) async {
+              // Optimistic UI update
+              setState(() {
+                _optimisticIsActive = val;
+              });
+              
+              final messenger = ScaffoldMessenger.of(context);
+              final newStatus = val ? 'Active' : 'Paused';
+              final ok = await ref
+                  .read(subscriptionServiceProvider)
+                  .updateStatus(widget.sub.id, newStatus);
+                  
+              if (ok) {
+                ref.invalidate(mySubscriptionsProvider);
+              } else {
+                // Revert optimistic update on failure
+                if (mounted) {
+                  setState(() {
+                    _optimisticIsActive = null;
+                  });
+                  messenger.showSnackBar(
+                    const SnackBar(
+                      content: Text('Failed to update plan status'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+          ),
+        ],
       ),
     );
   }

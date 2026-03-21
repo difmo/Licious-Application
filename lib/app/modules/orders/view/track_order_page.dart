@@ -81,6 +81,7 @@ class _TrackOrderPageState extends ConsumerState<TrackOrderPage>
   // Socket callbacks
   late void Function(dynamic) _onOrderUpdate;
   late void Function(dynamic) _onRiderAssigned;
+  late void Function(dynamic) _onOrderDelivered;
 
   // Pulse animation for the live dot
   late AnimationController _pulseCtrl;
@@ -203,10 +204,14 @@ class _TrackOrderPageState extends ConsumerState<TrackOrderPage>
           }
         }
       });
+    };
 
-      if (statusStr.toLowerCase() == 'delivered') {
-        Future.delayed(const Duration(milliseconds: 500), _showDeliverySuccess);
-      }
+    _onOrderDelivered = (dynamic data) {
+      if (!mounted) return;
+      setState(() {
+        _currentStatus = 'Delivered';
+      });
+      Future.delayed(const Duration(milliseconds: 500), _showDeliverySuccess);
     };
 
     _onRiderAssigned = (data) {
@@ -223,6 +228,7 @@ class _TrackOrderPageState extends ConsumerState<TrackOrderPage>
 
     socketService.onOrderUpdate(_onOrderUpdate);
     socketService.onRiderAssigned(_onRiderAssigned);
+    socketService.onOrderDelivered(_onOrderDelivered);
   }
 
   void _checkProximity(LatLng riderPos) {
@@ -284,6 +290,7 @@ class _TrackOrderPageState extends ConsumerState<TrackOrderPage>
     socketService.leaveOrderRoom(widget.orderId);
     socketService.offOrderUpdate(_onOrderUpdate);
     socketService.offRiderAssigned(_onRiderAssigned);
+    socketService.offOrderDelivered(_onOrderDelivered);
     _mapController?.dispose();
     super.dispose();
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../auth/provider/auth_provider.dart';
@@ -43,15 +44,18 @@ final riderStatsProvider = FutureProvider.autoDispose<_RiderStats>((ref) async {
   final riderService = ref.read(riderServiceProvider);
   final reviewService = ref.read(reviewServiceProvider);
   final authState = ref.read(authProvider);
-  
+
   final result = await riderService.getEarnings();
-  
+  print('EARNINGS RESP: $result');
+
   // Fetch rating from review service
   double rating = 0.0;
   int totalReviews = 0;
-  
+
   if (authState is AuthAuthenticated) {
+    print('Fetching rating for: ${authState.user.id}');
     final ratingData = await reviewService.getRiderRating(authState.user.id);
+    print('RIDER RATING RESP: $ratingData');
     rating = (ratingData['averageRating'] as num?)?.toDouble() ?? 0.0;
     totalReviews = (ratingData['totalReviews'] as num?)?.toInt() ?? 0;
   }
@@ -166,6 +170,7 @@ final riderStatusProvider =
 class _RiderHomePageState extends ConsumerState<RiderHomePage> {
   bool _isTogglingStatus = false;
   final Set<String> _processingIds = {};
+  DateTime? _lastPressedAt;
 
   bool get _isOnline => ref.watch(riderStatusProvider);
   set _isOnline(bool value) =>
@@ -532,297 +537,329 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
     final ordersAsync = ref.watch(riderOrdersProvider);
     final statsAsync = ref.watch(riderStatsProvider);
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
-      appBar: AppBar(
-        title: const Text(
-          'Rider Dashboard',
-          style: TextStyle(
-            color: Color(0xFF1A1A1A),
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
-        ),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        centerTitle: true,
-        iconTheme: const IconThemeData(color: Color(0xFF1A1A1A)),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout_rounded),
-            onPressed: () async {
-              final shouldLogout = await showDialog<bool>(
-                context: context,
-                builder: (context) => AlertDialog(
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16)),
-                  title: const Text('Are you sure?',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                  content: const Text('Do you really want to sign out?'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      child: const Text('No',
-                          style: TextStyle(color: Colors.grey)),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, true),
-                      child: const Text('Yes',
-                          style: TextStyle(
-                              color: Colors.red, fontWeight: FontWeight.bold)),
-                    ),
-                  ],
-                ),
-              );
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, Object? result) async {
+        if (didPop) return;
 
-              if (shouldLogout == true) {
-                await ref.read(authProvider.notifier).logout();
-                if (context.mounted) {
-                  Navigator.pushNamedAndRemoveUntil(
-                    context,
-                    AppRoutes.login,
-                    (route) => false,
-                  );
-                }
-              }
-            },
+        final now = DateTime.now();
+        if (_lastPressedAt == null ||
+            now.difference(_lastPressedAt!) > const Duration(seconds: 2)) {
+          _lastPressedAt = now;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Press back again to exit the app.',
+                style: TextStyle(color: Colors.white, fontSize: 13),
+              ),
+              backgroundColor: Color(0xFF114F3B),
+              duration: Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+              margin: EdgeInsets.all(20),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.all(Radius.circular(10)),
+              ),
+            ),
+          );
+          return;
+        }
+        SystemNavigator.pop();
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF7F8FA),
+        appBar: AppBar(
+          title: const Text(
+            'Rider Dashboard',
+            style: TextStyle(
+              color: Color(0xFF1A1A1A),
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+            ),
           ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: RefreshIndicator(
-        color: AppColors.accentGreen,
-        onRefresh: () async => ref.invalidate(riderOrdersProvider),
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ── Rider Profile Card ──────────────────────────────────────────
-              Container(
-                width: double.infinity,
-                margin: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
-                      blurRadius: 15,
-                      offset: const Offset(0, 5),
-                    ),
-                  ],
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            width: 60,
-                            height: 60,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFFEBFFD7),
-                              shape: BoxShape.circle,
+          backgroundColor: Colors.white,
+          elevation: 0,
+          centerTitle: true,
+          iconTheme: const IconThemeData(color: Color(0xFF1A1A1A)),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.logout_rounded),
+              onPressed: () async {
+                final shouldLogout = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
+                    title: const Text('Are you sure?',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    content: const Text('Do you really want to sign out?'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('No',
+                            style: TextStyle(color: Colors.grey)),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text('Yes',
+                            style: TextStyle(
+                                color: Colors.red,
+                                fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                );
+
+                if (shouldLogout == true) {
+                  await ref.read(authProvider.notifier).logout();
+                  if (context.mounted) {
+                    Navigator.pushNamedAndRemoveUntil(
+                      context,
+                      AppRoutes.login,
+                      (route) => false,
+                    );
+                  }
+                }
+              },
+            ),
+            const SizedBox(width: 8),
+          ],
+        ),
+        body: RefreshIndicator(
+          color: AppColors.accentGreen,
+          onRefresh: () async => ref.invalidate(riderOrdersProvider),
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── Rider Profile Card ──────────────────────────────────────────
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 15,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 60,
+                              height: 60,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFEBFFD7),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.person_rounded,
+                                size: 32,
+                                color: Color(0xFF68B92E),
+                              ),
                             ),
-                            child: const Icon(
-                              Icons.person_rounded,
-                              size: 32,
-                              color: Color(0xFF68B92E),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  user?.fullName ?? 'Rider Name',
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF1B2D1F),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    user?.fullName ?? 'Rider Name',
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF1B2D1F),
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(height: 4),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    user?.phoneNumber ?? '9876543211',
+                                    style: TextStyle(
+                                      color: Colors.grey.shade600,
+                                      fontSize: 14,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Column(
+                              children: [
+                                if (_isTogglingStatus)
+                                  const SizedBox(
+                                    width: 40,
+                                    height: 28,
+                                    child: Center(
+                                      child: SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2.5,
+                                          color: AppColors.accentGreen,
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                else
+                                  Switch.adaptive(
+                                    value: _isOnline,
+                                    activeTrackColor: AppColors.accentGreen
+                                        .withValues(alpha: 0.5),
+                                    activeThumbColor: AppColors.accentGreen,
+                                    onChanged: _isTogglingStatus
+                                        ? null
+                                        : _toggleOnline,
+                                  ),
                                 Text(
-                                  user?.phoneNumber ?? '9876543211',
+                                  _isTogglingStatus
+                                      ? 'LOADING'
+                                      : _isOnline
+                                          ? 'ONLINE'
+                                          : 'OFFLINE',
                                   style: TextStyle(
-                                    color: Colors.grey.shade600,
-                                    fontSize: 14,
-                                    letterSpacing: 0.5,
+                                    color: _isTogglingStatus
+                                        ? Colors.orange
+                                        : _isOnline
+                                            ? AppColors.accentGreen
+                                            : Colors.grey,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 10,
                                   ),
                                 ),
                               ],
                             ),
-                          ),
-                          Column(
-                            children: [
-                              if (_isTogglingStatus)
-                                const SizedBox(
-                                  width: 40,
-                                  height: 28,
-                                  child: Center(
-                                    child: SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2.5,
-                                        color: AppColors.accentGreen,
-                                      ),
-                                    ),
-                                  ),
-                                )
-                              else
-                                Switch.adaptive(
-                                  value: _isOnline,
-                                  activeTrackColor: AppColors.accentGreen
-                                      .withValues(alpha: 0.5),
-                                  activeThumbColor: AppColors.accentGreen,
-                                  onChanged:
-                                      _isTogglingStatus ? null : _toggleOnline,
+                          ],
+                        ),
+                        if (_isOnline) ...[
+                          const Divider(height: 32),
+                          statsAsync.when(
+                            loading: () => const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 8),
+                              child: Center(
+                                child: SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2.5,
+                                      color: AppColors.accentGreen),
                                 ),
-                              Text(
-                                _isTogglingStatus
-                                    ? 'LOADING'
-                                    : _isOnline
-                                        ? 'ONLINE'
-                                        : 'OFFLINE',
-                                style: TextStyle(
-                                  color: _isTogglingStatus
-                                      ? Colors.orange
-                                      : _isOnline
-                                          ? AppColors.accentGreen
-                                          : Colors.grey,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 10,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      if (_isOnline) ...[
-                        const Divider(height: 32),
-                        statsAsync.when(
-                          loading: () => const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 8),
-                            child: Center(
-                              child: SizedBox(
-                                width: 22,
-                                height: 22,
-                                child: CircularProgressIndicator(
-                                    strokeWidth: 2.5,
-                                    color: AppColors.accentGreen),
                               ),
                             ),
+                            error: (_, __) => Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              children: [
+                                _buildStat(
+                                    'Total Orders', '—', Icons.delivery_dining),
+                                _buildStat('Rating', '—', Icons.star_rounded,
+                                    color: Colors.amber,
+                                    bgColor: const Color(0xFFFFF8E1)),
+                                _buildStat('Total Earnings', '₹—',
+                                    Icons.account_balance_wallet_rounded),
+                              ],
+                            ),
+                            data: (stats) => Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              children: [
+                                _buildStat('Total Orders', '${stats.orders}',
+                                    Icons.delivery_dining),
+                                _buildStat(
+                                    'Rating',
+                                    stats.rating.toStringAsFixed(1),
+                                    Icons.star_rounded,
+                                    color: Colors.amber,
+                                    bgColor: const Color(0xFFFFF8E1)),
+                                _buildStat(
+                                    'Total Earnings',
+                                    '₹${stats.earnings.toStringAsFixed(0)}',
+                                    Icons.account_balance_wallet_rounded),
+                              ],
+                            ),
                           ),
-                          error: (_, __) => Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceAround,
-                            children: [
-                              _buildStat(
-                                  'Total Orders', '—', Icons.delivery_dining),
-                              _buildStat('Avg/Order', '₹—', Icons.star_rounded,
-                                  color: Colors.amber,
-                                  bgColor: const Color(0xFFFFF8E1)),
-                              _buildStat('Total Earnings', '₹—',
-                                  Icons.account_balance_wallet_rounded),
-                            ],
-                          ),
-                          data: (stats) => Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceAround,
-                            children: [
-                              _buildStat('Total Orders', '${stats.orders}',
-                                  Icons.delivery_dining),
-                              _buildStat(
-                                  'Avg/Order',
-                                  '₹${stats.avgPerOrder.toStringAsFixed(0)}',
-                                  Icons.star_rounded,
-                                  color: Colors.amber,
-                                  bgColor: const Color(0xFFFFF8E1)),
-                              _buildStat(
-                                  'Total Earnings',
-                                  '₹${stats.earnings.toStringAsFixed(0)}',
-                                  Icons.account_balance_wallet_rounded),
-                            ],
-                          ),
-                        ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
-              ),
 
-              if (!_isOnline)
-                _buildOfflineState()
-              else ...[
-                const SizedBox(height: 4),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Assigned Tasks',
-                        style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF1B2D1F)),
-                      ),
-                      Text(
-                        'Live Tracking Active',
-                        style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.accentGreen),
-                      )
-                          .animate(onPlay: (controller) => controller.repeat())
-                          .shimmer(
-                              duration: 2.seconds,
-                              color: Colors.white.withValues(alpha: 0.5))
-                          .scale(
-                              begin: const Offset(1, 1),
-                              end: const Offset(1.05, 1.05),
-                              duration: 1.seconds,
-                              curve: Curves.easeInOut)
-                          .then()
-                          .scale(
-                              begin: const Offset(1.05, 1.05),
-                              end: const Offset(1, 1),
-                              duration: 1.seconds,
-                              curve: Curves.easeInOut),
-                    ],
+                if (!_isOnline)
+                  _buildOfflineState()
+                else ...[
+                  const SizedBox(height: 4),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Assigned Tasks',
+                          style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF1B2D1F)),
+                        ),
+                        Text(
+                          'Live Tracking Active',
+                          style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.accentGreen),
+                        )
+                            .animate(
+                                onPlay: (controller) => controller.repeat())
+                            .shimmer(
+                                duration: 2.seconds,
+                                color: Colors.white.withValues(alpha: 0.5))
+                            .scale(
+                                begin: const Offset(1, 1),
+                                end: const Offset(1.05, 1.05),
+                                duration: 1.seconds,
+                                curve: Curves.easeInOut)
+                            .then()
+                            .scale(
+                                begin: const Offset(1.05, 1.05),
+                                end: const Offset(1, 1),
+                                duration: 1.seconds,
+                                curve: Curves.easeInOut),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                ordersAsync.when(
-                  data: (orders) {
-                    if (orders.isEmpty) {
-                      return _buildEmptyState();
-                    }
-                    return ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      itemCount: orders.length,
-                      itemBuilder: (context, index) {
-                        final order = orders[index];
-                        return _buildOrderCard(order);
-                      },
-                    );
-                  },
-                  loading: () => const Padding(
-                    padding: EdgeInsets.all(50),
-                    child: Center(
-                        child: CircularProgressIndicator(
-                            color: AppColors.accentGreen)),
+                  const SizedBox(height: 16),
+                  ordersAsync.when(
+                    data: (orders) {
+                      if (orders.isEmpty) {
+                        return _buildEmptyState();
+                      }
+                      return ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        itemCount: orders.length,
+                        itemBuilder: (context, index) {
+                          final order = orders[index];
+                          return _buildOrderCard(order);
+                        },
+                      );
+                    },
+                    loading: () => const Padding(
+                      padding: EdgeInsets.all(50),
+                      child: Center(
+                          child: CircularProgressIndicator(
+                              color: AppColors.accentGreen)),
+                    ),
+                    error: (err, stack) => Center(child: Text('Error: $err')),
                   ),
-                  error: (err, stack) => Center(child: Text('Error: $err')),
-                ),
+                ],
+                const SizedBox(height: 40),
               ],
-              const SizedBox(height: 40),
-            ],
+            ),
           ),
         ),
       ),

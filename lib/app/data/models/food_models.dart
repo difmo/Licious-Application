@@ -18,7 +18,9 @@ class FoodCategory {
       id: json['id']?.toString() ?? '',
       name: json['name']?.toString() ?? '',
       image: json['image']?.toString() ?? '',
-      colorValue: json['colorValue'] != null ? int.tryParse(json['colorValue'].toString()) ?? 0xFFF7F8FA : 0xFFF7F8FA,
+      colorValue: json['colorValue'] != null
+          ? int.tryParse(json['colorValue'].toString()) ?? 0xFFF7F8FA
+          : 0xFFF7F8FA,
       iconPath: json['iconPath']?.toString(),
     );
   }
@@ -50,6 +52,7 @@ class Restaurant {
 
 class UserOrder {
   final String id;
+  final String orderNumber; // Human-readable order #
   final String restaurantName;
   final String date;
   final String? deliveryDate; // For upcoming subscription deliveries
@@ -60,6 +63,7 @@ class UserOrder {
 
   const UserOrder({
     required this.id,
+    required this.orderNumber,
     required this.restaurantName,
     required this.date,
     this.deliveryDate,
@@ -70,16 +74,31 @@ class UserOrder {
   });
 
   factory UserOrder.fromJson(Map<String, dynamic> json) {
-    // Backend returns orderId, createdAt, totalAmount, status, items
+    // Technical ID is for API calls (must be MongoDB ObjectId)
+    final String technicalId =
+        (json['_id'] ?? json['id'] ?? json['orderId'] ?? '').toString();
+    // Human ID is for Display (#-...)
+    final String humanId =
+        (json['orderId'] ?? json['id'] ?? json['_id'] ?? '').toString();
+
     return UserOrder(
-      id: (json['orderId'] ?? json['_id'] ?? '').toString(),
+      id: technicalId,
+      orderNumber: humanId,
       restaurantName: 'Shrimpbite Retailer', // Placeholder
-      date: json['createdAt'] != null 
-          ? DateTime.parse(json['createdAt']).toLocal().toString().split('.').first
+      date: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'])
+              .toLocal()
+              .toString()
+              .split('.')
+              .first
           : '',
       total: double.tryParse(json['totalAmount']?.toString() ?? '0') ?? 0.0,
-      status: json['status'] ?? (json['paymentStatus'] == 'Paid' ? 'Accepted' : 'Pending'),
-      items: (json['items'] as List<dynamic>?)?.map((item) => OrderItem.fromJson(item)).toList() ?? [],
+      status: json['status'] ??
+          (json['paymentStatus'] == 'Paid' ? 'Accepted' : 'Pending'),
+      items: (json['items'] as List<dynamic>?)
+              ?.map((item) => OrderItem.fromJson(item))
+              .toList() ??
+          [],
     );
   }
 }
@@ -207,7 +226,10 @@ class Product {
       badgeText: json['badgeText']?.toString() ?? '',
       isFavorite: json['isFavorite'] == true || json['isFavorite'] == 'true',
       description: json['description']?.toString() ?? '',
-      whyChoose: (json['whyChoose'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? const [],
+      whyChoose: (json['whyChoose'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const [],
       isShopActive: json['isShopActive'] ?? json['isActive'] ?? true,
     );
   }
@@ -243,10 +265,13 @@ class WalletTransaction {
       type: json['type']?.toString() ?? 'Debit',
       category: json['category']?.toString() ?? 'Payment',
       amount: double.tryParse(json['amount']?.toString() ?? '0') ?? 0.0,
-      balanceAfter: double.tryParse(json['balanceAfter']?.toString() ?? '0') ?? 0.0,
+      balanceAfter:
+          double.tryParse(json['balanceAfter']?.toString() ?? '0') ?? 0.0,
       description: json['description']?.toString() ?? '',
       status: json['status']?.toString() ?? 'Success',
-      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : DateTime.now(),
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'])
+          : DateTime.now(),
     );
   }
 }
@@ -281,8 +306,9 @@ class Review {
       productId: json['product']?.toString() ?? '',
       rating: double.tryParse(json['rating']?.toString() ?? '5') ?? 5.0,
       comment: json['comment']?.toString() ?? '',
-      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : DateTime.now(),
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'])
+          : DateTime.now(),
     );
   }
 }
-

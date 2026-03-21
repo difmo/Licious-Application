@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../data/services/order_service.dart';
 import '../../../data/services/socket_service.dart';
 
@@ -406,6 +407,9 @@ class _OrderTrackingPageState extends ConsumerState<OrderTrackingPage> {
                 padding: EdgeInsets.symmetric(vertical: 20),
                 child: Divider(color: Color(0xFFEEEEEE), thickness: 1.5),
               ),
+              
+              // ── Rider Section ──────────────────────────────────────────────
+              _buildRiderSection(),
 
               // ── Order Summary (Payment) ─────────────────────────────────────
               _buildOrderSummary(),
@@ -801,6 +805,97 @@ class _OrderTrackingPageState extends ConsumerState<OrderTrackingPage> {
           ],
         );
       }).toList(),
+    );
+  }
+
+  Widget _buildRiderSection() {
+    final rider = _order['rider'] ?? _order['riderId'];
+    if (rider == null) return const SizedBox.shrink();
+
+    final riderName = rider is Map ? (rider['fullName'] ?? rider['name'] ?? '') : '';
+    final riderPhone = rider is Map ? (rider['phoneNumber'] ?? rider['phone'] ?? '') : '';
+
+    if (riderName.isEmpty && riderPhone.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('DELIVERY PARTNER',
+            style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey)),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF0F4EC),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFF68B92E).withValues(alpha: 0.2)),
+          ),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: const Color(0xFF114F3B),
+                child: Text(
+                  riderName.isNotEmpty ? riderName[0].toUpperCase() : 'R',
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (riderName.isNotEmpty)
+                      Text(
+                        riderName,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    if (riderPhone.isNotEmpty) ...[
+                      if (riderName.isNotEmpty) const SizedBox(height: 4),
+                      GestureDetector(
+                        onTap: () async {
+                          final url = Uri.parse('tel:$riderPhone');
+                          if (await canLaunchUrl(url)) {
+                            await launchUrl(url);
+                          }
+                        },
+                        child: Row(
+                          children: [
+                            const Icon(Icons.phone, size: 14, color: Colors.grey),
+                            const SizedBox(width: 4),
+                            Text(
+                              riderPhone,
+                              style: const TextStyle(
+                                color: Colors.black54,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const Padding(
+          padding: EdgeInsets.symmetric(vertical: 20),
+          child: Divider(color: Color(0xFFEEEEEE), thickness: 1.5),
+        ),
+      ],
     );
   }
 }

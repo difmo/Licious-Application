@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -33,6 +34,9 @@ class FCMService {
     importance: Importance.max,
   );
 
+  /// Stream to allow other parts of the app (like MainPage) to listen for specific FCM events
+  static final StreamController<RemoteMessage> onMessageReceived = StreamController<RemoteMessage>.broadcast();
+
   // ── Initialise (call once from main.dart after Firebase.initializeApp) ────
 
   static Future<void> init() async {
@@ -63,6 +67,7 @@ class FCMService {
 
     // Handle foreground messages — show as local notification
     FirebaseMessaging.onMessage.listen((message) {
+      onMessageReceived.add(message);
       FCMService()._showLocalNotification(message);
     });
   }

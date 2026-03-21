@@ -14,8 +14,10 @@ import '../../profile/widgets/order_review_dialog.dart';
 import '../../../data/models/food_models.dart';
 import '../../../data/models/notification_model.dart';
 import '../../../data/services/notification_api_service.dart';
+import '../../../data/services/fcm_service.dart';
 import '../widgets/cart_summary_bar.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:async';
 
 class MainPage extends ConsumerStatefulWidget {
   const MainPage({super.key});
@@ -27,6 +29,7 @@ class MainPage extends ConsumerStatefulWidget {
 class _MainPageState extends ConsumerState<MainPage> {
   final MainController _controller = MainController();
   DateTime? _lastPressedAt;
+  StreamSubscription? _fcmSubscription;
 
   final List<Widget> _pages = [
     const HomePage(),
@@ -59,44 +62,90 @@ class _MainPageState extends ConsumerState<MainPage> {
     // Join the user's personal room to receive order updates
     socket.joinUserRoom(userId);
 
-    // Listen for order status changes
+    // Listen for general order status changes
     socket.onOrderUpdate((data) {
       if (!mounted) return;
-
       debugPrint('🔔 Order update in MainPage: $data');
+      // "Delivered" state is now strictly handled by 'orderDelivered' below
+    });
+    // Dedicated orderDelivered event to trigger the review dialog immediately
+    socket.onOrderDelivered((data) {
+      if (!mounted) return;
+      debugPrint('📦 Dedicated Order Delivered Event: $data');
+      
+      _handleOrderDelivered(data);
 
-      // Determine if the order has been delivered
-      final status = (data['status']?.toString() ?? '').toLowerCase();
-      if (status == 'delivered' || status == 'completed') {
-        _handleOrderDelivered(data);
+      final orderId = data['orderId']?.toString() ?? 'Order';
+      ref.read(notificationsProvider.notifier).addNotification(
+            NotificationModel(
+              id: 'ord-${DateTime.now().millisecondsSinceEpoch}',
+              title: 'Order Delivered! 🎉',
+              body: 'Package #$orderId has been delivered successfully. Enjoy!',
+              type: 'order',
+              isRead: false,
+              createdAt: DateTime.now(),
+            ),
+          );
+    });
 
-        // Add to notifications list locally for persistent history
-        final orderId = data['orderId']?.toString() ?? 'Order';
-        ref.read(notificationsProvider.notifier).addNotification(
-              NotificationModel(
-                id: 'ord-${DateTime.now().millisecondsSinceEpoch}',
-                title: 'Order Delivered! 🎉',
-                body:
-                    'Package #$orderId has been delivered successfully. Enjoy!',
-                type: 'order',
-                isRead: false,
-                createdAt: DateTime.now(),
-              ),
-            );
+    // ── FCM Fallback Listener ────────────────────────────────────────────────
+    // If Socket fails (common on free tier), FCM will still trigger the popup
+    _fcmSubscription?.cancel();
+    _fcmSubscription = FCMService.onMessageReceived.stream.listen((message) {
+      if (!mounted) return;
+      
+      final data = message.data;
+      debugPrint('📩 FCM Fallback Data: $data');
+
+      final String? type = data['type']?.toString().toLowerCase();
+      final String? status = data['status']?.toString().toLowerCase();
+      final String? orderId = data['orderId']?.toString() ?? data['order_id']?.toString() ?? data['_id']?.toString();
+
+      // Check if this is a delivery notification (matches your logs!)
+      // Note: Data might be in notification or raw data
+      if (type == 'order_delivered' || status == 'delivered' || (message.notification?.title?.toLowerCase().contains('delivered') ?? false)) {
+        debugPrint('🔔 FCM Fallback: Triggering review dialog for $orderId');
+        _handleOrderDelivered({'orderId': orderId});
       }
     });
   }
 
   Future<void> _handleOrderDelivered(dynamic data) async {
     // If we have orderId, fetch full details for the dialog
-    final orderId = data['orderId']?.toString();
-    if (orderId == null) return;
-
+    String? orderId = data['orderId']?.toString();
+    Map<String, dynamic>? rawOrder;
+    
     try {
       final orderService = ref.read(orderServiceProvider);
-      final rawOrder = await orderService.getOrderById(orderId);
 
-      if (rawOrder.isNotEmpty && mounted) {
+      // 1. Try to fetch order by provided ID (if it looks like a Mongo ID)
+      if (orderId != null && orderId != 'null' && orderId.length > 20) {
+        rawOrder = await orderService.getOrderById(orderId);
+      }
+
+      // 2. If ID-fetch failed or orderId was human-readable/null, search history
+      if (rawOrder == null || rawOrder.isEmpty) {
+        debugPrint('🔍 Order not found by ID or ID is human-readable, searching history...');
+        final history = await orderService.getMyOrders();
+        if (history.isNotEmpty) {
+          // Find the most recent "Delivered" order
+          final latestDelivered = history.firstWhere(
+            (o) => (o['status'] ?? '').toString().toLowerCase() == 'delivered',
+            orElse: () => null,
+          );
+          if (latestDelivered != null) {
+            rawOrder = Map<String, dynamic>.from(latestDelivered);
+            debugPrint('✅ Found delivered order in history');
+          }
+        }
+      }
+
+      if (rawOrder == null || rawOrder.isEmpty) {
+        debugPrint('❌ Could not find order data for review dialog');
+        return;
+      }
+
+      if (mounted) {
         final order = UserOrder.fromJson(rawOrder);
 
         // Show the review dialog automatically
@@ -107,7 +156,7 @@ class _MainPageState extends ConsumerState<MainPage> {
         );
       }
     } catch (e) {
-      debugPrint('Error fetching order for review dialog: $e');
+      debugPrint('Error handling order delivered event: $e');
     }
   }
 
@@ -115,6 +164,8 @@ class _MainPageState extends ConsumerState<MainPage> {
   void dispose() {
     _controller.dispose();
     ref.read(socketServiceProvider).offOrderUpdate();
+    ref.read(socketServiceProvider).offOrderDelivered();
+    _fcmSubscription?.cancel();
     super.dispose();
   }
 

@@ -87,9 +87,10 @@ class ReviewService {
         requiresAuth: true,
       );
       if (response != null && response['success'] == true) {
+        final data = response['data'] is Map ? response['data'] as Map<String, dynamic> : response;
         return {
-          'averageRating': response['averageRating'] ?? 0.0,
-          'totalReviews': response['totalReviews'] ?? 0,
+          'averageRating': (data['averageRating'] ?? data['rating'] ?? 0.0),
+          'totalReviews': (data['totalReviews'] ?? data['total_reviews'] ?? data['count'] ?? 0),
         };
       }
       return {'averageRating': 0.0, 'totalReviews': 0};
