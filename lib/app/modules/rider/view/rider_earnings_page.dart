@@ -4,13 +4,26 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../data/services/rider_service.dart';
+import '../../../data/services/review_service.dart';
+import '../../auth/provider/auth_provider.dart';
 
 // ── Provider ────────────────────────────────────────────────────────────────
 
 final riderEarningsProvider =
     FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
   final riderService = ref.read(riderServiceProvider);
+  final reviewService = ref.read(reviewServiceProvider);
+  final authState = ref.read(authProvider);
+
   final result = await riderService.getEarnings();
+
+  // Fetch rating if authenticated
+  Map<String, dynamic> ratingData = {'rating': 5.0, 'totalReviews': 0};
+  if (authState is AuthAuthenticated) {
+    try {
+      ratingData = await reviewService.getRiderRating(authState.user.id);
+    } catch (_) {}
+  }
 
   Map<String, dynamic> data = {};
 
@@ -73,6 +86,8 @@ final riderEarningsProvider =
     'walletBalance': data['walletBalance'] ?? 0.0,
     'avgPerOrder': data['avgPerOrder'] ?? 0.0,
     'pendingBalance': data['pendingBalance'] ?? 0.0,
+    'rating': ratingData['rating'] ?? 0.0,
+    'totalReviews': ratingData['totalReviews'] ?? 0,
     ...data,
   };
 });
@@ -191,22 +206,6 @@ class RiderEarningsPage extends ConsumerWidget {
             'total_order',
             'orders'
           ]);
-          final avgPerOrder = deliveries > 0
-              ? weekly / deliveries
-              : _parseNum(earnings, [
-                  'avgPerOrder',
-                  'avg_per_order',
-                  'averagePerOrder',
-                  'avgOrder'
-                ]);
-          final pendingBalance = _parseNum(earnings, [
-            'pendingBalance',
-            'pending_balance',
-            'pending',
-            'walletBalance',
-            'wallet_balance',
-            'balance'
-          ]);
           final nextSettlement = earnings['nextSettlement'] as String? ??
               earnings['next_settlement'] as String? ??
               _nextSettlementDate();
@@ -252,8 +251,8 @@ class RiderEarningsPage extends ConsumerWidget {
                           icon: Icons.star_rounded,
                           iconColor: Colors.amber,
                           bgColor: const Color(0xFFFFF8E1),
-                          label: 'Avg per order',
-                          value: '₹${avgPerOrder.toStringAsFixed(0)}',
+                          label: 'Rider Rating',
+                          value: '${(earnings['rating'] ?? 5.0).toStringAsFixed(1)}',
                         )
                             .animate(delay: 150.ms)
                             .fadeIn()
@@ -267,7 +266,6 @@ class RiderEarningsPage extends ConsumerWidget {
                   // ── Payout Section ────────────────────────────────────────
                   _PayoutCard(
                     nextSettlement: nextSettlement,
-                    pendingBalance: pendingBalance,
                   ).animate(delay: 200.ms).fadeIn().slideY(begin: 0.1, end: 0),
                 ],
               ),
@@ -348,10 +346,8 @@ class _WalletBalanceCard extends StatelessWidget {
 
 class _PayoutCard extends StatelessWidget {
   final String nextSettlement;
-  final double pendingBalance;
   const _PayoutCard({
     required this.nextSettlement,
-    required this.pendingBalance,
   });
 
   @override
@@ -388,11 +384,6 @@ class _PayoutCard extends StatelessWidget {
           _PayoutRow(
             label: 'Next Settlement',
             value: nextSettlement,
-          ),
-          const Divider(height: 24),
-          _PayoutRow(
-            label: 'Pending Balance',
-            value: '₹${pendingBalance.toStringAsFixed(0)}',
           ),
         ],
       ),

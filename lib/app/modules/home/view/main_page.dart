@@ -72,7 +72,7 @@ class _MainPageState extends ConsumerState<MainPage> {
     socket.onOrderDelivered((data) {
       if (!mounted) return;
       debugPrint('📦 Dedicated Order Delivered Event: $data');
-      
+
       _handleOrderDelivered(data);
 
       final orderId = data['orderId']?.toString() ?? 'Order';
@@ -93,17 +93,22 @@ class _MainPageState extends ConsumerState<MainPage> {
     _fcmSubscription?.cancel();
     _fcmSubscription = FCMService.onMessageReceived.stream.listen((message) {
       if (!mounted) return;
-      
+
       final data = message.data;
       debugPrint('📩 FCM Fallback Data: $data');
 
       final String? type = data['type']?.toString().toLowerCase();
       final String? status = data['status']?.toString().toLowerCase();
-      final String? orderId = data['orderId']?.toString() ?? data['order_id']?.toString() ?? data['_id']?.toString();
+      final String? orderId = data['orderId']?.toString() ??
+          data['order_id']?.toString() ??
+          data['_id']?.toString();
 
       // Check if this is a delivery notification (matches your logs!)
       // Note: Data might be in notification or raw data
-      if (type == 'order_delivered' || status == 'delivered' || (message.notification?.title?.toLowerCase().contains('delivered') ?? false)) {
+      if (type == 'order_delivered' ||
+          status == 'delivered' ||
+          (message.notification?.title?.toLowerCase().contains('delivered') ??
+              false)) {
         debugPrint('🔔 FCM Fallback: Triggering review dialog for $orderId');
         _handleOrderDelivered({'orderId': orderId});
       }
@@ -114,7 +119,7 @@ class _MainPageState extends ConsumerState<MainPage> {
     // If we have orderId, fetch full details for the dialog
     String? orderId = data['orderId']?.toString();
     Map<String, dynamic>? rawOrder;
-    
+
     try {
       final orderService = ref.read(orderServiceProvider);
 
@@ -125,7 +130,8 @@ class _MainPageState extends ConsumerState<MainPage> {
 
       // 2. If ID-fetch failed or orderId was human-readable/null, search history
       if (rawOrder == null || rawOrder.isEmpty) {
-        debugPrint('🔍 Order not found by ID or ID is human-readable, searching history...');
+        debugPrint(
+            '🔍 Order not found by ID or ID is human-readable, searching history...');
         final history = await orderService.getMyOrders();
         if (history.isNotEmpty) {
           // Find the most recent "Delivered" order

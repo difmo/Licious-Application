@@ -20,11 +20,6 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
   // State variables for filters
   RangeValues _priceRange = const RangeValues(10, 500);
   String _selectedRating = '';
-  
-  // Delivery Options
-  bool _discount = false;
-  bool _freeShipping = false;
-  bool _sameDayDelivery = false;
 
   final Color _primaryColor = const Color(0xFF68B92E);
   final Color _bgColor = const Color(0xFFF8F9FA);
@@ -33,9 +28,6 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
   List<String> get _activeFilters {
     List<String> filters = [];
     if (_selectedRating.isNotEmpty) filters.add(_selectedRating);
-    if (_discount) filters.add('Discount');
-    if (_freeShipping) filters.add('Free Shipping');
-    if (_sameDayDelivery) filters.add('Same Day');
     return filters;
   }
 
@@ -43,9 +35,6 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
     setState(() {
       _priceRange = const RangeValues(10, 500);
       _selectedRating = '';
-      _discount = false;
-      _freeShipping = false;
-      _sameDayDelivery = false;
     });
   }
 
@@ -69,7 +58,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
               borderRadius: BorderRadius.circular(2),
             ),
           ),
-          
+
           // Header
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8.0),
@@ -105,7 +94,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
               ],
             ),
           ),
-          
+
           const Divider(height: 1),
 
           Expanded(
@@ -134,16 +123,14 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                         onDeleted: () {
                           setState(() {
                             if (filter == _selectedRating) _selectedRating = '';
-                            if (filter == 'Discount') _discount = false;
-                            if (filter == 'Free Shipping') _freeShipping = false;
-                            if (filter == 'Same Day') _sameDayDelivery = false;
                           });
                         },
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
                           side: const BorderSide(color: Colors.transparent),
                         ),
-                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 4, vertical: 0),
                       );
                     }).toList(),
                   ),
@@ -166,9 +153,10 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                       activeTrackColor: _primaryColor,
                       inactiveTrackColor: Colors.grey.shade200,
                       thumbColor: Colors.white,
-                      overlayColor: _primaryColor.withValues(alpha:  0.1),
+                      overlayColor: _primaryColor.withValues(alpha: 0.1),
                       trackHeight: 6,
-                      rangeThumbShape: const RoundRangeSliderThumbShape(elevation: 3, pressedElevation: 6),
+                      rangeThumbShape: const RoundRangeSliderThumbShape(
+                          elevation: 3, pressedElevation: 6),
                     ),
                     child: RangeSlider(
                       values: _priceRange,
@@ -197,19 +185,6 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                     ],
                   ),
                 ]),
-                const SizedBox(height: 16),
-
-                // Delivery Options
-                _buildCard([
-                  _buildSectionTitle('Delivery Options'),
-                  const SizedBox(height: 8),
-                  _buildToggleRow('Discount', _discount, (val) => setState(() => _discount = val)),
-                  _buildDivider(),
-                  _buildToggleRow('Free Shipping', _freeShipping, (val) => setState(() => _freeShipping = val)),
-                  _buildDivider(),
-                  _buildToggleRow('Same Day Delivery', _sameDayDelivery, (val) => setState(() => _sameDayDelivery = val)),
-                ]),
-                
                 const SizedBox(height: 24),
               ],
             ),
@@ -222,7 +197,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
               color: Colors.white,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha:  0.05),
+                  color: Colors.black.withValues(alpha: 0.05),
                   blurRadius: 10,
                   offset: const Offset(0, -5),
                 ),
@@ -264,7 +239,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha:  0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -289,10 +264,10 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
   }
 
   TextStyle get _labelStyle => const TextStyle(
-    fontSize: 14,
-    fontWeight: FontWeight.w600,
-    color: Colors.black87,
-  );
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+        color: Colors.black87,
+      );
 
   Widget _buildRatingChip(int ratingValue) {
     String label = '★ $ratingValue+';
@@ -307,7 +282,8 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected ? _primaryColor.withValues(alpha: 0.1) : Colors.white,
+          color:
+              isSelected ? _primaryColor.withValues(alpha: 0.1) : Colors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected ? _primaryColor : Colors.grey.shade300,
@@ -328,37 +304,4 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
       ),
     );
   }
-
-  Widget _buildToggleRow(String title, bool value, ValueChanged<bool> onChanged) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w500,
-              color: Colors.black87,
-            ),
-          ),
-          Switch(
-            value: value,
-            onChanged: onChanged,
-            activeThumbColor: Colors.white,
-            activeTrackColor: _primaryColor,
-            inactiveThumbColor: Colors.white,
-            inactiveTrackColor: Colors.grey.shade300,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDivider() {
-    return Divider(color: Colors.grey.shade100, height: 16);
-  }
 }
-
-

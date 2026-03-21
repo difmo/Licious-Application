@@ -29,7 +29,8 @@ class NotificationsNotifier extends AsyncNotifier<List<NotificationModel>> {
   }
 
   Future<void> markAsRead(String id) async {
-    final success = await ref.read(notificationApiServiceProvider).markAsRead(id);
+    final success =
+        await ref.read(notificationApiServiceProvider).markAsRead(id);
     if (success) {
       final currentData = state.asData?.value ?? [];
       state = AsyncValue.data(currentData.map((n) {
@@ -40,10 +41,12 @@ class NotificationsNotifier extends AsyncNotifier<List<NotificationModel>> {
   }
 
   Future<void> markAllAsRead() async {
-    final success = await ref.read(notificationApiServiceProvider).markAllAsRead();
+    final success =
+        await ref.read(notificationApiServiceProvider).markAllAsRead();
     if (success) {
       final currentData = state.asData?.value ?? [];
-      state = AsyncValue.data(currentData.map((n) => n.copyWith(isRead: true)).toList());
+      state = AsyncValue.data(
+          currentData.map((n) => n.copyWith(isRead: true)).toList());
     }
   }
 }
@@ -55,17 +58,19 @@ class NotificationApiService {
 
   Future<List<NotificationModel>> getNotifications() async {
     try {
-      final response = await _client.get(
-        '${ApiClient.baseUrl}/notifications',
-        requiresAuth: true,
-      ).timeout(const Duration(seconds: 10));
+      final response = await _client
+          .get(
+            '${ApiClient.baseUrl}/notifications',
+            requiresAuth: true,
+          )
+          .timeout(const Duration(seconds: 10));
 
-      final data = (response['notifications'] ?? 
-                    response['data'] ?? 
-                    response) as List? ?? [];
+      final data = (response['notifications'] ?? response['data'] ?? response)
+              as List? ??
+          [];
 
       if (data.isEmpty) return _getMockNotifications();
-      
+
       return data.map((json) => NotificationModel.fromJson(json)).toList();
     } catch (e) {
       // If API fails (e.g. 500 FUNCTION_INVOCATION_FAILED), fallback to mock data
@@ -79,7 +84,8 @@ class NotificationApiService {
       NotificationModel(
         id: 'mock1',
         title: 'Order Delivered 🎉',
-        body: 'Your order #ORD-4589 has been delivered successfully. Enjoy your meal!',
+        body:
+            'Your order #ORD-4589 has been delivered successfully. Enjoy your meal!',
         type: 'order',
         isRead: false,
         createdAt: now.subtract(const Duration(minutes: 2)),
@@ -87,7 +93,8 @@ class NotificationApiService {
       NotificationModel(
         id: 'mock2',
         title: 'Delivery Partner Assigned 🛵',
-        body: 'Rahul has been assigned to your order and is heading to the store.',
+        body:
+            'Rahul has been assigned to your order and is heading to the store.',
         type: 'delivery',
         isRead: false,
         createdAt: now.subtract(const Duration(minutes: 15)),
@@ -95,7 +102,8 @@ class NotificationApiService {
       NotificationModel(
         id: 'mock3',
         title: 'Special Offer 🎁',
-        body: 'Use code FRESH50 to get 50% off on your next purchase of fresh vegetables!',
+        body:
+            'Use code FRESH50 to get 50% off on your next purchase of fresh vegetables!',
         type: 'promotion',
         isRead: true,
         createdAt: now.subtract(const Duration(hours: 1)),
