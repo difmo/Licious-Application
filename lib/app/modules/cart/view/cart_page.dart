@@ -302,7 +302,7 @@ class CartPage extends StatelessWidget {
           const SizedBox(height: 12),
           _buildSummaryRow(
             'Shipping',
-            '₹${cart.shippingCharges.toStringAsFixed(0)}',
+            cart.shippingCharges == 0 ? 'Free' : '₹${cart.shippingCharges.toStringAsFixed(0)}',
           ),
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 16),

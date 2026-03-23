@@ -11,6 +11,7 @@ import './my_orders_page.dart';
 import '../../auth/provider/auth_provider.dart';
 import '../../subscriptions/view/subscription_dashboard_page.dart';
 import '../../home/view/favorites_page.dart';
+import '../../../data/services/subscription_service.dart';
 import '../../../routes/app_routes.dart';
 
 class ProfilePage extends ConsumerStatefulWidget {
@@ -196,24 +197,52 @@ class _ProfileHeader extends StatelessWidget {
               MaterialPageRoute(builder: (context) => const EditProfilePage()),
             );
           },
-          child: Container(
-            width: 80,
-            height: 80,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-            ),
-            child: CircleAvatar(
-              backgroundColor: const Color(0xFFEBFFD7),
-              radius: 40,
-              child: Text(
-                name.isNotEmpty ? name[0].toUpperCase() : 'U',
-                style: const TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF114F3B),
+          child: Stack(
+            children: [
+              Container(
+                width: 80,
+                height: 80,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                ),
+                child: CircleAvatar(
+                  backgroundColor: const Color(0xFFEBFFD7),
+                  radius: 40,
+                  child: Text(
+                    name.isNotEmpty ? name[0].toUpperCase() : 'U',
+                    style: const TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF114F3B),
+                    ),
+                  ),
                 ),
               ),
-            ),
+              Positioned(
+                bottom: 0,
+                right: 0,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: const Color(0xFFEBFFD7), width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.edit,
+                    size: 14,
+                    color: Color(0xFF114F3B),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -252,6 +281,12 @@ class _ActiveOrdersAndSubscriptions extends ConsumerWidget {
     final activeOrdersAsync = ref.watch(activeOrdersProvider);
     final activeOrdersCount = activeOrdersAsync.maybeWhen(
       data: (orders) => orders.length,
+      orElse: () => 0,
+    );
+
+    final subscriptionsAsync = ref.watch(mySubscriptionsProvider);
+    final activeSubscriptionsCount = subscriptionsAsync.maybeWhen(
+      data: (subs) => subs.where((s) => s.status.toLowerCase() == 'active').length,
       orElse: () => 0,
     );
 
@@ -299,19 +334,6 @@ class _ActiveOrdersAndSubscriptions extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Text('Arriving in 15 mins',
-                        style: TextStyle(
-                            color: Color(0xFF114F3B),
-                            fontSize: 10,
-                            fontWeight: FontWeight.w500)),
-                  ),
                 ],
               ),
             ),
@@ -349,25 +371,16 @@ class _ActiveOrdersAndSubscriptions extends ConsumerWidget {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const Text(
-                    '2 Active Plans',
-                    style: TextStyle(
+                  Text(
+                    activeSubscriptionsCount > 0
+                        ? '$activeSubscriptionsCount Active Plan${activeSubscriptionsCount > 1 ? 's' : ''}'
+                        : 'No Active Plans',
+                    style: const TextStyle(
                       color: Color(0xFFA5C9AD),
                       fontSize: 12,
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFA5C9AD).withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Text('Renewal Jun 11, 2023',
-                        style:
-                            TextStyle(color: Color(0xFFA5C9AD), fontSize: 10)),
-                  ),
                 ],
               ),
             ),

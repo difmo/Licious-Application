@@ -63,4 +63,49 @@ class ShopService {
               'Failed to fetch products for shop $shopId: ${e.toString()}');
     }
   }
+
+  /// Fetches products based on filters. 
+  /// Returns a Map containing 'total' count and 'products' list.
+  Future<Map<String, dynamic>> getFilteredProducts({
+    double? minPrice,
+    double? maxPrice,
+    double? minRating,
+    bool? hasDiscount,
+    bool? freeShipping,
+    bool? sameDayDelivery,
+    String? category,
+    String? sortBy,
+    String? search,
+  }) async {
+    try {
+      final queryParams = <String, String>{};
+      if (minPrice != null) queryParams['minPrice'] = minPrice.toString();
+      if (maxPrice != null) queryParams['maxPrice'] = maxPrice.toString();
+      if (minRating != null) queryParams['minRating'] = minRating.toString();
+      if (hasDiscount != null) queryParams['hasDiscount'] = hasDiscount.toString();
+      if (freeShipping != null) queryParams['freeShipping'] = freeShipping.toString();
+      if (sameDayDelivery != null) queryParams['sameDayDelivery'] = sameDayDelivery.toString();
+      if (category != null) queryParams['category'] = category;
+      if (sortBy != null) queryParams['sortBy'] = sortBy;
+      if (search != null) queryParams['search'] = search;
+
+      final queryString = Uri(queryParameters: queryParams).query;
+      final url = '${ApiClient.baseUrl}/products${queryString.isNotEmpty ? '?$queryString' : ''}';
+
+      final json = await _client.get(url, requiresAuth: true);
+      
+      final List<dynamic> rawList = (json['data'] ?? []) as List<dynamic>;
+      final products = rawList
+          .map((e) => ShopProduct.fromJson(e as Map<String, dynamic>))
+          .toList();
+      
+      return {
+        'total': json['total'] ?? products.length,
+        'products': products,
+      };
+    } catch (e) {
+      throw ApiException(message: 'Failed to fetch filtered products: $e');
+    }
+  }
 }
+

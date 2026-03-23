@@ -82,16 +82,7 @@ class RestaurantMenuPage extends ConsumerWidget {
                         ),
                       ),
                     ),
-                    actions: [
-                      Padding(
-                        padding: const EdgeInsets.only(right: 12),
-                        child: CircleAvatar(
-                          backgroundColor: Colors.white.withValues(alpha: 0.9),
-                          child: const Icon(Icons.bookmark_border,
-                              color: Colors.black87, size: 20),
-                        ),
-                      ),
-                    ],
+                    actions: const [],
                     flexibleSpace: FlexibleSpaceBar(
                       background: _buildHeroBanner(currentShop),
                     ),
@@ -423,12 +414,7 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
                       )
                     : _imagePlaceholder(),
               ),
-              // Favorite button — wired to backend
-              Positioned(
-                top: 6,
-                right: 6,
-                child: _FavoriteHeart(productId: p.id),
-              ),
+
               // Out of stock badge
               if (!p.isAvailable)
                 Positioned.fill(

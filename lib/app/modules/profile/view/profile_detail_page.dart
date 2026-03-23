@@ -9,6 +9,7 @@ import 'address_form_page.dart';
 import '../widgets/order_review_dialog.dart';
 import '../../../data/services/notification_api_service.dart';
 import '../../../data/models/notification_model.dart';
+import '../../../data/services/auth_service.dart';
 
 class ProfileDetailPage extends ConsumerStatefulWidget {
   final String title;
@@ -158,7 +159,15 @@ class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
   // --- MY ADDRESS DESIGN (Enhanced) ---
   Widget _buildAddressDetail(CartProvider provider) {
     final addresses = provider.addresses;
-    final profile = provider.userProfile;
+    final profileAsync = ref.watch(userProfileProvider);
+    final userName = profileAsync.maybeWhen(
+      data: (user) => user.fullName,
+      orElse: () => provider.userProfile.name,
+    );
+    final userPhone = profileAsync.maybeWhen(
+      data: (user) => user.phoneNumber,
+      orElse: () => provider.userProfile.phone,
+    );
 
     return Column(
       children: [
@@ -263,7 +272,7 @@ class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            profile.name,
+                            userName,
                             style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
@@ -278,7 +287,7 @@ class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            profile.phone,
+                            userPhone,
                             style: const TextStyle(
                               fontWeight: FontWeight.w600,
                               fontSize: 13,
@@ -579,8 +588,35 @@ class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
                         .markAllAsRead();
                     ref.invalidate(notificationsProvider);
                   },
-                  child: const Text('Mark all as read',
+                  child: const Text('Mark all read',
                       style: TextStyle(fontSize: 12, color: Color(0xFF68B92E))),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Delete all?'),
+                        content: const Text('This will clear your inbox.'),
+                        actions: [
+                          TextButton(
+                              onPressed: () => Navigator.pop(context, false),
+                              child: const Text('Cancel')),
+                          TextButton(
+                              onPressed: () => Navigator.pop(context, true),
+                              child: const Text('Delete',
+                                  style: TextStyle(color: Colors.red))),
+                        ],
+                      ),
+                    );
+                    if (confirm == true) {
+                      await ref
+                          .read(notificationsProvider.notifier)
+                          .deleteAllNotifications();
+                    }
+                  },
+                  child: const Text('Delete all',
+                      style: TextStyle(fontSize: 12, color: Colors.redAccent)),
                 ),
               ],
             ),
@@ -674,16 +710,43 @@ class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
                               ),
                             ),
                           ),
-                          Text(
-                            n.timeAgo,
-                            style: TextStyle(
-                              color: isRead
-                                  ? Colors.grey.shade500
-                                  : const Color(0xFF68B92E),
-                              fontSize: 11,
-                              fontWeight:
-                                  isRead ? FontWeight.normal : FontWeight.bold,
-                            ),
+                          Row(
+                            children: [
+                              Text(
+                                n.timeAgo,
+                                style: TextStyle(
+                                  color: isRead
+                                      ? Colors.grey.shade500
+                                      : const Color(0xFF68B92E),
+                                  fontSize: 11,
+                                  fontWeight: isRead
+                                      ? FontWeight.normal
+                                      : FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              GestureDetector(
+                                onTap: () async {
+                                  await ref
+                                      .read(notificationsProvider.notifier)
+                                      .deleteNotification(n.id);
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content:
+                                            Text('Notification deleted'),
+                                        duration: Duration(seconds: 1),
+                                      ),
+                                    );
+                                  }
+                                },
+                                child: Icon(
+                                  Icons.delete_outline_rounded,
+                                  size: 16,
+                                  color: Colors.red.withOpacity(0.7),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),

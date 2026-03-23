@@ -180,40 +180,44 @@ class _ShippingAddressPageState extends ConsumerState<ShippingAddressPage> {
   Widget _buildAddressListView(CartProvider cart) {
     final addresses = cart.addresses;
 
-    return SingleChildScrollView(
-      key: const ValueKey('address_list'),
-      padding: const EdgeInsets.all(24),
-      physics: const BouncingScrollPhysics(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Select Delivery Address',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF1F2937),
+    return RefreshIndicator(
+      onRefresh: () => cart.loadAddresses(),
+      color: AppColors.accentGreen,
+      child: SingleChildScrollView(
+        key: const ValueKey('address_list'),
+        padding: const EdgeInsets.all(24),
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Select Delivery Address',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1F2937),
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
-          if (addresses.isEmpty)
-            _buildEmptyState()
-          else
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: addresses.length,
-              itemBuilder: (context, index) {
-                final addr = addresses[index];
-                final isSelected = cart.selectedAddressIndex == index;
-                return _buildAddressCard(addr, isSelected, () {
-                  cart.selectAddress(index);
-                });
-              },
-            ),
-          const SizedBox(height: 24),
-          _buildAddAddressButton(),
-        ],
+            const SizedBox(height: 16),
+            if (addresses.isEmpty)
+              _buildEmptyState()
+            else
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: addresses.length,
+                itemBuilder: (context, index) {
+                  final addr = addresses[index];
+                  final isSelected = cart.selectedAddressIndex == index;
+                  return _buildAddressCard(addr, isSelected, () {
+                    cart.selectAddress(index);
+                  });
+                },
+              ),
+            const SizedBox(height: 24),
+            _buildAddAddressButton(),
+          ],
+        ),
       ),
     );
   }
@@ -294,7 +298,8 @@ class _ShippingAddressPageState extends ConsumerState<ShippingAddressPage> {
                     : addr.title.toLowerCase() == 'office'
                         ? Icons.work_rounded
                         : Icons.location_on_rounded,
-                color: isSelected ? AppColors.accentGreen : Colors.grey.shade600,
+                color:
+                    isSelected ? AppColors.accentGreen : Colors.grey.shade600,
                 size: 24,
               ),
             ),
@@ -363,7 +368,8 @@ class _ShippingAddressPageState extends ConsumerState<ShippingAddressPage> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: isSelected ? AppColors.accentGreen : Colors.grey.shade300,
+                  color:
+                      isSelected ? AppColors.accentGreen : Colors.grey.shade300,
                   width: 2,
                 ),
               ),
@@ -547,12 +553,14 @@ class _ShippingAddressPageState extends ConsumerState<ShippingAddressPage> {
                   const Expanded(
                     child: Text(
                       'Set as default address',
-                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                      style:
+                          TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
                     ),
                   ),
                   Switch.adaptive(
                     value: _isDefault,
-                    activeTrackColor: AppColors.accentGreen.withValues(alpha: 0.5),
+                    activeTrackColor:
+                        AppColors.accentGreen.withValues(alpha: 0.5),
                     activeThumbColor: AppColors.accentGreen,
                     onChanged: (val) => setState(() => _isDefault = val),
                   ),
@@ -576,7 +584,8 @@ class _ShippingAddressPageState extends ConsumerState<ShippingAddressPage> {
                     ? const CircularProgressIndicator(color: Colors.white)
                     : const Text(
                         'Save & Continue',
-                        style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                            fontSize: 17, fontWeight: FontWeight.bold),
                       ),
               ),
             ),

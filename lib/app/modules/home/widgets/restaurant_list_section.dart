@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/shop_product_model.dart';
 import '../provider/shop_provider.dart';
 import '../../home/view/restaurant_menu_page.dart';
-import 'filter_bottom_sheet.dart';
+import '../../../widgets/modern_filter_bottom_sheet.dart';
 
 // ── Cuisine types to cycle through for display ───────────────────────────────
 const List<String> _cuisineTypes = [
@@ -115,7 +115,7 @@ class _ShopsList extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               InkWell(
-                onTap: () => FilterBottomSheet.show(context),
+                onTap: () => ModernFilterBottomSheet.show(context),
                 borderRadius: BorderRadius.circular(8),
                 child: Container(
                   padding:
@@ -300,20 +300,7 @@ class _ShopCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  // Bookmark
-                  Positioned(
-                    top: 10,
-                    right: 12,
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.9),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.bookmark_border,
-                          size: 16, color: Colors.black54),
-                    ),
-                  ),
+
                   // Featured badge
                   if (_isFeatured)
                     Positioned(

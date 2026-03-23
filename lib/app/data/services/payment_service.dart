@@ -44,7 +44,7 @@ class PaymentService {
 
       // 2. Open Razorpay Checkout
       var options = {
-        'key': 'rzp_test_S7lSvWtu89c6zD', // Using the test key provided
+        'key': 'rzp_test_SUXGPUpcFjOpXn', // Using the test key provided
         'amount': (amount * 100).toInt(),
         'name': 'Shrimpbite',
         'order_id': orderId,

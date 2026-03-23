@@ -120,24 +120,10 @@ class CartProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  List<UserAddress> _addresses = [
-    const UserAddress(
-      id: 'mock1',
-      title: 'Home',
-      street: 'asfg',
-      details: 'zchj, sfyu 124578',
-      isDefault: false,
-    ),
-    const UserAddress(
-      id: 'mock2',
-      title: 'Home',
-      street: 'anc',
-      details: 'afff, uhuh 451245',
-      isDefault: true,
-    ),
-  ];
+  List<UserAddress> _addresses = [];
   bool _isAddressesLoading = false;
-  int _selectedAddressIndex = 1; // Default to the second mock address (marked DEFAULT in screenshot)
+  int _selectedAddressIndex =
+      1; // Default to the second mock address (marked DEFAULT in screenshot)
 
   bool get isAddressesLoading => _isAddressesLoading;
 
@@ -516,7 +502,7 @@ class CartProvider extends ChangeNotifier {
 
   List<Restaurant> get favRestaurants {
     if (_restaurants.isEmpty) return [];
-    
+
     final List<Restaurant> favs = [];
     for (var id in _favoriteIds) {
       final r = _restaurants.firstWhere((res) => res.id == id,
@@ -528,7 +514,7 @@ class CartProvider extends ChangeNotifier {
         favs.add(r);
       }
     }
-    
+
     // Correct way: map ids to restaurants in order
     return _favoriteIds
         .map((id) => _restaurants.firstWhere((r) => r.id == id,
@@ -559,7 +545,8 @@ class CartProvider extends ChangeNotifier {
   void addAddress(UserAddress address) async {
     if (_addressService != null) {
       final addressParts = address.details.split(',');
-      final cityName = addressParts.isNotEmpty ? addressParts.first.trim() : 'City';
+      final cityName =
+          addressParts.isNotEmpty ? addressParts.first.trim() : 'City';
       final result = await _addressService!.saveAddress(
         label: address.title,
         fullAddress: address.street,
@@ -612,8 +599,23 @@ class CartProvider extends ChangeNotifier {
                   id: json['_id'] ?? '',
                   title: json['label'] ?? 'Address',
                   street: json['fullAddress'] ?? '',
-                  details:
-                      '${json['city'] ?? ''}, ${json['state'] ?? ''} ${json['pincode'] ?? ''}',
+                  details: () {
+                    final city = json['city']?.toString() ?? '';
+                    final state = json['state']?.toString() ?? '';
+                    final pincode = json['pincode']?.toString() ?? '';
+
+                    String res = city;
+                    if (state.isNotEmpty) {
+                      if (res.isNotEmpty) res += ', ';
+                      res += state;
+                    }
+
+                    if (pincode.isNotEmpty && !res.contains(pincode)) {
+                      if (res.isNotEmpty) res += ' ';
+                      res += pincode;
+                    }
+                    return res;
+                  }(),
                   isDefault: json['isDefault'] ?? false,
                 ))
             .toList();
@@ -653,16 +655,23 @@ class CartProvider extends ChangeNotifier {
     }
   }
 
-  void removeAddress(String id) {
-    _addresses.removeWhere((a) => a.id == id);
-    notifyListeners();
+  Future<void> removeAddress(String id) async {
+    if (_addressService != null) {
+      final result = await _addressService!.deleteAddress(id);
+      if (result['success']) {
+        loadAddresses();
+      }
+    } else {
+      _addresses.removeWhere((a) => a.id == id);
+      notifyListeners();
+    }
   }
 
   int get itemCount => _items.fold(0, (sum, item) => sum + item.quantity);
 
   double get subtotal => _items.fold(0.0, (sum, item) => sum + item.totalPrice);
 
-  double get shippingCharges => _items.isEmpty ? 0.0 : 1.6;
+  double get shippingCharges => 0.0;
 
   double get total => subtotal + shippingCharges;
 

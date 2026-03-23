@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../controller/main_controller.dart';
 import '../../../widgets/bounce_widget.dart';
 import '../../../data/services/db_service.dart';
+import '../../../data/services/notification_api_service.dart';
 import '../../../routes/app_routes.dart';
 import './location_bottom_sheet.dart';
 import '../../profile/view/profile_detail_page.dart';
@@ -69,24 +71,56 @@ class _HomeHeaderState extends State<HomeHeader> {
                 ),
                 // Header Buttons
                 const SizedBox(width: 8),
+                Consumer(
+                  builder: (context, ref, child) {
+                    final notificationsAsync = ref.watch(notificationsProvider);
+                    final unreadCount = notificationsAsync.maybeWhen(
+                      data: (list) => list.where((n) => !n.isRead).length,
+                      orElse: () => 0,
+                    );
 
-                BounceWidget(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            const ProfileDetailPage(title: 'Notifications'),
+                    return BounceWidget(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                const ProfileDetailPage(title: 'Notifications'),
+                          ),
+                        ).then((_) {
+                          // Refresh when coming back in case marks were made
+                          ref.invalidate(notificationsProvider);
+                        });
+                      },
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          const Icon(
+                            Icons.notifications_none_outlined,
+                            color: Color(0xFF1A1A1A),
+                            size: 26,
+                          ),
+                          if (unreadCount > 0)
+                            Positioned(
+                              right: 0,
+                              top: 0,
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFFE54141),
+                                  shape: BoxShape.circle,
+                                ),
+                                constraints: const BoxConstraints(
+                                  minWidth: 8,
+                                  minHeight: 8,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     );
                   },
-                  child: const Icon(
-                    Icons.notifications_none_outlined,
-                    color: Color(0xFF1A1A1A),
-                    size: 26,
-                  ),
                 ),
-
                 const SizedBox(width: 12),
 
                 BounceWidget(

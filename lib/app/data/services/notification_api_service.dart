@@ -49,6 +49,23 @@ class NotificationsNotifier extends AsyncNotifier<List<NotificationModel>> {
           currentData.map((n) => n.copyWith(isRead: true)).toList());
     }
   }
+
+  Future<void> deleteNotification(String id) async {
+    final success =
+        await ref.read(notificationApiServiceProvider).deleteNotification(id);
+    if (success) {
+      final currentData = state.asData?.value ?? [];
+      state = AsyncValue.data(currentData.where((n) => n.id != id).toList());
+    }
+  }
+
+  Future<void> deleteAllNotifications() async {
+    final success =
+        await ref.read(notificationApiServiceProvider).deleteAllNotifications();
+    if (success) {
+      state = const AsyncValue.data([]);
+    }
+  }
 }
 
 class NotificationApiService {
@@ -73,7 +90,7 @@ class NotificationApiService {
 
       return data.map((json) => NotificationModel.fromJson(json)).toList();
     } catch (e) {
-      // If API fails (e.g. 500 FUNCTION_INVOCATION_FAILED), fallback to mock data
+      // If API fails, fallback to mock data
       return _getMockNotifications();
     }
   }
@@ -99,37 +116,12 @@ class NotificationApiService {
         isRead: false,
         createdAt: now.subtract(const Duration(minutes: 15)),
       ),
-      NotificationModel(
-        id: 'mock3',
-        title: 'Special Offer 🎁',
-        body:
-            'Use code FRESH50 to get 50% off on your next purchase of fresh vegetables!',
-        type: 'promotion',
-        isRead: true,
-        createdAt: now.subtract(const Duration(hours: 1)),
-      ),
-      NotificationModel(
-        id: 'mock4',
-        title: 'Payment Confirmed ✅',
-        body: 'We received your payment for order #ORD-4589. Thank you!',
-        type: 'billing',
-        isRead: true,
-        createdAt: now.subtract(const Duration(hours: 3)),
-      ),
-      NotificationModel(
-        id: 'mock5',
-        title: 'Wallet Reloaded 💳',
-        body: '₹500.00 has been added to your Licious wallet.',
-        type: 'billing',
-        isRead: true,
-        createdAt: now.subtract(const Duration(days: 1)),
-      ),
     ];
   }
 
   Future<bool> markAsRead(String id) async {
     try {
-      final response = await _client.put(
+      final response = await _client.patch(
         '${ApiClient.baseUrl}/notifications/read/$id',
         requiresAuth: true,
       );
@@ -141,8 +133,32 @@ class NotificationApiService {
 
   Future<bool> markAllAsRead() async {
     try {
-      final response = await _client.put(
+      final response = await _client.patch(
         '${ApiClient.baseUrl}/notifications/read-all',
+        requiresAuth: true,
+      );
+      return response['success'] ?? true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> deleteNotification(String id) async {
+    try {
+      final response = await _client.delete(
+        '${ApiClient.baseUrl}/notifications/delete/$id',
+        requiresAuth: true,
+      );
+      return response['success'] ?? true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> deleteAllNotifications() async {
+    try {
+      final response = await _client.delete(
+        '${ApiClient.baseUrl}/notifications/delete-all',
         requiresAuth: true,
       );
       return response['success'] ?? true;

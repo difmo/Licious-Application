@@ -64,24 +64,7 @@ class ProductDetailsPage extends ConsumerWidget {
                     ),
                   ),
                 ),
-                actions: [
-                  Padding(
-                    padding: const EdgeInsets.only(right: 16),
-                    child: CircleAvatar(
-                      backgroundColor: Colors.white.withValues(alpha: 0.9),
-                      child: IconButton(
-                        icon: Icon(
-                          product.isFavorite
-                              ? Icons.favorite
-                              : Icons.favorite_border,
-                          color:
-                              product.isFavorite ? Colors.red : Colors.black87,
-                        ),
-                        onPressed: () => cart.toggleFavorite(product.id),
-                      ),
-                    ),
-                  ),
-                ],
+                    actions: const [],
                 flexibleSpace: FlexibleSpaceBar(
                   background: Hero(
                     tag: 'product_${product.id}',

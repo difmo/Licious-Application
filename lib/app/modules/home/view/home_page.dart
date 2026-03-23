@@ -114,7 +114,7 @@ class _AnimatedFooterTextState extends State<AnimatedFooterText>
           'With love from Shrimp.',
           textAlign: TextAlign.center,
           style: TextStyle(
-            fontSize: 28,
+            fontSize: 30,
             fontWeight: FontWeight.w900,
             color: Color(0xFFB4B4B4),
             height: 1.1,
