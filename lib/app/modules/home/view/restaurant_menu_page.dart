@@ -14,8 +14,6 @@ class RestaurantMenuPage extends ConsumerWidget {
   final ShopModel shop;
   const RestaurantMenuPage({super.key, required this.shop});
 
-
-
   String get _deliveryTime {
     final code = shop.id.codeUnits.fold<int>(0, (a, b) => a + b);
     final mins = 50 + (code % 40);
@@ -143,16 +141,16 @@ class RestaurantMenuPage extends ConsumerWidget {
                                     const Icon(Icons.star,
                                         size: 14, color: Colors.white),
                                     const SizedBox(width: 4),
-                                      Text(
-                                        shop.rating > 0
-                                            ? shop.rating.toStringAsFixed(1)
-                                            : 'New',
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 14,
-                                        ),
+                                    Text(
+                                      shop.rating > 0
+                                          ? shop.rating.toStringAsFixed(1)
+                                          : 'New',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
                                       ),
+                                    ),
                                   ],
                                 ),
                               ),

@@ -1,4 +1,6 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:licius_application/app/routes/app_routes.dart';
 import '../../data/models/food_models.dart';
@@ -25,9 +27,17 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   bool _obscurePassword = true;
   bool _agreeToTerms = false;
 
+  late TapGestureRecognizer _termsRecognizer;
+  late TapGestureRecognizer _privacyRecognizer;
+
   @override
   void initState() {
     super.initState();
+    _termsRecognizer = TapGestureRecognizer()
+      ..onTap = () => _launchURL('https://shrimpbite.in/index.php/terms-conditions/');
+    _privacyRecognizer = TapGestureRecognizer()
+      ..onTap = () => _launchURL('https://shrimpbite.in/index.php/privacy-policy/');
+
     // Show "verified" toast only when arriving from OTP verification
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final args = ModalRoute.of(context)?.settings.arguments;
@@ -45,6 +55,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   void dispose() {
     _phoneController.dispose();
     _passwordController.dispose();
+    _termsRecognizer.dispose();
+    _privacyRecognizer.dispose();
     super.dispose();
   }
 
@@ -199,6 +211,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     }
   }
 
+  Future<void> _launchURL(String url) async {
+    final Uri uri = Uri.parse(url);
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      _showSnackBar('Could not open the link: $url',
+          backgroundColor: Colors.red);
+    }
+  }
+
   // ── Build ────────────────────────────────────────────────────────────────
 
   @override
@@ -326,25 +346,27 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: RichText(
-                          text: const TextSpan(
+                          text: TextSpan(
                             text: 'I agree to the ',
-                            style: TextStyle(
+                            style: const TextStyle(
                                 fontSize: 14, color: Colors.grey, height: 1.5),
                             children: [
                               TextSpan(
                                 text: 'Terms & Conditions',
-                                style: TextStyle(
+                                style: const TextStyle(
                                     color: Color(0xFF0EA5E9),
                                     fontWeight: FontWeight.bold),
+                                recognizer: _termsRecognizer,
                               ),
-                              TextSpan(
+                              const TextSpan(
                                   text: ' and ',
                                   style: TextStyle(color: Colors.grey)),
                               TextSpan(
                                 text: 'Privacy Policy',
-                                style: TextStyle(
+                                style: const TextStyle(
                                     color: Color(0xFF0EA5E9),
                                     fontWeight: FontWeight.bold),
+                                recognizer: _privacyRecognizer,
                               ),
                             ],
                           ),

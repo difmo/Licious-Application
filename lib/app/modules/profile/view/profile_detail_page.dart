@@ -574,23 +574,7 @@ class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                TextButton(
-                  onPressed: () {
-                    ref.invalidate(notificationsProvider);
-                  },
-                  child: const Text('Refresh',
-                      style: TextStyle(fontSize: 12, color: Colors.blue)),
-                ),
-                TextButton(
-                  onPressed: () async {
-                    await ref
-                        .read(notificationApiServiceProvider)
-                        .markAllAsRead();
-                    ref.invalidate(notificationsProvider);
-                  },
-                  child: const Text('Mark all read',
-                      style: TextStyle(fontSize: 12, color: Color(0xFF68B92E))),
-                ),
+                const SizedBox(width: 8),
                 TextButton(
                   onPressed: () async {
                     final confirm = await showDialog<bool>(
