@@ -308,6 +308,7 @@ class _WalletBalanceCard extends StatelessWidget {
             offset: const Offset(0, 10),
           ),
         ],
+        border: Border.all(color: Colors.white.withValues(alpha: 0.25), width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -364,6 +365,7 @@ class _PayoutCard extends StatelessWidget {
               blurRadius: 10,
               offset: const Offset(0, 4)),
         ],
+        border: Border.all(color: Colors.grey.shade300, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -405,6 +407,7 @@ class _StatPill extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.18),
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -451,6 +454,7 @@ class _EarningsCard extends StatelessWidget {
               blurRadius: 10,
               offset: const Offset(0, 4))
         ],
+        border: Border.all(color: Colors.grey.shade300, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

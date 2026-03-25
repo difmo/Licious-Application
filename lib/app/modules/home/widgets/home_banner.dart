@@ -77,37 +77,44 @@ class _HomeBannerState extends State<HomeBanner> {
                     // Tap action for banner
                   },
                   scaleFactor: 0.96,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(20),
-                    child: Stack(
-                      children: [
-                        Image.asset(
-                          _bannerImages[index],
-                          width: double.infinity,
-                          height: 180,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => Container(
-                            color: Colors.blue.shade100,
-                            child: const Center(child: Text('Food Banner')),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.grey.shade300, width: 1),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: Stack(
+                        children: [
+                          Image.asset(
+                            _bannerImages[index],
+                            width: double.infinity,
+                            height: 180,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                Container(
+                              color: Colors.blue.shade100,
+                              child: const Center(child: Text('Food Banner')),
+                            ),
                           ),
-                        ),
-                        // Optional: Gradient overlay for text readability
-                        Positioned.fill(
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [
-                                  Colors.transparent,
-                                  Colors.black.withValues(alpha:  0.1),
-                                  Colors.black.withValues(alpha:  0.4),
-                                ],
+                          // Optional: Gradient overlay for text readability
+                          Positioned.fill(
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    Colors.transparent,
+                                    Colors.black.withValues(alpha: 0.1),
+                                    Colors.black.withValues(alpha: 0.4),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -129,7 +136,7 @@ class _HomeBannerState extends State<HomeBanner> {
               decoration: BoxDecoration(
                 color: _currentPage == index
                     ? const Color(0xFF68B92E)
-                    : Colors.grey.withValues(alpha:  0.3),
+                    : Colors.grey.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(3),
               ),
             ),
@@ -139,5 +146,3 @@ class _HomeBannerState extends State<HomeBanner> {
     ).animate().fadeIn(duration: 500.ms, curve: Curves.easeIn);
   }
 }
-
-

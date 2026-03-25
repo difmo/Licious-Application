@@ -243,61 +243,62 @@ class _MainPageState extends ConsumerState<MainPage> {
   }
 
   Widget _buildCustomBottomBar() {
-    bool isCartSelected = _controller.currentIndex == 2;
     return Container(
-      height: 100,
+      height: 90,
       decoration: const BoxDecoration(color: Colors.transparent),
       child: Stack(
         alignment: Alignment.bottomCenter,
+        clipBehavior: Clip.none,
         children: [
           // Background Bar
           Container(
-            height: 70,
-            margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+            height: 75,
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(35),
-              border: Border.all(
-                  color: const Color(0xFF68B92E).withValues(alpha: 0.1)),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(24)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 15,
+                  offset: const Offset(0, -5),
+                ),
+              ],
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _buildNavItem(0, Icons.home_filled, 'Home'),
                 _buildNavItem(1, Icons.local_shipping_outlined, 'Daily'),
-                const SizedBox(width: 68), // Space for FAB
+                const SizedBox(width: 60), // Space for FAB
                 _buildNavItem(3, Icons.wallet_rounded, 'Wallet'),
                 _buildNavItem(4, Icons.person_rounded, 'Profile'),
               ],
             ),
           ),
-          // Central FAB (Cart)
+          // Central FAB (Cart) - Green circle as per project identity
           Positioned(
-            top: 5,
+            top: 0,
             child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
               onTap: () => _controller.changePage(2),
               child: Container(
-                width: 68,
-                height: 68,
+                width: 60,
+                height: 60,
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: const Color(0xFF68B92E),
                   shape: BoxShape.circle,
-                  border: Border.all(
-                    color: isCartSelected
-                        ? const Color(0xFF68B92E)
-                        : const Color(0xFF68B92E).withValues(alpha: 0.2),
-                    width: 2,
-                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF68B92E).withValues(alpha: 0.3),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
-                child: Center(
-                  child: Icon(
-                    Icons.shopping_cart_outlined,
-                    color: isCartSelected
-                        ? const Color(0xFF68B92E)
-                        : const Color(0xFFE6B347),
-                    size: 34,
-                  ),
+                child: const Icon(
+                  Icons.shopping_cart_outlined,
+                  color: Colors.white,
+                  size: 28,
                 ),
               ),
             ),
@@ -312,32 +313,36 @@ class _MainPageState extends ConsumerState<MainPage> {
     return GestureDetector(
       onTap: () => _controller.changePage(index),
       behavior: HitTestBehavior.opaque,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              color: isSelected
-                  ? const Color(0xFF68B92E)
-                  : const Color(0xFF4A4A4A),
-              size: 24,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            color: isSelected ? const Color(0xFF68B92E) : Colors.grey.shade400,
+            size: 24,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color:
+                  isSelected ? const Color(0xFF68B92E) : Colors.grey.shade400,
+              fontSize: 10,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
             ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                color: isSelected
-                    ? const Color(0xFF68B92E)
-                    : const Color(0xFF4A4A4A),
-                fontSize: 10,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              ),
+          ),
+          const SizedBox(height: 4),
+          // Active indicator dot
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: 4,
+            height: 4,
+            decoration: BoxDecoration(
+              color: isSelected ? const Color(0xFF68B92E) : Colors.transparent,
+              shape: BoxShape.circle,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

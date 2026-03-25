@@ -283,6 +283,7 @@ class _ModernFilterBottomSheetState extends ConsumerState<ModernFilterBottomShee
             spreadRadius: 2,
           ),
         ],
+        border: Border.all(color: Colors.grey.shade300, width: 1),
       ),
       child: Column(
         children: [
@@ -342,7 +343,7 @@ class _ModernFilterBottomSheetState extends ConsumerState<ModernFilterBottomShee
         decoration: BoxDecoration(
           color: AppColors.scaffoldBgAlt,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
+          border: Border.all(color: Colors.grey.shade300, width: 1),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -418,7 +419,8 @@ class _ModernFilterBottomSheetState extends ConsumerState<ModernFilterBottomShee
               ),
           ],
           border: Border.all(
-            color: isSelected ? AppColors.primary : Colors.grey.withValues(alpha: 0.1),
+            color: isSelected ? AppColors.primary : Colors.grey.shade300,
+            width: 1,
           ),
         ),
         child: Text(
@@ -445,6 +447,7 @@ class _ModernFilterBottomSheetState extends ConsumerState<ModernFilterBottomShee
             offset: const Offset(0, 5),
           ),
         ],
+        border: Border.all(color: Colors.grey.shade300, width: 1),
       ),
       child: Column(
         children: [

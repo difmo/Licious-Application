@@ -139,6 +139,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                       decoration: BoxDecoration(
                         color: Colors.black.withValues(alpha:  0.3),
                         shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 1),
                       ),
                       child: const Icon(Icons.arrow_back,
                           color: Colors.white, size: 20),

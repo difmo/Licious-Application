@@ -94,7 +94,7 @@ class RestaurantMenuPage extends ConsumerWidget {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.grey.shade200),
+                        border: Border.all(color: Colors.grey.shade300, width: 1),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -391,7 +391,7 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: Colors.grey.shade300, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -789,7 +789,7 @@ class _FavoriteHeartState extends ConsumerState<_FavoriteHeart>
                 ? Colors.red.shade50.withValues(alpha: 0.95)
                 : Colors.white.withValues(alpha: 0.9),
             shape: BoxShape.circle,
-            border: Border.all(color: Colors.grey.shade200),
+            border: Border.all(color: Colors.grey.shade300, width: 1),
           ),
           child: Icon(
             isFav ? Icons.favorite : Icons.favorite_border,

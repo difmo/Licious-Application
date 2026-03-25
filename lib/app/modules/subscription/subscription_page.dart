@@ -280,8 +280,10 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
       decoration: BoxDecoration(
         color: const Color(0xFFEBFFD7).withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(24),
-        border:
-            Border.all(color: const Color(0xFF68B92E).withValues(alpha: 0.2)),
+        border: Border.all(
+          color: const Color(0xFF68B92E).withValues(alpha: 0.4),
+          width: 1,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -483,7 +485,7 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
                 if (sub.retailerName.isNotEmpty)
                   Text(sub.retailerName,
                       style: TextStyle(
-                          color: const Color(0xFF114F3B).withValues(alpha: 0.7),
+                          color: const Color(0xFF114F3B).withValues(alpha: 0.1),
                           fontSize: 11,
                           fontWeight: FontWeight.w600)),
                 Text('Qty ${sub.quantity} • ${sub.frequency}',
@@ -745,6 +747,7 @@ class _ActionButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
         ),
         child: Column(
           children: [
@@ -792,7 +795,7 @@ class _PlanItemWidgetState extends ConsumerState<_PlanItemWidget> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.12)),
+        border: Border.all(color: Colors.grey.shade300, width: 1),
         boxShadow: [
           BoxShadow(
               color: Colors.black.withValues(alpha: 0.03),
@@ -829,13 +832,13 @@ class _PlanItemWidgetState extends ConsumerState<_PlanItemWidget> {
               setState(() {
                 _optimisticIsActive = val;
               });
-              
+
               final messenger = ScaffoldMessenger.of(context);
               final newStatus = val ? 'Active' : 'Paused';
               final ok = await ref
                   .read(subscriptionServiceProvider)
                   .updateStatus(widget.sub.id, newStatus);
-                  
+
               if (ok) {
                 ref.invalidate(mySubscriptionsProvider);
               } else {

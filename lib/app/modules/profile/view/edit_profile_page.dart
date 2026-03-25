@@ -281,7 +281,11 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
             fillColor: enabled ? Colors.grey.shade50 : Colors.grey.shade100,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
+              borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
             ),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,

@@ -309,6 +309,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           decoration: BoxDecoration(
                             color: Colors.grey.shade100,
                             borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: Colors.grey.shade300, width: 1),
                           ),
                           child: const Text(
                             'Forgot Password?',
@@ -409,7 +410,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       onPressed: _handleGoogleSignIn,
                       style: OutlinedButton.styleFrom(
                         side:
-                            BorderSide(color: Colors.grey.shade200, width: 1.5),
+                            BorderSide(color: Colors.grey.shade300, width: 1),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),

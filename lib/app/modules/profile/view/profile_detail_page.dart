@@ -24,8 +24,6 @@ class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
   int? _expandedOrderIndex = 0; // Default first one expanded as in Image 3
   bool _makeDefaultCard = true;
 
-
-
   // ── Subscriptions state ───────────────────────────────────────────────────
   final SubscriptionService _subscriptionService = SubscriptionService();
   List<SubscriptionPlan> _subscriptionPlans = [];
@@ -456,7 +454,8 @@ class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
                     Icons.inventory_2_outlined,
                     true,
                     true,
-                  ),_buildTimelineItem(
+                  ),
+                  _buildTimelineItem(
                     'Order Confirmed',
                     order.date,
                     Icons.check_circle_outline,
@@ -658,9 +657,12 @@ class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
               offset: const Offset(0, 4),
             ),
           ],
-          border: isRead
-              ? null
-              : Border.all(color: const Color(0xFF68B92E).withOpacity(0.2)),
+          border: Border.all(
+            color: isRead
+                ? Colors.grey.shade300
+                : const Color(0xFF68B92E).withOpacity(0.4),
+            width: 1,
+          ),
         ),
         child: Stack(
           children: [
@@ -717,8 +719,7 @@ class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
                                   if (mounted) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
-                                        content:
-                                            Text('Notification deleted'),
+                                        content: Text('Notification deleted'),
                                         duration: Duration(seconds: 1),
                                       ),
                                     );
@@ -1011,8 +1012,6 @@ class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
       ],
     );
   }
-
-
 
   Widget _buildCardItem(
     String title,

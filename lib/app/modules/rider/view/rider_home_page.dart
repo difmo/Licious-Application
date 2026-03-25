@@ -646,6 +646,7 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
                         offset: const Offset(0, 5),
                       ),
                     ],
+                    border: Border.all(color: Colors.grey.shade300, width: 1),
                   ),
                   child: Padding(
                     padding: const EdgeInsets.all(20.0),
@@ -909,6 +910,7 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
           decoration: BoxDecoration(
             color: themeBg,
             borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.grey.shade300, width: 1),
           ),
           child: Icon(icon, color: themeColor, size: 20),
         ),
@@ -954,7 +956,7 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
               offset: const Offset(0, 5),
             ),
           ],
-          border: Border.all(color: const Color(0xFFF1F4F8)),
+          border: Border.all(color: Colors.grey.shade300, width: 1),
         ),
         child: Column(
           children: [
@@ -1321,6 +1323,10 @@ class _NewOrderBanner extends StatelessWidget {
             offset: const Offset(0, 6),
           ),
         ],
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.2),
+          width: 1,
+        ),
       ),
       child: Row(
         children: [

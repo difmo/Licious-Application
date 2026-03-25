@@ -196,6 +196,7 @@ class _DeliveryHistoryCard extends StatelessWidget {
             offset: const Offset(0, 8),
           ),
         ],
+        border: Border.all(color: Colors.grey.shade300, width: 1),
       ),
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -314,6 +315,7 @@ class _DeliveryHistoryCard extends StatelessWidget {
               decoration: BoxDecoration(
                 color: const Color(0xFFF9FBF8),
                 borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.grey.shade300, width: 1),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -365,6 +367,7 @@ class _Row extends StatelessWidget {
           decoration: BoxDecoration(
             color: const Color(0xFFF0F4EC),
             borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey.shade300, width: 1),
           ),
           child: Icon(icon, size: 16, color: const Color(0xFF114F3B)),
         ),

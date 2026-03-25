@@ -36,6 +36,7 @@ class RiderProfilePage extends ConsumerWidget {
                 boxShadow: [
                   BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 15, offset: const Offset(0, 5)),
                 ],
+                border: Border.all(color: Colors.grey.shade300, width: 1),
               ),
               child: Column(
                 children: [
@@ -84,6 +85,7 @@ class RiderProfilePage extends ConsumerWidget {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 12, offset: const Offset(0, 4))],
+                border: Border.all(color: Colors.grey.shade300, width: 1),
               ),
               child: Column(
                 children: [
@@ -188,7 +190,7 @@ class _ActionButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withValues(alpha: 0.15)),
+          border: Border.all(color: Colors.grey.shade300, width: 1),
         ),
         child: Row(
           children: [

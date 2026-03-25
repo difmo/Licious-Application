@@ -150,7 +150,7 @@ class _ProfileHeader extends StatelessWidget {
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: user.isShopActive
-                        ? const Color(0xFF68B92E).withOpacity(0.1)
+                        ? const Color(0xFF68B92E).withOpacity(0.2)
                         : Colors.red.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
@@ -226,7 +226,8 @@ class _ProfileHeader extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     shape: BoxShape.circle,
-                    border: Border.all(color: const Color(0xFFEBFFD7), width: 2),
+                    border:
+                        Border.all(color: const Color(0xFFEBFFD7), width: 2),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.1),
@@ -286,7 +287,8 @@ class _ActiveOrdersAndSubscriptions extends ConsumerWidget {
 
     final subscriptionsAsync = ref.watch(mySubscriptionsProvider);
     final activeSubscriptionsCount = subscriptionsAsync.maybeWhen(
-      data: (subs) => subs.where((s) => s.status.toLowerCase() == 'active').length,
+      data: (subs) =>
+          subs.where((s) => s.status.toLowerCase() == 'active').length,
       orElse: () => 0,
     );
 
@@ -299,10 +301,10 @@ class _ActiveOrdersAndSubscriptions extends ConsumerWidget {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: const Color(0xFFEBFFD7),
-                border:
-                    Border.all(color: const Color(0xFF114F3B).withOpacity(0.1)),
+                border: Border.all(color: Colors.grey.shade300, width: 1),
                 borderRadius: BorderRadius.circular(20),
               ),
+              height: 150,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -347,9 +349,10 @@ class _ActiveOrdersAndSubscriptions extends ConsumerWidget {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: const Color(0xFF114F3B),
-                border: Border.all(color: Colors.white.withOpacity(0.1)),
+                border: Border.all(color: Colors.grey.shade300, width: 1),
                 borderRadius: BorderRadius.circular(20),
               ),
+              height: 150,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -457,9 +460,10 @@ class _QuickActionBtn extends StatelessWidget {
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: Colors.white,
-          border: Border.all(color: Colors.grey.shade200),
+          border: Border.all(color: Colors.grey.shade300, width: 1),
           borderRadius: BorderRadius.circular(16),
         ),
+        constraints: const BoxConstraints(minHeight: 85),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -509,7 +513,8 @@ class _QuickActionBtn extends StatelessWidget {
               textAlign: TextAlign.center,
               style: const TextStyle(
                   color: Color(0xFF114F3B),
-                  fontSize: 10,
+                  fontSize: 11,
+                  height: 1.2,
                   fontWeight: FontWeight.w600),
             ),
           ],
@@ -552,7 +557,7 @@ class _ListTileItem extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         decoration: BoxDecoration(
           color: Colors.white,
-          border: Border.all(color: Colors.grey.shade200),
+          border: Border.all(color: Colors.grey.shade300),
           borderRadius: BorderRadius.circular(16),
         ),
         child: Row(

@@ -141,9 +141,8 @@ class _WalletStatementScreenState extends ConsumerState<WalletStatementScreen> {
                   padding: const EdgeInsets.only(right: 8),
                   child: ChoiceChip(
                     label: Text(filter,
-                        style: const TextStyle(
-                            fontSize: 12,
-                            color: Colors.white)),
+                        style:
+                            const TextStyle(fontSize: 12, color: Colors.white)),
                     selected: true,
                     onSelected: (val) {},
                     selectedColor: const Color(0xFF439462),
@@ -223,9 +222,8 @@ class _WalletStatementScreenState extends ConsumerState<WalletStatementScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildSummaryItem(
-                  'Total money added', '+₹${totalCredit.toStringAsFixed(0)}',
-                  Colors.green),
+              _buildSummaryItem('Total money added',
+                  '+₹${totalCredit.toStringAsFixed(0)}', Colors.green),
               Container(width: 1, height: 30, color: Colors.white24),
               _buildSummaryItem('Expense', '-₹${totalDebit.toStringAsFixed(0)}',
                   Colors.redAccent),
@@ -273,7 +271,7 @@ class _WalletStatementScreenState extends ConsumerState<WalletStatementScreen> {
       // Search filter
       bool matchesSearch =
           tx.id.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          tx.orderId.toLowerCase().contains(_searchQuery.toLowerCase());
+              tx.orderId.toLowerCase().contains(_searchQuery.toLowerCase());
 
       // Date filter
       DateTime now = DateTime.now();
@@ -349,7 +347,7 @@ class _TransactionItemWidget extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F4F8)),
+        border: Border.all(color: Colors.grey.shade300, width: 1),
       ),
       child: Row(
         children: [
