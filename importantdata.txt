@@ -1,4 +1,1 @@
-API_BASE_URL=https://shrimpbite-backend.vercel.app/api
-# API_BASE_URL=http://localhost:5000/api
-APP_NAME=ShrimpBite
-DEBUG=true
+API_BASE_URL=https://api.shrimpbite.in/api

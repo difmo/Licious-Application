@@ -26,6 +26,16 @@ class UserModel {
     );
   }
 
+  factory UserModel.placeholder(String phone) {
+    return UserModel(
+      id: 'placeholder',
+      fullName: 'New User',
+      email: '',
+      phoneNumber: phone,
+      role: 'customer',
+    );
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -35,6 +45,24 @@ class UserModel {
       'role': role,
       'isShopActive': isShopActive,
     };
+  }
+
+  UserModel copyWith({
+    String? id,
+    String? fullName,
+    String? email,
+    String? phoneNumber,
+    String? role,
+    bool? isShopActive,
+  }) {
+    return UserModel(
+      id: id ?? this.id,
+      fullName: fullName ?? this.fullName,
+      email: email ?? this.email,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
+      role: role ?? this.role,
+      isShopActive: isShopActive ?? this.isShopActive,
+    );
   }
 }
 
@@ -59,12 +87,40 @@ class AuthResponseModel {
     return AuthResponseModel(
       success: json['success'] ?? false,
       message: json['message'] ?? '',
-      token: json['token'],
+      token: json['token'] ?? json['accessToken'] ?? json['idToken'],
       refreshToken: json['refreshToken'],
       otp: json['otp']?.toString(),
-      data: json['data'] is Map<String, dynamic>
-          ? UserModel.fromJson(json['data'] as Map<String, dynamic>)
+      data: (json['data'] ?? json['user'] ?? json['profile']) is Map<String, dynamic>
+          ? UserModel.fromJson((json['data'] ?? json['user'] ?? json['profile']) as Map<String, dynamic>)
           : null,
+    );
+  }
+}
+
+/// Response model for POST /api/app-auth/check-user
+/// action == "otp" setup for both Rider and Customer
+class CheckUserResponseModel {
+  final bool success;
+  final String message;
+  final String? action; // always "otp" now
+  final String? role; // "rider" or "customer"
+  final bool? isNewUser;
+
+  CheckUserResponseModel({
+    required this.success,
+    required this.message,
+    this.action,
+    this.role,
+    this.isNewUser,
+  });
+
+  factory CheckUserResponseModel.fromJson(Map<String, dynamic> json) {
+    return CheckUserResponseModel(
+      success: json['success'] ?? false,
+      message: json['message'] ?? '',
+      action: json['action']?.toString(),
+      role: json['role']?.toString(),
+      isNewUser: json['isNewUser'] as bool?,
     );
   }
 }

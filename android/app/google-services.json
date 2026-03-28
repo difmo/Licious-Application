@@ -35,7 +35,7 @@
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "246944187312-r1pfsgtig4k3bsuvsml24nrfe34bjf8t.apps.googleusercontent.com",
+              "client_id": "246944187312-i5er31dnga94isfg6iv6pib8ieb4uh8t.apps.googleusercontent.com",
               "client_type": 3
             },
             {
@@ -79,7 +79,7 @@
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "246944187312-r1pfsgtig4k3bsuvsml24nrfe34bjf8t.apps.googleusercontent.com",
+              "client_id": "246944187312-i5er31dnga94isfg6iv6pib8ieb4uh8t.apps.googleusercontent.com",
               "client_type": 3
             },
             {
@@ -110,6 +110,14 @@
           }
         },
         {
+          "client_id": "246944187312-um7a9v2so8our2gdrsv1d60skiabie72.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.shrimpbite.app",
+            "certificate_hash": "4fd4793567c85457c0d35955cb28cdfb878d49bc"
+          }
+        },
+        {
           "client_id": "246944187312-r1pfsgtig4k3bsuvsml24nrfe34bjf8t.apps.googleusercontent.com",
           "client_type": 3
         }
@@ -123,7 +131,7 @@
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "246944187312-r1pfsgtig4k3bsuvsml24nrfe34bjf8t.apps.googleusercontent.com",
+              "client_id": "246944187312-i5er31dnga94isfg6iv6pib8ieb4uh8t.apps.googleusercontent.com",
               "client_type": 3
             },
             {

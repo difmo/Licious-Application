@@ -9,7 +9,7 @@ import 'address_form_page.dart';
 import '../widgets/order_review_dialog.dart';
 import '../../../data/services/notification_api_service.dart';
 import '../../../data/models/notification_model.dart';
-import '../../../data/services/auth_service.dart';
+import '../../auth/provider/auth_provider.dart';
 
 class ProfileDetailPage extends ConsumerStatefulWidget {
   final String title;

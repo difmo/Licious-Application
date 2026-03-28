@@ -7,14 +7,6 @@ final authServiceProvider = Provider<AuthService>((ref) {
   return AuthService(client: ref.watch(apiClientProvider));
 });
 
-final userProfileProvider = FutureProvider.autoDispose<UserModel>((ref) async {
-  final response = await ref.watch(authServiceProvider).getProfile();
-  if (response.success && response.data != null) {
-    return response.data!;
-  }
-  throw Exception(response.message);
-});
-
 /// Service layer for authentication.
 class AuthService {
   final ApiClient _client;
@@ -66,6 +58,25 @@ class AuthService {
     }
   }
 
+  // ── Check User (Detect role: rider → password, customer → otp) ────────────
+  Future<CheckUserResponseModel> checkUser({
+    required String phoneNumber,
+  }) async {
+    try {
+      final data = await _client.post(
+        '${ApiClient.baseUrl}/check-user',
+        data: {'phoneNumber': phoneNumber},
+      );
+      return CheckUserResponseModel.fromJson(data);
+    } on ApiException catch (e) {
+      return CheckUserResponseModel(
+          success: false, message: e.message, action: null);
+    } catch (e) {
+      return CheckUserResponseModel(
+          success: false, message: e.toString(), action: null);
+    }
+  }
+
   Future<AuthResponseModel> login({
     required String phoneNumber,
     required String password,
@@ -102,15 +113,13 @@ class AuthService {
   }) async {
     // Comprehensive list of probable endpoints
     final endpoints = [
-      'https://shrimpbite-backend.vercel.app/api/app/google', // Forcing absolute URL
+      'https://api.shrimpbite.in/api/app/google', // Forcing absolute URL
       '${ApiClient.baseUrl}/google',
       '${ApiClient.baseUrl}/auth/google-auth',
       '${ApiClient.baseUrl}/auth/google',
       '${ApiClient.baseUrl}/google-auth',
       '/auth/google-auth',
     ];
-
-
 
     for (final path in endpoints) {
       try {
@@ -131,14 +140,16 @@ class AuthService {
         }
       } on ApiException catch (e) {
         // Continue trying other endpoints even on 500/504 errors
-        debugPrint('[AuthService] Error ${e.statusCode} at $path: ${e.message}. Trying next fallback...');
+        debugPrint(
+            '[AuthService] Error ${e.statusCode} at $path: ${e.message}. Trying next fallback...');
       } catch (e) {
         debugPrint('[AuthService] Unexpected error at $path: $e');
       }
     }
 
     // --- FINAL FALLBACK (Demo Login for UI testing when Backend is down) ---
-    debugPrint('[AuthService] All Google Auth endpoints failed. Applying Demo Fallback...');
+    debugPrint(
+        '[AuthService] All Google Auth endpoints failed. Applying Demo Fallback...');
     // In a real production app, this would be removed, but for your demo:
     return AuthResponseModel(
       success: true,
@@ -190,7 +201,9 @@ class AuthService {
         data: {'phoneNumber': phoneNumber, 'otp': otp},
       );
       final response = AuthResponseModel.fromJson(data);
-      if (response.success && response.token != null && response.token!.isNotEmpty) {
+      if (response.success &&
+          response.token != null &&
+          response.token!.isNotEmpty) {
         await ApiClient.saveToken(response.token!);
       }
       return response;
@@ -218,7 +231,9 @@ class AuthService {
         },
       );
       final response = AuthResponseModel.fromJson(data);
-      if (response.success && response.token != null && response.token!.isNotEmpty) {
+      if (response.success &&
+          response.token != null &&
+          response.token!.isNotEmpty) {
         await ApiClient.saveToken(response.token!);
       }
       return response;

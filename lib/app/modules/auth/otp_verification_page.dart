@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../widgets/common_button.dart';
+import 'package:flutter/services.dart';
+import '../../../core/state/auth_store.dart' as core;
 import 'provider/auth_provider.dart';
 import '../../data/models/food_models.dart';
 import '../../data/services/db_service.dart';
@@ -99,18 +101,10 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
 
     final authState = ref.read(authProvider);
 
-    if (authState is AuthSuccess) {
-      debugPrint('[OTP] Verification successful!');
-      ref.read(authProvider.notifier).reset();
-      Navigator.pushReplacementNamed(
-        context,
-        AppRoutes.login,
-        arguments: {'verified': true},
-      );
-    } else if (authState is AuthAuthenticated) {
-      debugPrint('[OTP] Instant login successful!');
+    if (authState is AuthAuthenticated) {
+      debugPrint('[OTP] Verification successful! Going to home screen.');
 
-      // Update legacy CartProvider profile (kept for rest of UI compatibility)
+      // Update local profile state
       try {
         final cartProvider = CartProviderScope.of(context);
         cartProvider.updateUserProfile(
@@ -121,10 +115,9 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
             profileImage: 'assets/images/image copy 2.png',
           ),
         );
-        // Sync cart immediately after login
         cartProvider.loadCartFromApi();
       } catch (e) {
-        debugPrint('Failed to update CartProvider profile: $e');
+        debugPrint('Failed to update profile: $e');
       }
 
       if (authState.user.role == 'rider') {
@@ -180,14 +173,22 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
               const SizedBox(height: 24),
 
               const Text(
-                'Verification Code',
+                'OTP Verification',
                 style: TextStyle(
-                  fontSize: 26,
+                  fontSize: 28,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+                  color: Color(0xFF114F3B),
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
+              Text(
+                'A 6-digit code has been sent to ${widget.phoneNumber}',
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey,
+                ),
+              ),
+              const SizedBox(height: 32),
               Text(
                 'We have sent the verification code to your\nphone number ${widget.phoneNumber}',
                 style: const TextStyle(
@@ -205,7 +206,8 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
                 ),
                 child: const Row(
                   children: [
-                    Icon(Icons.sms_outlined, size: 14, color: Color(0xFF1976D2)),
+                    Icon(Icons.sms_outlined,
+                        size: 14, color: Color(0xFF1976D2)),
                     SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -223,65 +225,63 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
               const SizedBox(height: 28),
 
               // ── 6 OTP boxes ─────────────────────────────────────────────
-              if (_isSendingOtp)
-                const Center(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 20),
-                    child: CircularProgressIndicator(color: Color(0xFF2E7D32)),
-                  ),
-                )
-              else
-                Row(
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(_otpLength, (index) {
-                    return Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 5),
-                      width: 46,
-                      height: 54,
-                      child: TextField(
-                        controller: _controllers[index],
-                        focusNode: _focusNodes[index],
-                        keyboardType: TextInputType.number,
-                        textAlign: TextAlign.center,
-                        textAlignVertical: TextAlignVertical.center,
-                        maxLength: 1,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
-                        decoration: InputDecoration(
-                          counterText: '',
-                          contentPadding: EdgeInsets.zero,
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(color: Colors.black12),
+                  children: [
+                    ...List.generate(_otpLength, (index) {
+                      return Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 5),
+                        width: 46,
+                        height: 54,
+                        child: TextField(
+                          controller: _controllers[index],
+                          focusNode: _focusNodes[index],
+                          keyboardType: TextInputType.number,
+                          textAlign: TextAlign.center,
+                          textAlignVertical: TextAlignVertical.center,
+                          maxLength: 1,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
                           ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(
-                                color: Color(0xFF2E7D32), width: 2),
+                          decoration: InputDecoration(
+                            counterText: '',
+                            contentPadding: EdgeInsets.zero,
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide:
+                                  const BorderSide(color: Colors.black12),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(
+                                  color: Color(0xFF2E7D32), width: 2),
+                            ),
+                            fillColor: Colors.grey.shade50,
+                            filled: true,
                           ),
-                          fillColor: Colors.grey.shade50,
-                          filled: true,
-                        ),
-                        onChanged: (value) {
-                          if (value.isNotEmpty) {
-                            if (index < _otpLength - 1) {
-                              _focusNodes[index + 1].requestFocus();
+                          onChanged: (value) {
+                            if (value.isNotEmpty) {
+                              if (index < _otpLength - 1) {
+                                _focusNodes[index + 1].requestFocus();
+                              } else {
+                                _focusNodes[index].unfocus();
+                              }
                             } else {
-                              _focusNodes[index].unfocus();
+                              if (index > 0) {
+                                _focusNodes[index - 1].requestFocus();
+                              }
                             }
-                          } else {
-                            if (index > 0) {
-                              _focusNodes[index - 1].requestFocus();
-                            }
-                          }
-                        },
-                      ),
-                    );
-                  }),
+                          },
+                        ),
+                      );
+                    }),
+                  ],
                 ),
+              ),
 
               const SizedBox(height: 36),
 
@@ -289,33 +289,66 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text("Didn't receive the code? ",
-                      style: TextStyle(color: Colors.black54, fontSize: 13)),
-                  GestureDetector(
-                    onTap: _isSendingOtp ? null : _sendOtp,
-                    child: Text(
-                      'Resend',
-                      style: TextStyle(
-                        color: _isSendingOtp
-                            ? Colors.grey
-                            : const Color(0xFF2E7D32),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
+                  if (_isSendingOtp) ...[
+                    const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                        color: Color(0xFF2E7D32),
+                        strokeWidth: 2,
                       ),
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    const Text("Requesting OTP...",
+                        style: TextStyle(
+                            color: Color(0xFF2E7D32),
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold)),
+                  ] else ...[
+                    const Text("Didn't receive the code? ",
+                        style: TextStyle(color: Colors.black54, fontSize: 13)),
+                    GestureDetector(
+                      onTap: _sendOtp,
+                      child: const Text(
+                        'Resend',
+                        style: TextStyle(
+                          color: Color(0xFF2E7D32),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
 
               const SizedBox(height: 40),
 
               // ── Confirm Button ───────────────────────────────────────────
-              CommonButton(
-                text: 'Confirm',
-                onPressed: _verifyOtp,
-                backgroundColor: const Color(0xFF2E7D32),
-                borderRadius: 28,
-                isLoading: _isVerifying,
+              Consumer(
+                builder: (context, ref, child) {
+                  final authCore = ref.watch(core.authStoreProvider);
+                  final isSessionReady = authCore.verificationId != null;
+
+                  return CommonButton(
+                    text: 'Confirm',
+                    onPressed: _isVerifying
+                        ? null
+                        : () {
+                            if (!isSessionReady) {
+                              _showSnackBar(
+                                  'Please wait, preparing secure OTP connection...');
+                              return;
+                            }
+                            _verifyOtp();
+                          },
+                    backgroundColor: isSessionReady
+                        ? const Color(0xFF2E7D32)
+                        : Colors.grey.shade400,
+                    borderRadius: 28,
+                    isLoading: _isVerifying,
+                  );
+                },
               ),
 
               const SizedBox(height: 24),

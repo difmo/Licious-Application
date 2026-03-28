@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 class CommonButton extends StatelessWidget {
   final String text;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
   final Color backgroundColor;
   final Color textColor;
   final double borderRadius;
@@ -13,7 +13,7 @@ class CommonButton extends StatelessWidget {
   const CommonButton({
     super.key,
     required this.text,
-    required this.onPressed,
+    this.onPressed,
     this.backgroundColor = const Color(0xFF438E5A),
     this.textColor = Colors.white,
     this.borderRadius = 8.0,

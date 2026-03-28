@@ -19,17 +19,19 @@ class ModernFilterBottomSheet extends ConsumerStatefulWidget {
   }
 
   @override
-  ConsumerState<ModernFilterBottomSheet> createState() => _ModernFilterBottomSheetState();
+  ConsumerState<ModernFilterBottomSheet> createState() =>
+      _ModernFilterBottomSheetState();
 }
 
-class _ModernFilterBottomSheetState extends ConsumerState<ModernFilterBottomSheet> {
+class _ModernFilterBottomSheetState
+    extends ConsumerState<ModernFilterBottomSheet> {
   // Local state for filters
   RangeValues _priceRange = const RangeValues(0, 1000);
   int? _selectedRating;
   bool _discount = false;
   bool _freeShipping = false;
   bool _sameDayDelivery = false;
-  
+
   int _totalCount = 0;
   bool _isLoadingCount = false;
   Timer? _debounceTimer;
@@ -51,7 +53,7 @@ class _ModernFilterBottomSheetState extends ConsumerState<ModernFilterBottomShee
         _discount = currentFilter.hasDiscount ?? false;
         _freeShipping = currentFilter.freeShipping ?? false;
         _sameDayDelivery = currentFilter.sameDayDelivery ?? false;
-        
+
         _minController.text = _priceRange.start.round().toString();
         _maxController.text = _priceRange.end.round().toString();
       });
@@ -77,7 +79,7 @@ class _ModernFilterBottomSheetState extends ConsumerState<ModernFilterBottomShee
   void _onManualPriceChange() {
     final min = double.tryParse(_minController.text) ?? 0;
     final max = double.tryParse(_maxController.text) ?? 1000;
-    
+
     if (min <= max && min >= 0 && max <= 1000) {
       setState(() {
         _priceRange = RangeValues(min, max);
@@ -89,7 +91,7 @@ class _ModernFilterBottomSheetState extends ConsumerState<ModernFilterBottomShee
   Future<void> _fetchCount() async {
     if (!mounted) return;
     setState(() => _isLoadingCount = true);
-    
+
     try {
       final service = ref.read(shopServiceProvider);
       final result = await service.getFilteredProducts(
@@ -100,7 +102,7 @@ class _ModernFilterBottomSheetState extends ConsumerState<ModernFilterBottomShee
         freeShipping: _freeShipping,
         sameDayDelivery: _sameDayDelivery,
       );
-      
+
       if (mounted) {
         setState(() {
           _totalCount = result['total'] as int;
@@ -127,20 +129,18 @@ class _ModernFilterBottomSheetState extends ConsumerState<ModernFilterBottomShee
     _fetchCount();
   }
 
-
-
   void _applyFilters() {
     ref.read(productFilterProvider.notifier).update(ProductFilter(
-      minPrice: _priceRange.start,
-      maxPrice: _priceRange.end,
-      minRating: _selectedRating?.toDouble(),
-      hasDiscount: _discount,
-      freeShipping: _freeShipping,
-      sameDayDelivery: _sameDayDelivery,
-    ));
-    
+          minPrice: _priceRange.start,
+          maxPrice: _priceRange.end,
+          minRating: _selectedRating?.toDouble(),
+          hasDiscount: _discount,
+          freeShipping: _freeShipping,
+          sameDayDelivery: _sameDayDelivery,
+        ));
+
     Navigator.pop(context);
-    
+
     // If we're not already on the FilteredProductsPage, navigate to it
     // Check current route to avoid pushing a duplicate if already there
     final currentRoute = ModalRoute.of(context)?.settings.name;
@@ -158,7 +158,7 @@ class _ModernFilterBottomSheetState extends ConsumerState<ModernFilterBottomShee
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
-    
+
     return Container(
       height: screenHeight * 0.9,
       decoration: const BoxDecoration(
@@ -175,7 +175,8 @@ class _ModernFilterBottomSheetState extends ConsumerState<ModernFilterBottomShee
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -190,7 +191,8 @@ class _ModernFilterBottomSheetState extends ConsumerState<ModernFilterBottomShee
                     _buildSectionTitle('Delivery Options'),
                     const SizedBox(height: 16),
                     _buildDeliveryOptionsSection(),
-                    const SizedBox(height: 120), // Padding for sticky bottom button
+                    const SizedBox(
+                        height: 120), // Padding for sticky bottom button
                   ],
                 ),
               ),
@@ -225,7 +227,8 @@ class _ModernFilterBottomSheetState extends ConsumerState<ModernFilterBottomShee
           Align(
             alignment: Alignment.centerLeft,
             child: IconButton(
-              icon: const Icon(Icons.close, size: 24, color: AppColors.textPrimary),
+              icon: const Icon(Icons.close,
+                  size: 24, color: AppColors.textPrimary),
               onPressed: () => Navigator.pop(context),
             ),
           ),
@@ -336,7 +339,8 @@ class _ModernFilterBottomSheetState extends ConsumerState<ModernFilterBottomShee
     );
   }
 
-  Widget _buildPriceBox(String label, String value, TextEditingController controller) {
+  Widget _buildPriceBox(
+      String label, String value, TextEditingController controller) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
@@ -452,25 +456,28 @@ class _ModernFilterBottomSheetState extends ConsumerState<ModernFilterBottomShee
       child: Column(
         children: [
           _buildToggleRow('Discount', _discount, (val) {
-             setState(() => _discount = val);
-             _fetchCount();
+            setState(() => _discount = val);
+            _fetchCount();
           }),
-          const Divider(height: 1, indent: 20, endIndent: 20, color: Color(0xFFEEEEEE)),
+          const Divider(
+              height: 1, indent: 20, endIndent: 20, color: Color(0xFFEEEEEE)),
           _buildToggleRow('Free Shipping', _freeShipping, (val) {
-             setState(() => _freeShipping = val);
-             _fetchCount();
+            setState(() => _freeShipping = val);
+            _fetchCount();
           }),
-          const Divider(height: 1, indent: 20, endIndent: 20, color: Color(0xFFEEEEEE)),
+          const Divider(
+              height: 1, indent: 20, endIndent: 20, color: Color(0xFFEEEEEE)),
           _buildToggleRow('Same Day Delivery', _sameDayDelivery, (val) {
-             setState(() => _sameDayDelivery = val);
-             _fetchCount();
+            setState(() => _sameDayDelivery = val);
+            _fetchCount();
           }),
         ],
       ),
     );
   }
 
-  Widget _buildToggleRow(String title, bool value, ValueChanged<bool> onChanged) {
+  Widget _buildToggleRow(
+      String title, bool value, ValueChanged<bool> onChanged) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       child: Row(
@@ -522,21 +529,21 @@ class _ModernFilterBottomSheetState extends ConsumerState<ModernFilterBottomShee
           ),
         ),
         child: _isLoadingCount
-          ? const SizedBox(
-              width: 24,
-              height: 24,
-              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-            )
-          : Text(
-              _totalCount > 0 ? 'Show $_totalCount Results' : 'Show Results',
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 0.5,
+            ? const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                    color: Colors.white, strokeWidth: 2),
+              )
+            : Text(
+                _totalCount > 0 ? 'Show $_totalCount Results' : 'Show Results',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
+                ),
               ),
-            ),
       ),
     );
   }
 }
-

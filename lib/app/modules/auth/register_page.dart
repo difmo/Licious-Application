@@ -16,19 +16,23 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   final _fullNameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
 
-  bool _obscurePassword = true;
-  bool _obscureConfirm = true;
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final args = ModalRoute.of(context)?.settings.arguments as Map?;
+      if (args != null && args.containsKey('phoneNumber')) {
+        _phoneController.text = args['phoneNumber'].toString().replaceAll('+91', '');
+      }
+    });
+  }
 
   @override
   void dispose() {
     _fullNameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
-    _passwordController.dispose();
-    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -38,7 +42,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message, style: const TextStyle(fontWeight: FontWeight.w500)),
+        content: Text(message, style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white)),
         backgroundColor: backgroundColor,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -53,31 +57,22 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     final fullName = _fullNameController.text.trim();
     final email = _emailController.text.trim();
     final phone = _phoneController.text.trim();
-    final password = _passwordController.text;
-    final confirmPassword = _confirmPasswordController.text;
 
-    if (fullName.isEmpty ||
-        email.isEmpty ||
-        phone.isEmpty ||
-        password.isEmpty ||
-        confirmPassword.isEmpty) {
+    if (fullName.isEmpty || email.isEmpty || phone.isEmpty) {
       _showSnackBar('Please fill all fields',
           backgroundColor: Colors.orange.shade700);
       return;
     }
 
-    if (password != confirmPassword) {
-      _showSnackBar('Passwords do not match', backgroundColor: Colors.red);
-      return;
-    }
-
     // Trigger Riverpod register action
+    // Backend now allows password-less registration for Customers.
+    // We send a dummy/empty password as the backend handles OTP verification later.
     await ref.read(authProvider.notifier).register(
           fullName: fullName,
           email: email,
           phoneNumber: phone,
-          password: password,
-          confirmPassword: confirmPassword,
+          password: '', // Password-less
+          confirmPassword: '',
         );
 
     if (!mounted) return;
@@ -98,8 +93,6 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
       ref.read(authProvider.notifier).reset();
     }
   }
-
-  // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -137,7 +130,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                       width: 36,
                       height: 36,
                       decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha:  0.3),
+                        color: Colors.black.withValues(alpha: 0.3),
                         shape: BoxShape.circle,
                         border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 1),
                       ),
@@ -195,30 +188,6 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                     prefixIcon: Icons.phone_outlined,
                     keyboardType: TextInputType.phone,
                   ),
-                  const SizedBox(height: 20),
-
-                  InputField(
-                    controller: _passwordController,
-                    label: 'Password',
-                    hintText: 'Enter your password',
-                    prefixIcon: Icons.lock_outline,
-                    isPassword: true,
-                    obscureText: _obscurePassword,
-                    onToggleVisibility: () =>
-                        setState(() => _obscurePassword = !_obscurePassword),
-                  ),
-                  const SizedBox(height: 20),
-
-                  InputField(
-                    controller: _confirmPasswordController,
-                    label: 'Confirm Password',
-                    hintText: 'Re-enter your password',
-                    prefixIcon: Icons.lock_outline,
-                    isPassword: true,
-                    obscureText: _obscureConfirm,
-                    onToggleVisibility: () =>
-                        setState(() => _obscureConfirm = !_obscureConfirm),
-                  ),
                   const SizedBox(height: 32),
 
                   // Signup Button
@@ -262,5 +231,3 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     );
   }
 }
-
-

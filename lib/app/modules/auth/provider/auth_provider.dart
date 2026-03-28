@@ -1,8 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/auth_models.dart';
 import '../../../../core/state/auth_store.dart' as core;
+export '../../../data/models/auth_models.dart' show CheckUserResponseModel;
 
 // Expose the core providers for convenience
+final authStoreProvider = core.authStoreProvider;
 final authServiceProvider = core.authServiceProvider;
 final secureStorageProvider = core.secureStorageProvider;
 
@@ -80,6 +82,10 @@ class AuthNotifier extends Notifier<AuthState> {
      await ref.read(core.authStoreProvider.notifier).login(phone: phoneNumber, password: password);
   }
 
+  Future<CheckUserResponseModel?> checkUser({required String phoneNumber}) async {
+    return await ref.read(core.authStoreProvider.notifier).checkUser(phoneNumber: phoneNumber);
+  }
+
   Future<void> register({
     required String fullName,
     required String email,
@@ -142,5 +148,30 @@ final isAuthenticatedProvider = core.isAuthenticatedProvider;
 final currentUserProvider = Provider<UserModel?>((ref) {
   final coreState = ref.watch(core.authStoreProvider);
   return coreState.user;
+});
+
+final userProfileProvider = FutureProvider.autoDispose<UserModel>((ref) async {
+  // Watch the core store directly for instant reactivity
+  final authCore = ref.watch(core.authStoreProvider);
+  final user = authCore.user;
+
+  // If we already have a user in memory, use it immediately
+  if (authCore.status == core.AuthStatus.authenticated && user != null) {
+    if (user.id != 'placeholder') {
+      return user;
+    }
+    // If it's a placeholder, we still return it but don't stop there
+  }
+  
+  // Fallback: Fetch latest data from server
+  final response = await ref.watch(authServiceProvider).getProfile();
+  if (response.success && response.data != null) {
+    return response.data!;
+  }
+  
+  // Final fallback: Use memory user if fetch fails
+  if (user != null) return user;
+  
+  throw Exception(response.message);
 });
 

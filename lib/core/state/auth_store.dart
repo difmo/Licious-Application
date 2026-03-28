@@ -132,8 +132,24 @@ class AuthStore extends Notifier<AuthState> {
     state = AuthState.authenticated(user);
   }
 
+  Future<void> updateUser(UserModel user) async {
+    await _storage.saveUser(jsonEncode(user.toJson()));
+    state = state.copyWith(user: user);
+  }
+
+  /// Calls the detection API. Returns the action ("password" or "otp").
+  /// Does NOT change auth state — it's a pure lookup.
+  Future<CheckUserResponseModel?> checkUser({required String phoneNumber}) async {
+    try {
+      return await ref.read(authServiceProvider).checkUser(phoneNumber: phoneNumber);
+    } catch (e) {
+      debugPrint('AuthStore.checkUser error: $e');
+      return null;
+    }
+  }
+
   Future<void> login({required String phone, required String password}) async {
-    state = AuthState.loading();
+    state = state.copyWith(status: AuthStatus.loading, error: null, successMessage: null);
     try {
       final fcmToken = await FCMService().getToken();
       final response = await ref.read(authServiceProvider).login(
@@ -158,7 +174,7 @@ class AuthStore extends Notifier<AuthState> {
   }
 
   Future<void> sendOtp({required String phoneNumber}) async {
-    state = AuthState.loading();
+    state = state.copyWith(status: AuthStatus.loading, error: null);
     try {
       String formattedPhone = phoneNumber.trim();
       if (formattedPhone.length == 10) {
@@ -205,7 +221,7 @@ class AuthStore extends Notifier<AuthState> {
   Future<void> _signInWithFirebaseCredential(
       String phoneNumber, PhoneAuthCredential credential) async {
     try {
-      state = AuthState.loading();
+      state = state.copyWith(status: AuthStatus.loading, error: null);
 
       // 1. Sign in to Firebase to get the idToken
       final userCredential =
@@ -225,14 +241,18 @@ class AuthStore extends Notifier<AuthState> {
             fcmToken: fcmToken,
           );
 
-      if (response.success && response.data != null && response.token != null) {
-        await _persistAuth(
-          response.data!,
-          response.token!,
-          response.refreshToken ?? '',
-        );
+      if (response.success) {
+        debugPrint('AuthStore: OTP verification result - SUCCESS');
+        
+        final user = response.data ?? UserModel.placeholder(phoneNumber);
+        // Map token with a fallback (it might be needed for subsequent requests)
+        final access = response.token ?? ''; 
+        final refresh = response.refreshToken ?? '';
+
+        await _persistAuth(user, access, refresh);
         unawaited(syncFcmToken());
       } else {
+        debugPrint('AuthStore: verification result - FAILED: ${response.message}');
         state = AuthState.unauthenticated(error: response.message);
       }
     } catch (e) {
@@ -248,7 +268,7 @@ class AuthStore extends Notifier<AuthState> {
     required String password,
     required String confirmPassword,
   }) async {
-    state = AuthState.loading();
+    state = state.copyWith(status: AuthStatus.loading, error: null);
     try {
       final fcmToken = await FCMService().getToken();
       final response = await ref.read(authServiceProvider).register(
@@ -276,7 +296,7 @@ class AuthStore extends Notifier<AuthState> {
       {required String idToken,
       String? accessToken,
       String? phoneNumber}) async {
-    state = AuthState.loading();
+    state = state.copyWith(status: AuthStatus.loading, error: null);
     try {
       String finalToken = idToken;
 
@@ -340,7 +360,7 @@ class AuthStore extends Notifier<AuthState> {
   }
 
   Future<void> forgotPassword({required String email}) async {
-    state = AuthState.loading();
+    state = state.copyWith(status: AuthStatus.loading, error: null);
     try {
       final response =
           await ref.read(authServiceProvider).forgotPassword(email: email);
@@ -369,6 +389,9 @@ class AuthStore extends Notifier<AuthState> {
   }
 
   Future<void> syncFcmToken() async {
+    final user = state.user;
+    if (user == null || user.id == 'placeholder') return;
+    
     final fcmToken = await FCMService().getToken();
     if (fcmToken != null) {
       await ref.read(authServiceProvider).updateFcmToken(fcmToken: fcmToken);

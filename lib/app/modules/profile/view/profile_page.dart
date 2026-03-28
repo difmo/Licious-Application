@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import './profile_detail_page.dart';
 import './edit_profile_page.dart';
-import '../../../data/services/auth_service.dart' as auth;
+import '../../auth/provider/auth_provider.dart' as auth;
 import '../../../data/models/auth_models.dart' as models;
 import '../../../data/services/db_service.dart';
 import '../../../data/services/order_service.dart';

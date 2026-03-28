@@ -26,8 +26,8 @@ class ApiException implements Exception {
 final apiClientProvider = Provider<ApiClient>((ref) {
   final dio = Dio(BaseOptions(
     baseUrl: dotenv.get('API_BASE_URL').trim(),
-    connectTimeout: const Duration(seconds: 30),
-    receiveTimeout: const Duration(seconds: 30),
+    connectTimeout: const Duration(seconds: 60),
+    receiveTimeout: const Duration(seconds: 60),
     contentType: Headers.jsonContentType,
   ));
 

@@ -73,6 +73,6 @@ class SocketClient {
 
 final socketClientProvider = Provider<SocketClient>((ref) {
   // Use your production socket URL here
-  const socketUrl = 'https://shrimpbite-backend.vercel.app'; 
+  const socketUrl = 'https://api.shrimpbite.in'; 
   return SocketClient(ref, socketUrl);
 });

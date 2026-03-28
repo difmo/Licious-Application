@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../data/services/auth_service.dart';
+import '../../auth/provider/auth_provider.dart';
 import '../../../data/models/auth_models.dart';
 
 class EditProfilePage extends ConsumerStatefulWidget {
@@ -59,7 +59,14 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
       if (!mounted) return;
 
       if (response.success) {
-        // Refresh the profile provider to update UI everywhere
+        final currentProfile = ref.read(userProfileProvider).value;
+        if (currentProfile != null) {
+          final updatedUser = currentProfile.copyWith(fullName: _nameController.text.trim());
+          // Update the global auth store immediately for instant UI response
+          await ref.read(authStoreProvider.notifier).updateUser(updatedUser);
+        }
+        
+        // Refresh the profile provider to stay in sync with server
         ref.invalidate(userProfileProvider);
         
         ScaffoldMessenger.of(context).showSnackBar(
