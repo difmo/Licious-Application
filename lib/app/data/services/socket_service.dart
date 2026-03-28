@@ -12,7 +12,8 @@ import '../../../core/storage/secure_storage_service.dart';
 class SocketService {
   static const String _orderUpdateEvent = 'orderUpdate';
   static const String _riderAssignedEvent = 'riderAssigned';
-  static const String _newOrderEvent = 'newOrderAssigned'; // rider receives new order
+  static const String _newOrderEvent =
+      'newOrderAssigned'; // rider receives new order
 
   io.Socket? _socket;
   bool _initialized = false;
@@ -37,8 +38,8 @@ class SocketService {
     if (_initialized && (_socket?.connected ?? false)) return;
 
     final token = await storage.getAccessToken();
-    final baseUrl = dotenv.maybeGet('SOCKET_URL') ??
-        'https://shrimpbite-socket-server.onrender.com';
+    final baseUrl =
+        dotenv.maybeGet('SOCKET_URL') ?? 'https://api.shrimpbite.in';
     final apiBaseUrl = dotenv.maybeGet('API_BASE_URL') ?? '';
 
     // 1. Poke Render (both API and Socket URLs) to wake up
@@ -71,7 +72,8 @@ class SocketService {
       },
     );
 
-    _socket!.on('connecting', (_) => debugPrint('🔄 SocketService connecting to $baseUrl...'));
+    _socket!.on('connecting',
+        (_) => debugPrint('🔄 SocketService connecting to $baseUrl...'));
     _socket!.onConnect((_) {
       debugPrint('✅ SocketService connected to $baseUrl');
       _flushQueue();
@@ -84,8 +86,8 @@ class SocketService {
 
     // Reconnection logs
     _socket!.onReconnect((_) => debugPrint('♻️ SocketService reconnected'));
-    _socket!.onReconnectAttempt((count) =>
-        debugPrint('🔄 SocketService reconnection attempt: $count'));
+    _socket!.onReconnectAttempt(
+        (count) => debugPrint('🔄 SocketService reconnection attempt: $count'));
     _socket!.onReconnectError(
         (err) => debugPrint('❌ SocketService reconnection error: $err'));
     _socket!.onReconnectFailed(
