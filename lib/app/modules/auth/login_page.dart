@@ -6,6 +6,8 @@ import '../../widgets/common_button.dart';
 import 'provider/auth_provider.dart';
 import 'widgets/input_field.dart';
 import 'otp_verification_page.dart';
+import '../../routes/app_routes.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -20,6 +22,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
 
   bool _agreeToTerms = false;
   bool _isChecking = false;
+  bool _isGoogleLoading = false;
 
   late TapGestureRecognizer _termsRecognizer;
   late TapGestureRecognizer _privacyRecognizer;
@@ -154,6 +157,60 @@ class _LoginPageState extends ConsumerState<LoginPage>
     );
   }
 
+  Future<void> _googleSignIn() async {
+
+
+    setState(() => _isGoogleLoading = true);
+
+    try {
+      debugPrint('[Google Diagnostic] Starting Google Sign-In...');
+      final GoogleSignIn googleSignIn = GoogleSignIn();
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+
+      if (googleUser == null) {
+        debugPrint(
+            '[Google Diagnostic] APP ISSUE: Google login window closed or failed to Open. Check SHA-1/Firebase Config.');
+        setState(() => _isGoogleLoading = false);
+        return;
+      }
+
+      debugPrint(
+          '[Google Diagnostic] Google account selected: ${googleUser.email}');
+      final GoogleSignInAuthentication googleAuthResult =
+          await googleUser.authentication;
+      final String? idToken = googleAuthResult.idToken;
+      final String? accessToken = googleAuthResult.accessToken;
+
+      if (idToken == null) {
+        debugPrint(
+            '[Google Diagnostic] APP ISSUE: Google idToken is NULL. Check Firebase setup on Android.');
+        _showSnackBar('Google Authentication failed. Please try again.');
+        setState(() => _isGoogleLoading = false);
+        return;
+      }
+
+      debugPrint('[Google Diagnostic] Attempting Backend Sync with idToken...');
+      await ref.read(authProvider.notifier).googleAuth(
+            idToken: idToken,
+            accessToken: accessToken,
+          );
+
+      final authState = ref.read(authProvider);
+      if (authState is AuthError) {
+        debugPrint('[Google Diagnostic] BACKEND ISSUE: ${authState.message}');
+        _showSnackBar(authState.message, backgroundColor: Colors.red);
+      } else if (authState is AuthAuthenticated) {
+        debugPrint(
+            '[Google Diagnostic] SUCCESS: Logged in as ${authState.user.fullName}');
+      }
+    } catch (e) {
+      debugPrint('[Google Diagnostic] UNEXPECTED ERROR: $e');
+      _showSnackBar('An error occurred during Google Sign-In.');
+    } finally {
+      if (mounted) setState(() => _isGoogleLoading = false);
+    }
+  }
+
   Future<void> _launchURL(String url) async {
     final Uri uri = Uri.parse(url);
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
@@ -166,6 +223,19 @@ class _LoginPageState extends ConsumerState<LoginPage>
 
   @override
   Widget build(BuildContext context) {
+    // Listen for authentication changes (for Google Sign-In and global success)
+    ref.listen<AuthState>(authProvider, (previous, next) {
+      if (next is AuthAuthenticated) {
+        if (next.user.role == 'rider') {
+          Navigator.pushNamedAndRemoveUntil(
+              context, AppRoutes.riderHome, (route) => false);
+        } else {
+          Navigator.pushNamedAndRemoveUntil(
+              context, AppRoutes.home, (route) => false);
+        }
+      }
+    });
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SingleChildScrollView(
@@ -223,6 +293,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
                         hintText: 'Enter your phone number',
                         prefixIcon: Icons.phone_outlined,
                         keyboardType: TextInputType.phone,
+                        maxLength: 10,
                       ),
                       const SizedBox(height: 28),
 
@@ -285,6 +356,69 @@ class _LoginPageState extends ConsumerState<LoginPage>
                         text: 'Continue',
                         onPressed: _continue,
                         isLoading: _isChecking,
+                      ),
+                      const SizedBox(height: 24),
+
+                      // ── OR Divider ──
+                      Row(
+                        children: [
+                          Expanded(child: Divider(color: Colors.grey.shade300)),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Text(
+                              'OR',
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey.shade500,
+                                  fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                          Expanded(child: Divider(color: Colors.grey.shade300)),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+
+                      // ── Google Signup Button ──
+                      SizedBox(
+                        width: double.infinity,
+                        height: 54,
+                        child: OutlinedButton(
+                          onPressed: _isGoogleLoading ? null : _googleSignIn,
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(color: Colors.grey.shade300),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: _isGoogleLoading
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.black54,
+                                  ),
+                                )
+                              : Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Image.asset(
+                                      'assets/images/google_logo.png',
+                                      height: 22,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    const Text(
+                                      'Signup with Google',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                        ),
                       ),
                       const SizedBox(height: 28),
 

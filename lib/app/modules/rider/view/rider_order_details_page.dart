@@ -362,41 +362,7 @@ class _RiderOrderDetailsPageState extends ConsumerState<RiderOrderDetailsPage> {
                         ),
                       ),
                     )
-                  else if (status.toLowerCase() == 'rider assigned' ||
-                      status.toLowerCase() == 'rider_assigned')
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: () => _updateStatus('Accepted'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.accentGreen,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14)),
-                            ),
-                            child: const Text('Accept',
-                                style: TextStyle(fontWeight: FontWeight.bold)),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () => _updateStatus('Rejected'),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.red,
-                              side: const BorderSide(color: Colors.red),
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14)),
-                            ),
-                            child: const Text('Reject',
-                                style: TextStyle(fontWeight: FontWeight.bold)),
-                          ),
-                        ),
-                      ],
-                    )
+
                   else if (status.toLowerCase() == 'out for delivery' ||
                       status.toLowerCase() == 'out_for_delivery')
                     SizedBox(

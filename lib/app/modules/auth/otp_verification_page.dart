@@ -180,15 +180,8 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
                   color: Color(0xFF114F3B),
                 ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                'A 6-digit code has been sent to ${widget.phoneNumber}',
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey,
-                ),
-              ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 15),
+
               Text(
                 'We have sent the verification code to your\nphone number ${widget.phoneNumber}',
                 style: const TextStyle(
@@ -283,7 +276,7 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
                 ),
               ),
 
-              const SizedBox(height: 36),
+              const SizedBox(height: 15),
 
               // ── Resend ───────────────────────────────────────────────────
               Row(
@@ -321,17 +314,16 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
                   ],
                 ],
               ),
-
               const SizedBox(height: 40),
 
-              // ── Confirm Button ───────────────────────────────────────────
+              // ── Verify & Proceed Button ──────────────────────────────────
               Consumer(
                 builder: (context, ref, child) {
                   final authCore = ref.watch(core.authStoreProvider);
                   final isSessionReady = authCore.verificationId != null;
 
                   return CommonButton(
-                    text: 'Confirm',
+                    text: 'Verify & Proceed',
                     onPressed: _isVerifying
                         ? null
                         : () {
@@ -342,15 +334,12 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
                             }
                             _verifyOtp();
                           },
-                    backgroundColor: isSessionReady
-                        ? const Color(0xFF2E7D32)
-                        : Colors.grey.shade400,
+                    backgroundColor: const Color(0xFF2E7D32),
                     borderRadius: 28,
                     isLoading: _isVerifying,
                   );
                 },
               ),
-
               const SizedBox(height: 24),
             ],
           ),

@@ -111,11 +111,11 @@ class AuthService {
     String? phoneNumber,
     String? fcmToken,
   }) async {
-    // Comprehensive list of probable endpoints
+    // Prioritize the dynamic backend URL from .env
     final endpoints = [
-      'https://api.shrimpbite.in/api/app/google', // Forcing absolute URL
       '${ApiClient.baseUrl}/google',
       '${ApiClient.baseUrl}/auth/google-auth',
+      'https://api.shrimpbite.in/api/app/google',
       '${ApiClient.baseUrl}/auth/google',
       '${ApiClient.baseUrl}/google-auth',
       '/auth/google-auth',
