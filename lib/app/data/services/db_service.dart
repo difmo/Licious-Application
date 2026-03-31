@@ -4,21 +4,26 @@ import '../models/food_models.dart';
 import 'cart_service.dart';
 import 'wallet_service.dart';
 import 'address_service.dart';
+import 'auth_service.dart';
 import '../network/api_client.dart';
 
 class CartProvider extends ChangeNotifier {
   final CartService? _service;
   final WalletService? _walletService;
   final AddressService? _addressService;
+  final AuthService? _authService;
   final List<CartItem> _items = [];
 
   CartProvider({
     CartService? service,
     WalletService? walletService,
     AddressService? addressService,
+    AuthService? authService,
   })  : _service = service,
         _walletService = walletService,
-        _addressService = addressService {
+        _addressService = addressService,
+        _authService = authService {
+    loadProfile();
     loadAddresses();
     syncWallet();
   }
@@ -485,6 +490,25 @@ class CartProvider extends ChangeNotifier {
   }
 
   // ── API Integration ───────────────────────────────────────────────────────
+  Future<void> loadProfile() async {
+    if (_authService == null) return;
+    try {
+      final response = await _authService!.getProfile();
+      if (response.success && response.data != null) {
+        final user = response.data!;
+        _userProfile = UserProfile(
+          name: user.fullName,
+          email: user.email,
+          phone: user.phoneNumber,
+          profileImage: 'assets/images/image copy 2.png', // Fallback or user image if added to model
+        );
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error loading profile: $e');
+    }
+  }
+
   /// Syncs the local cart with the backend.
   Future<void> loadCartFromApi() async {
     if (_service == null) return;

@@ -15,7 +15,17 @@ val localPropertiesFile = rootProject.file("local.properties")
 if (localPropertiesFile.exists()) {
     localPropertiesFile.inputStream().use { localProperties.load(it) }
 }
-val mapsApiKey: String = localProperties.getProperty("MAPS_API_KEY") ?: ""
+
+// Read .env file safely
+val envProperties = Properties()
+val envFile = rootProject.file("../.env")
+if (envFile.exists()) {
+    envFile.inputStream().use { envProperties.load(it) }
+}
+
+val mapsApiKey: String = localProperties.getProperty("MAPS_API_KEY") 
+    ?: envProperties.getProperty("MAPS_API_KEY") 
+    ?: ""
 
 // Read key.properties for signing
 val keystoreProperties = Properties()

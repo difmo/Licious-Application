@@ -13,6 +13,7 @@ import '../../subscriptions/view/subscription_dashboard_page.dart';
 import '../../home/view/favorites_page.dart';
 import '../../../data/services/subscription_service.dart';
 import '../../../routes/app_routes.dart';
+import './address_management_page.dart';
 
 class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
@@ -445,6 +446,11 @@ class _QuickActionBtn extends StatelessWidget {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => FavoritesPage()),
+          );
+        } else if (navigateTo == 'My Address') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const AddressManagementPage()),
           );
         } else {
           Navigator.push(

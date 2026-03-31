@@ -18,6 +18,7 @@ import '../../../data/services/fcm_service.dart';
 import '../widgets/cart_summary_bar.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:async';
+import '../../location/widgets/location_permission_sheet.dart';
 
 class MainPage extends ConsumerStatefulWidget {
   const MainPage({super.key});
@@ -46,9 +47,15 @@ class _MainPageState extends ConsumerState<MainPage> {
       if (mounted) setState(() {});
     });
     // Initial cart sync from API
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      CartProviderScope.of(context).loadCartFromApi();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final cart = CartProviderScope.of(context);
+      await cart.loadCartFromApi();
       _initSocketListeners();
+      
+      // If no address exists, show the Zepto-style permission sheet
+      if (cart.addresses.isEmpty) {
+        LocationPermissionSheet.show(context);
+      }
     });
   }
 

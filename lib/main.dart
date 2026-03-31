@@ -7,6 +7,7 @@ import 'app/data/services/db_service.dart';
 import 'app/data/services/cart_service.dart';
 import 'app/data/services/wallet_service.dart';
 import 'app/data/services/address_service.dart';
+import 'app/data/services/auth_service.dart';
 import 'app/core/theme/app_theme.dart';
 import 'app/data/services/location_tracking_service.dart';
 import 'app/data/services/notification_service.dart';
@@ -51,12 +52,14 @@ class ShrimpbiteApp extends ConsumerWidget {
     final cartService = ref.watch(cartServiceProvider);
     final walletService = ref.watch(walletServiceProvider);
     final addressService = ref.watch(addressServiceProvider);
+    final authService = ref.watch(authServiceProvider);
 
     return CartProviderScope(
       provider: CartProvider(
         service: cartService,
         walletService: walletService,
         addressService: addressService,
+        authService: authService,
       ),
       child: MaterialApp(
         title: 'Shrimpbite',

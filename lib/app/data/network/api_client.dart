@@ -186,10 +186,16 @@ class ApiClient {
   // ── Helper static methods for token access ──────────────────────────────
   static Future<String?> getToken() async =>
       await SecureStorageService().getAccessToken();
-  static Future<void> saveToken(String token) async {
+  static Future<void> saveTokens({required String access, String? refresh}) async {
     final storage = SecureStorageService();
-    final refresh = await storage.getRefreshToken();
-    await storage.saveTokens(access: token, refresh: refresh ?? '');
+    await storage.saveTokens(
+      access: access,
+      refresh: refresh ?? (await storage.getRefreshToken()) ?? '',
+    );
+  }
+
+  static Future<void> saveToken(String token) async {
+    await saveTokens(access: token);
   }
 
   static Future<void> clearToken() async =>

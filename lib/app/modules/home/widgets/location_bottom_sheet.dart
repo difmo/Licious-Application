@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../data/services/db_service.dart';
 import '../../../data/models/food_models.dart';
 import '../../profile/view/address_form_page.dart';
+import '../../location/view/select_delivery_address_screen.dart';
 
 class LocationBottomSheet extends StatelessWidget {
   const LocationBottomSheet({super.key});
@@ -21,10 +22,10 @@ class LocationBottomSheet extends StatelessWidget {
     final addresses = cart.addresses;
 
     return Container(
-      height: MediaQuery.of(context).size.height * 0.7,
+      height: MediaQuery.of(context).size.height * 0.75,
       decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        color: Color(0xFFF7F8FA),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
       ),
       child: Column(
         children: [
@@ -41,20 +42,20 @@ class LocationBottomSheet extends StatelessWidget {
           
           // Header
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
-                  'Select a location',
+                  'Addresses',
                   style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
                     color: Color(0xFF1A1A1A),
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close),
+                  icon: const Icon(Icons.close, color: Colors.grey),
                   onPressed: () => Navigator.pop(context),
                   splashRadius: 24,
                 ),
@@ -62,11 +63,9 @@ class LocationBottomSheet extends StatelessWidget {
             ),
           ),
           
-          const Divider(height: 1),
-
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.symmetric(horizontal: 20),
               children: [
                 // Add New Address Button
                 InkWell(
@@ -74,51 +73,63 @@ class LocationBottomSheet extends StatelessWidget {
                     Navigator.pop(context);
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const AddressFormPage()),
+                      MaterialPageRoute(builder: (_) => SelectDeliveryAddressScreen()),
                     );
                   },
                   borderRadius: BorderRadius.circular(16),
                   child: Container(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      border: Border.all(color: const Color(0xFF68B92E).withOpacity(0.3)),
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                         BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4)),
+                      ],
                     ),
                     child: const Row(
                       children: [
-                        Icon(Icons.add_location_alt_outlined, color: Color(0xFF68B92E)),
+                        Icon(Icons.add, color: Color(0xFF38B24D), size: 24),
                         SizedBox(width: 12),
                         Text(
                           'Add New Address',
                           style: TextStyle(
-                            color: Color(0xFF68B92E),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                            color: Color(0xFF38B24D),
+                            fontWeight: FontWeight.w900,
+                            fontSize: 17,
                           ),
                         ),
+                        Spacer(),
+                        Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
                       ],
                     ),
                   ),
                 ),
                 
-                const SizedBox(height: 24),
+                const SizedBox(height: 32),
                 
                 const Text(
-                  'SAVED ADDRESSES',
+                  'Saved Addresses',
                   style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey,
-                    letterSpacing: 1.2,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF1A1A1A),
                   ),
                 ),
                 
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 
                 if (addresses.isEmpty)
-                   const Padding(
-                     padding: EdgeInsets.symmetric(vertical: 20),
-                     child: Center(child: Text('No saved addresses')),
+                   Center(
+                     child: Padding(
+                       padding: const EdgeInsets.symmetric(vertical: 40),
+                       child: Column(
+                         children: [
+                            Icon(Icons.location_off_outlined, size: 48, color: Colors.grey.shade300),
+                            const SizedBox(height: 16),
+                            const Text('No saved addresses yet', style: TextStyle(color: Colors.grey)),
+                         ],
+                       ),
+                     ),
                    )
                 else
                   ...List.generate(addresses.length, (index) {
@@ -145,56 +156,27 @@ class LocationBottomSheet extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isSelected ? const Color(0xFF68B92E) : Colors.grey.shade100,
-            width: isSelected ? 1.5 : 1,
+            color: isSelected ? const Color(0xFF38B24D).withOpacity(0.2) : Colors.transparent,
+            width: 1.5,
           ),
           boxShadow: [
-            BoxShadow(
-              color: isSelected
-                  ? const Color(0xFF68B92E).withValues(alpha: 0.1)
-                  : Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
+             BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 15, offset: const Offset(0, 6)),
           ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (addr.isDefault)
-              Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEBFFD7),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: const Text(
-                  'DEFAULT',
-                  style: TextStyle(
-                    color: Color(0xFF68B92E),
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundColor: const Color(0xFFEBFFD7),
-                  child: Icon(
-                    addr.title.toLowerCase() == 'home'
-                        ? Icons.home_rounded
-                        : addr.title.toLowerCase() == 'office'
-                            ? Icons.work_rounded
-                            : Icons.location_on_rounded,
-                    color: const Color(0xFF68B92E),
-                    size: 18,
-                  ),
+                Icon(
+                  addr.title.toLowerCase() == 'home'
+                      ? Icons.home_rounded
+                      : Icons.location_on_rounded,
+                  color: isSelected ? const Color(0xFF1A1A1A) : Colors.grey,
+                  size: 24,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -202,62 +184,49 @@ class LocationBottomSheet extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
                             addr.title,
-                            style: TextStyle(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 16,
-                              color: isSelected ? const Color(0xFF68B92E) : const Color(0xFF1A1A1A),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 17,
+                              color: Color(0xFF1A1A1A),
                             ),
                           ),
-                          Row(
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.edit_outlined, size: 16, color: Colors.grey),
-                                onPressed: () {
-                                  Navigator.pop(context);
-                                  Navigator.push(context, MaterialPageRoute(builder: (_) => AddressFormPage(address: addr)));
-                                },
-                                constraints: const BoxConstraints(),
-                                padding: EdgeInsets.zero,
-                              ),
-                              const SizedBox(width: 8),
-                              IconButton(
-                                icon: const Icon(Icons.delete_outline, size: 16, color: Colors.redAccent),
-                                onPressed: () => cart.removeAddress(addr.id),
-                                constraints: const BoxConstraints(),
-                                padding: EdgeInsets.zero,
-                              ),
-                            ],
+                          const SizedBox(width: 8),
+                          const Text(
+                            '• 35 m',
+                            style: TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.bold),
                           ),
+                          if (isSelected) ...[
+                             const SizedBox(width: 8),
+                             Container(
+                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                               decoration: BoxDecoration(
+                                 color: const Color(0xFFEBFFD7),
+                                 borderRadius: BorderRadius.circular(4),
+                               ),
+                               child: const Text('Selected', style: TextStyle(color: Color(0xFF68B92E), fontSize: 10, fontWeight: FontWeight.w900)),
+                             ),
+                          ],
                         ],
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        cart.userProfile.name,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                          color: Color(0xFF4B5563),
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        addr.street,
-                        style: const TextStyle(color: Colors.grey, fontSize: 13),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        addr.details,
-                        style: const TextStyle(color: Colors.grey, fontSize: 13, height: 1.4),
-                        maxLines: 1,
+                        '${addr.street}, ${addr.details}',
+                        style: const TextStyle(color: Colors.grey, fontSize: 14, height: 1.4),
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
+                ),
+                Column(
+                  children: [
+                    Icon(Icons.share_outlined, size: 20, color: Colors.grey.shade400),
+                    const SizedBox(height: 12),
+                    Icon(Icons.more_vert_rounded, size: 20, color: Colors.grey.shade400),
+                  ],
                 ),
               ],
             ),

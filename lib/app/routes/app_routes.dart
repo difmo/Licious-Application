@@ -22,6 +22,7 @@ class AppRoutes {
   static const String walletStatement = '/wallet-statement';
   static const String activeOrders = '/active-orders';
   static const String trackOrder = '/track-order';
-  static const String locationPicker = '/location-picker';
+  static const String addressDetails = '/address-details';
+  static const String locationMapPicker = '/location-map-picker';
   static const String search = '/search';
 }

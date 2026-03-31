@@ -66,7 +66,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
               hintText: 'Search for shops or products...',
               hintStyle: const TextStyle(fontSize: 14, color: Colors.grey),
               prefixIcon:
-                  const Icon(Icons.search, color: Color(0xFFE54141), size: 20),
+                  const Icon(Icons.search, color: Color(0xFF38B24D), size: 20),
               suffixIcon: _searchController.text.isNotEmpty
                   ? IconButton(
                       icon: const Icon(Icons.clear, size: 18),
@@ -225,7 +225,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('This shop is currently not accepting orders.'),
-              backgroundColor: Colors.black87,
+              backgroundColor: Colors.green,
             ),
           );
           return;

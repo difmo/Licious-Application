@@ -7,6 +7,7 @@ import '../../../data/services/db_service.dart';
 import '../../../data/services/notification_api_service.dart';
 import '../../../routes/app_routes.dart';
 import './location_bottom_sheet.dart';
+import '../../location/widgets/location_permission_sheet.dart';
 import '../../profile/view/profile_detail_page.dart';
 
 class HomeHeader extends StatefulWidget {
@@ -23,127 +24,92 @@ class _HomeHeaderState extends State<HomeHeader> {
     final selectedAddress = cart.selectedAddress;
 
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 16),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       decoration: const BoxDecoration(color: Colors.white),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Location Picker Row
+          // ── Top Bar (Profile & Wallet) ──────────────────────────────────────
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Wallet Placeholder
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF3F4F6),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.account_balance_wallet_rounded, size: 18, color: Colors.purple.shade300),
+                    const SizedBox(width: 4),
+                    const Text('₹0', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  ],
+                ),
+              ),
+              const Spacer(),
+              // Profile
+              BounceWidget(
+                onTap: () {
+                  MainControllerScope.of(context).changePage(4);
+                },
+                child: const CircleAvatar(
+                  radius: 16,
+                  backgroundColor: Color(0xFFF3F4F6),
+                  child: Icon(Icons.person_outline, color: Color(0xFF1A1A1A), size: 20),
+                ),
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 12),
+
+          // ── Location Selector ───────────────────────────────────────────
           InkWell(
-            onTap: () => LocationBottomSheet.show(context),
-            child: Row(
+            onTap: () {
+              if (selectedAddress == null) {
+                LocationPermissionSheet.show(context);
+              } else {
+                LocationBottomSheet.show(context);
+              }
+            },
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.location_on,
-                    color: Color(0xFF1A1A1A), size: 18),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              selectedAddress?.title ?? 'Set Location',
-                              style: const TextStyle(
-                                fontSize: 17.6,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF1A1A1A),
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const Icon(Icons.keyboard_arrow_down, size: 20),
-                        ],
-                      ),
-                      Text(
-                        selectedAddress != null
-                            ? '${selectedAddress.street}\n${selectedAddress.details}'
-                            : 'Add address to start ordering',
-                        style: const TextStyle(
-                            fontSize: 15.2, color: Colors.grey, height: 1.2),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-                // Header Buttons
-                const SizedBox(width: 8),
-                Consumer(
-                  builder: (context, ref, child) {
-                    final notificationsAsync = ref.watch(notificationsProvider);
-                    final unreadCount = notificationsAsync.maybeWhen(
-                      data: (list) => list.where((n) => !n.isRead).length,
-                      orElse: () => 0,
-                    );
-
-                    return BounceWidget(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                const ProfileDetailPage(title: 'Notifications'),
-                          ),
-                        ).then((_) {
-                          // Refresh when coming back in case marks were made
-                          ref.invalidate(notificationsProvider);
-                        });
-                      },
-                      child: Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          const Icon(
-                            Icons.notifications_none_outlined,
-                            color: Color(0xFF1A1A1A),
-                            size: 26,
-                          ),
-                          if (unreadCount > 0)
-                            Positioned(
-                              right: 0,
-                              top: 0,
-                              child: Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFFE54141),
-                                  shape: BoxShape.circle,
-                                ),
-                                constraints: const BoxConstraints(
-                                  minWidth: 8,
-                                  minHeight: 8,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(width: 12),
-
-                BounceWidget(
-                  onTap: () {
-                    MainControllerScope.of(context).changePage(4);
-                  },
-                  child: Hero(
-                    tag: 'profile_pic',
-                    child: CircleAvatar(
-                      radius: 18,
-                      backgroundColor: Colors.green.shade200,
-                      child: const Icon(
-                        Icons.person,
-                        color: Color(0xFFE54141),
-                        size: 20,
+                Row(
+                  children: [
+                    const Icon(Icons.location_on, size: 18, color: Color(0xFF38B24D)),
+                    const SizedBox(width: 4),
+                    Text(
+                      selectedAddress?.title ?? 'Set Location',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF1A1A1A),
                       ),
                     ),
+                    const Icon(Icons.keyboard_arrow_down, size: 20, color: Color(0xFF1A1A1A)),
+                  ],
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(left: 22),
+                  child: Text(
+                    selectedAddress?.street ?? 'Add your delivery address to start shopping',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 20),
+
+          const SizedBox(height: 16),
           // Search Bar Row
           Row(
             children: [
@@ -174,19 +140,19 @@ class _HomeHeaderState extends State<HomeHeader> {
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: const BorderSide(
-                          color: Color(0xFF68B92E),
+                          color: Color(0xFF38B24D),
                           width: 1.5,
                         ),
                       ),
                       prefixIcon: const Icon(
                         Icons.search,
-                        color: Color(0xFFE54141),
+                        color: Color(0xFF38B24D),
                       ),
                       suffixIcon: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           VerticalDivider(indent: 10, endIndent: 10),
-                          Icon(Icons.mic, color: Color(0xFFE54141)),
+                          Icon(Icons.mic, color: Color(0xFF38B24D)),
                           SizedBox(width: 8),
                         ],
                       ),
