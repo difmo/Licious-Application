@@ -173,11 +173,32 @@ class _ActiveOrderCard extends StatelessWidget {
         (order['totalAmount'] ?? order['grandTotal'] ?? order['total'] ?? 0)
             .toDouble();
 
+    String orderDate = '';
+    final rawDate = order['createdAt'] ?? order['date'] ?? order['orderDate'];
+    if (rawDate != null) {
+      try {
+        final DateTime dt = DateTime.parse(rawDate.toString()).toLocal();
+        orderDate = '${dt.day}/${dt.month}/${dt.year} at ${dt.hour > 12 ? dt.hour - 12 : (dt.hour == 0 ? 12 : dt.hour)}:${dt.minute.toString().padLeft(2, '0')} ${dt.hour >= 12 ? 'PM' : 'AM'}';
+      } catch (_) {}
+    }
+
     // Items
     final items = order['items'] as List? ?? [];
-    final String itemsSummary = items.isNotEmpty
-        ? items.map((i) => i['name'] ?? i['productName'] ?? 'Item').join(', ')
-        : 'See details';
+    String itemsSummary = 'See details';
+    if (items.isNotEmpty) {
+      final first = items.first;
+      final product = first['product'];
+      final name = (product is Map && product['name'] != null)
+          ? product['name'].toString()
+          : (first['name'] ?? first['productName'] ?? 'Item').toString();
+      final qty = first['quantity']?.toString() ?? '1';
+
+      if (items.length > 1) {
+        itemsSummary = '${qty}x $name & ${items.length - 1} more';
+      } else {
+        itemsSummary = '${qty}x $name';
+      }
+    }
 
     // Rider info
     final rider = order['rider'] ?? order['riderId'];
@@ -226,6 +247,15 @@ class _ActiveOrderCard extends StatelessWidget {
                             fontWeight: FontWeight.w900,
                             fontSize: 15,
                             color: Colors.white)),
+                    if (orderDate.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text('Placed: $orderDate',
+                            style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500)),
+                      ),
                   ],
                 ),
                 GestureDetector(

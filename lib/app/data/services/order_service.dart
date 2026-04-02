@@ -282,8 +282,8 @@ class ActiveOrdersNotifier extends AsyncNotifier<List<dynamic>> {
 
       return history.where((o) {
         final status = (o['status'] ?? '').toString().toLowerCase();
-        // The user specifically wants orders that are NOT "delivered"
-        return status != 'delivered';
+        // Return only orders that are neither delivered nor cancelled
+        return status != 'delivered' && status != 'cancelled';
       }).toList();
     } catch (e) {
       debugPrint('Error in _fetchActiveOrders: $e');

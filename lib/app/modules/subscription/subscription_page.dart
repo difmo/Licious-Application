@@ -555,30 +555,18 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
   /// Fetches the latest order for [sub] from the backend and navigates
   /// to [OrderTrackingPage] with the real order data.
   Future<void> _openTrackingForSubscription(UserSubscription sub) async {
-    // Show a loading snackbar while we fetch
     if (!mounted) return;
-    final messenger = ScaffoldMessenger.of(context);
-    messenger.showSnackBar(
-      const SnackBar(
-        content: Row(children: [
-          SizedBox(
-            width: 18,
-            height: 18,
-            child:
-                CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-          ),
-          SizedBox(width: 12),
-          Text('Fetching order details…'),
-        ]),
-        duration: Duration(seconds: 10),
-        backgroundColor: Color(0xFF114F3B),
-      ),
+    
+    // Show a loading dialog instead of snackbar (which causes deactivated widget state crashes)
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator(color: Color(0xFF68B92E))),
     );
 
     try {
       final orderService = ref.read(orderServiceProvider);
-      Map<String, dynamic> order =
-          await orderService.getOrderBySubscriptionId(sub.id);
+      Map<String, dynamic> order = await orderService.getOrderBySubscriptionId(sub.id);
 
       // If no backend order found, use a sensible stub so the page still opens
       if (order.isEmpty) {
@@ -603,7 +591,7 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
       }
 
       if (!mounted) return;
-      messenger.hideCurrentSnackBar();
+      Navigator.pop(context); // Close loading dialog
 
       Navigator.push(
         context,
@@ -613,7 +601,7 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
       );
     } catch (e) {
       if (!mounted) return;
-      messenger.hideCurrentSnackBar();
+      Navigator.pop(context); // Close loading dialog
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Could not load order: $e'),

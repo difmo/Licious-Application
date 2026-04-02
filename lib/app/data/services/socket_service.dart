@@ -235,6 +235,20 @@ class SocketService {
     }
   }
 
+  /// `walletUpdate` — fires when the backend processes a transaction or top-up
+  /// Payload: `{ balance: 500.0 }`
+  void onWalletUpdate(void Function(dynamic) callback) {
+    _socket?.on('walletUpdate', callback);
+  }
+
+  void offWalletUpdate([void Function(dynamic)? callback]) {
+    if (callback != null) {
+      _socket?.off('walletUpdate', callback);
+    } else {
+      _socket?.off('walletUpdate');
+    }
+  }
+
   /// Generic remove listener.
   void offEvent(String event, [void Function(dynamic)? callback]) {
     if (callback != null) {

@@ -58,6 +58,10 @@ class _MainPageState extends ConsumerState<MainPage> {
       await cart.loadAddresses(); 
       if (!mounted) return;
 
+      // Sync wallet so cron job deductions accurately show on app launch
+      await cart.syncWallet();
+      if (!mounted) return;
+
       _initSocketListeners();
       
       // If no address exists, show the Zepto-style permission sheet
@@ -101,6 +105,15 @@ class _MainPageState extends ConsumerState<MainPage> {
               createdAt: DateTime.now(),
             ),
           );
+    });
+
+    // Listen for live Wallet balance updates coming from cron job / backend
+    socket.onWalletUpdate((data) {
+      if (!mounted) return;
+      debugPrint('💰 Real-time Wallet Update received: $data');
+      // Trigger syncWallet so all UI instances refresh immediately
+      final cart = CartProviderScope.of(context);
+      cart.syncWallet();
     });
 
     // ── FCM Fallback Listener ────────────────────────────────────────────────
@@ -199,6 +212,7 @@ class _MainPageState extends ConsumerState<MainPage> {
     _controller.dispose();
     ref.read(socketServiceProvider).offOrderUpdate();
     ref.read(socketServiceProvider).offOrderDelivered();
+    ref.read(socketServiceProvider).offWalletUpdate();
     _fcmSubscription?.cancel();
     super.dispose();
   }

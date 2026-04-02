@@ -256,7 +256,7 @@ class _ActiveOrdersAndSubscriptions extends ConsumerWidget {
   const _ActiveOrdersAndSubscriptions();
 
   void _navigateToDetail(BuildContext context, String title) {
-    if (title == 'Active Orders') {
+    if (title == 'One-Time (Active)') {
       Navigator.pushNamed(context, AppRoutes.activeOrders);
     } else if (title == 'My Orders') {
       Navigator.push(
@@ -297,7 +297,7 @@ class _ActiveOrdersAndSubscriptions extends ConsumerWidget {
       children: [
         Expanded(
           child: GestureDetector(
-            onTap: () => _navigateToDetail(context, 'Active Orders'),
+            onTap: () => _navigateToDetail(context, 'One-Time (Active)'),
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -320,10 +320,11 @@ class _ActiveOrdersAndSubscriptions extends ConsumerWidget {
                   ),
                   const SizedBox(height: 12),
                   const Text(
-                    'Active Orders',
+                    'One-Time\n(Active)',
                     style: TextStyle(
                       color: Color(0xFF114F3B),
                       fontSize: 16,
+                      height: 1.1,
                       fontWeight: FontWeight.bold,
                     ),
                   ),

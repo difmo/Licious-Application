@@ -244,28 +244,24 @@ class SubscriptionDashboardPage extends ConsumerWidget {
                     }
 
                     if (val && !isActive) {
-                      final confirm = await showDialog<bool>(
+                      await showDialog(
                         context: context,
                         builder: (context) => AlertDialog(
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          title: const Text('Resume Subscription?', style: TextStyle(fontWeight: FontWeight.bold)),
+                          title: const Text('Vacation Mode ON', style: TextStyle(fontWeight: FontWeight.bold)),
                           content: const Text(
-                            'If you turn on this subscription, it will resume deliveries from tomorrow and your vacation mode gets turned off automatically.',
+                            'Your subscription is currently paused on Vacation Mode. Please turn off your vacation mode by tapping "Manage" to resume deliveries.',
                           ),
                           actions: [
                             TextButton(
-                              onPressed: () => Navigator.pop(context, false),
-                              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
-                            ),
-                            TextButton(
-                              onPressed: () => Navigator.pop(context, true),
-                              child: const Text('Yes, Resume', style: TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.bold)),
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('OK', style: TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.bold)),
                             ),
                           ],
                         ),
                       );
-
-                      if (confirm != true) return;
+                      // Return immediately so the switch does not activate
+                      return;
                     }
 
                     final newStatus = val ? 'Active' : 'Paused';
