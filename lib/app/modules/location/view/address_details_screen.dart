@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../app/core/constants/app_colors.dart';
 import '../../../../app/data/services/address_service.dart';
@@ -15,10 +16,13 @@ class AddressDetailsScreen extends ConsumerStatefulWidget {
 class _AddressDetailsScreenState extends ConsumerState<AddressDetailsScreen> {
   final _formKey = GlobalKey<FormState>();
   
+  final _nameCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController();
   final _flatNoCtrl = TextEditingController();
   final _floorCtrl = TextEditingController();
   final _landmarkCtrl = TextEditingController();
   final _localityCtrl = TextEditingController();
+  final _pincodeCtrl = TextEditingController();
   
   String _selectedType = 'Home';
   bool _isDefault = true;
@@ -35,14 +39,18 @@ class _AddressDetailsScreenState extends ConsumerState<AddressDetailsScreen> {
     super.initState();
     // Initialize locality from locationData if available
     _localityCtrl.text = widget.locationData['address'] ?? '';
+    _pincodeCtrl.text = widget.locationData['pincode'] ?? '';
   }
 
   @override
   void dispose() {
+    _nameCtrl.dispose();
+    _phoneCtrl.dispose();
     _flatNoCtrl.dispose();
     _floorCtrl.dispose();
     _landmarkCtrl.dispose();
     _localityCtrl.dispose();
+    _pincodeCtrl.dispose();
     super.dispose();
   }
 
@@ -53,15 +61,16 @@ class _AddressDetailsScreenState extends ConsumerState<AddressDetailsScreen> {
     try {
       final service = ref.read(addressServiceProvider);
       
-      // Construct full address string or separate data depending on API
-      final fullAddress = "${_flatNoCtrl.text}, ${_floorCtrl.text.isNotEmpty ? 'Floor ${_floorCtrl.text}, ' : ''}${_localityCtrl.text}";
+      // Construct full address string
+      final namePhonePrefix = "Name: ${_nameCtrl.text.trim()}, Phone: ${_phoneCtrl.text.trim()}, ";
+      final fullAddress = "$namePhonePrefix${_flatNoCtrl.text}, ${_floorCtrl.text.isNotEmpty ? 'Floor ${_floorCtrl.text}, ' : ''}${_localityCtrl.text}";
       
       await service.saveAddress(
         label: _selectedType,
         fullAddress: fullAddress,
         city: widget.locationData['city'] ?? 'Lucknow',
         state: widget.locationData['state'] ?? 'UP',
-        pincode: widget.locationData['pincode'] ?? '226010',
+        pincode: _pincodeCtrl.text.trim(),
         isDefault: _isDefault,
       );
 
@@ -132,6 +141,28 @@ class _AddressDetailsScreenState extends ConsumerState<AddressDetailsScreen> {
               const SizedBox(height: 16),
 
               _buildField(
+                controller: _nameCtrl,
+                label: 'Receiver Name',
+                required: true,
+                icon: Icons.person_outline,
+              ),
+              const SizedBox(height: 20),
+
+              _buildField(
+                controller: _phoneCtrl,
+                label: 'Phone Number',
+                hint: '10-digit mobile number',
+                required: true,
+                icon: Icons.phone_outlined,
+                keyboardType: TextInputType.phone,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(10),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              _buildField(
                 controller: _flatNoCtrl,
                 label: 'Flat / House / Office No.',
                 required: true,
@@ -152,6 +183,20 @@ class _AddressDetailsScreenState extends ConsumerState<AddressDetailsScreen> {
                 hint: 'Nearby school, hospital, etc.',
                 required: true,
                 icon: Icons.assistant_photo_rounded,
+              ),
+              const SizedBox(height: 20),
+
+              _buildField(
+                controller: _pincodeCtrl,
+                label: 'Pincode',
+                hint: '6-digit pincode',
+                required: true,
+                icon: Icons.pin_drop_outlined,
+                keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(6),
+                ],
               ),
               const SizedBox(height: 32),
 
@@ -231,10 +276,27 @@ class _AddressDetailsScreenState extends ConsumerState<AddressDetailsScreen> {
     );
   }
 
-  Widget _buildField({required TextEditingController controller, required String label, String? hint, bool required = false, IconData? icon}) {
+  Widget _buildField({
+    required TextEditingController controller,
+    required String label,
+    String? hint,
+    bool required = false,
+    IconData? icon,
+    TextInputType? keyboardType,
+    List<TextInputFormatter>? inputFormatters,
+  }) {
     return TextFormField(
       controller: controller,
-      validator: required ? (v) => (v == null || v.isEmpty) ? 'Required field' : null : null,
+      keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
+      validator: required
+          ? (v) {
+              if (v == null || v.isEmpty) return 'Required field';
+              if (label == 'Phone Number' && v.length != 10) return 'Must be 10 digits';
+              if (label == 'Pincode' && v.length != 6) return 'Must be 6 digits';
+              return null;
+            }
+          : null,
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,

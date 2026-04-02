@@ -124,6 +124,11 @@ class ShopModel {
   final String deliveryTime;
   final bool isShopActive;
   final int ratingsCount;
+  final String cuisine;
+  final String offer;
+  final bool isFeatured;
+  final double? latitude;
+  final double? longitude;
 
   const ShopModel({
     required this.id,
@@ -135,6 +140,11 @@ class ShopModel {
     this.deliveryTime = '30-45 mins',
     this.isShopActive = true,
     this.ratingsCount = 0,
+    this.cuisine = 'Seafood',
+    this.offer = '',
+    this.isFeatured = false,
+    this.latitude,
+    this.longitude,
   });
 
   ShopModel copyWith({
@@ -147,6 +157,11 @@ class ShopModel {
     String? deliveryTime,
     bool? isShopActive,
     int? ratingsCount,
+    String? cuisine,
+    String? offer,
+    bool? isFeatured,
+    double? latitude,
+    double? longitude,
   }) {
     return ShopModel(
       id: id ?? this.id,
@@ -158,6 +173,11 @@ class ShopModel {
       deliveryTime: deliveryTime ?? this.deliveryTime,
       isShopActive: isShopActive ?? this.isShopActive,
       ratingsCount: ratingsCount ?? this.ratingsCount,
+      cuisine: cuisine ?? this.cuisine,
+      offer: offer ?? this.offer,
+      isFeatured: isFeatured ?? this.isFeatured,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
     );
   }
 
@@ -176,6 +196,11 @@ class ShopModel {
       ratingsCount: (json['ratingsCount'] as num?)?.toInt() ?? 
                     (json['reviewsCount'] as num?)?.toInt() ?? 
                     (json['reviews'] as num?)?.toInt() ?? 0,
+      cuisine: (json['cuisine'] ?? json['category'] ?? 'Seafood').toString(),
+      offer: (json['offer'] ?? json['discount'] ?? '').toString(),
+      isFeatured: json['isFeatured'] ?? json['featured'] ?? false,
+      latitude: (json['latitude'] ?? json['lat'])?.toDouble(),
+      longitude: (json['longitude'] ?? json['lng'])?.toDouble(),
     );
   }
 }

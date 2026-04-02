@@ -69,8 +69,13 @@ class _SplashPageState extends ConsumerState<SplashPage>
   }
 
   void _syncAndNavigate(AuthAuthenticated auth) {
-    // Sync the legacy provider for UI components that rely on it
-    CartProviderScope.of(context).updateUserProfile(
+    if (!mounted) return;
+
+    // CAPTURE before context might become invalid
+    final cart = CartProviderScope.of(context);
+
+    // Sync user data to the legacy provider
+    cart.updateUserProfile(
       UserProfile(
         name: auth.user.fullName,
         email: auth.user.email,

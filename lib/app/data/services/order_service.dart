@@ -231,6 +231,19 @@ final orderServiceProvider = Provider<OrderService>((ref) {
 });
 
 final myOrdersProvider = FutureProvider.autoDispose<List<dynamic>>((ref) {
+  // Watch socket movements to trigger a refresh
+  final socket = ref.watch(socketServiceProvider);
+  
+  // Define callback for removal during disposal
+  void handleUpdate(_) {
+    debugPrint('🔔 myOrdersProvider: Real-time update detected.');
+    // Check if the provider is still active before invalidating
+    ref.invalidateSelf();
+  }
+
+  socket.onOrderUpdate(handleUpdate);
+  ref.onDispose(() => socket.offOrderUpdate(handleUpdate));
+
   return ref.watch(orderServiceProvider).getMyOrders();
 });
 
@@ -243,13 +256,16 @@ class ActiveOrdersNotifier extends AsyncNotifier<List<dynamic>> {
   Future<List<dynamic>> build() async {
     // Listen for real-time order status updates from socket
     final socket = ref.watch(socketServiceProvider);
-    socket.onOrderUpdate((data) {
+    
+    void handleUpdate(_) {
       debugPrint('🔔 ActiveOrdersNotifier: Order update received, refreshing...');
       ref.invalidateSelf();
-    });
+    }
+
+    socket.onOrderUpdate(handleUpdate);
 
     ref.onDispose(() {
-      socket.offOrderUpdate();
+      socket.offOrderUpdate(handleUpdate);
     });
 
     return _fetchActiveOrders();

@@ -91,6 +91,7 @@ class _HomeBannerState extends State<HomeBanner> {
                             width: double.infinity,
                             height: 180,
                             fit: BoxFit.cover,
+                            cacheHeight: 460, // Fixed: optimization for memory (Physical pixels ~180 * 2.55)
                             errorBuilder: (context, error, stackTrace) =>
                                 Container(
                               color: Colors.blue.shade100,

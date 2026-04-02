@@ -8,11 +8,11 @@ import '../../../data/services/db_service.dart';
 import '../../../data/services/order_service.dart';
 import '../../../data/services/favorites_service.dart';
 import './my_orders_page.dart';
-import '../../auth/provider/auth_provider.dart';
 import '../../subscriptions/view/subscription_dashboard_page.dart';
 import '../../home/view/favorites_page.dart';
 import '../../../data/services/subscription_service.dart';
 import '../../../routes/app_routes.dart';
+import 'package:url_launcher/url_launcher.dart';
 import './address_management_page.dart';
 
 class ProfilePage extends ConsumerStatefulWidget {
@@ -414,7 +414,10 @@ class _QuickActionsRow extends ConsumerWidget {
         ),
         const _QuickActionBtn(
             title: 'View All\nOrders', navigateTo: 'My Orders'),
-        const _QuickActionBtn(title: 'Edit\nAddress', navigateTo: 'My Address'),
+        const _QuickActionBtn(
+          title: 'Manage\nAddresses',
+          navigateTo: 'My Address',
+        ),
       ],
     );
   }
@@ -537,7 +540,19 @@ class _ListTilesSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: const [
+        _ListTileItem(icon: Icons.article_outlined, title: 'Subscription Details'),
+        SizedBox(height: 12),
         _ListTileItem(icon: Icons.notifications_none, title: 'Notifications'),
+        SizedBox(height: 12),
+        _ListTileItem(
+            icon: Icons.star_outline_rounded, title: 'Give us rating'),
+        SizedBox(height: 12),
+        _ListTileItem(
+            icon: Icons.support_agent_rounded, title: 'Help and Support'),
+        SizedBox(height: 12),
+        _ListTileItem(icon: Icons.info_outline_rounded, title: 'About section'),
+        SizedBox(height: 12),
+        _ListTileItem(icon: Icons.call_outlined, title: 'Contact us'),
       ],
     );
   }
@@ -549,15 +564,263 @@ class _ListTileItem extends StatelessWidget {
 
   const _ListTileItem({required this.icon, required this.title});
 
+  void _showHelpSupportModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Help & Support',
+                  style: TextStyle(
+                    color: Color(0xFF114F3B),
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close, color: Colors.grey),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            _SupportItem(
+              icon: Icons.email_outlined,
+              label: 'Email',
+              value: 'info@shrimpbite.in',
+              onTap: () => launchUrl(Uri.parse('mailto:info@shrimpbite.in')),
+            ),
+            const SizedBox(height: 16),
+            _SupportItem(
+              icon: Icons.call_outlined,
+              label: 'Phone',
+              value: '+91 9148949909',
+              onTap: () => launchUrl(Uri.parse('tel:+919148949909')),
+            ),
+            const SizedBox(height: 16),
+            const _SupportItem(
+              icon: Icons.location_on_outlined,
+              label: 'Address',
+              value:
+                  'Aqua AVP Shrimp Farmers Pride Pvt Ltd IVRI Road, Yelahanka, Bangalore, Karnataka, India',
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showSubscriptionGuideModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.8,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (context, scrollController) => Container(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Subscription Details',
+                    style: TextStyle(
+                      color: Color(0xFF114F3B),
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close, color: Colors.grey),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Expanded(
+                child: ListView(
+                  controller: scrollController,
+                  children: [
+                    const Text(
+                      'Welcome to ShrimpBite! To ensure you get the freshest seafood exactly when you want it, please review how our scheduling and billing work.',
+                      style: TextStyle(color: Colors.grey, height: 1.4, fontSize: 13),
+                    ),
+                    const SizedBox(height: 24),
+                    _buildSectionHeader('🗓️ 1. Flexible Subscription Plans'),
+                    _buildBullet('Daily: ', 'Fresh delivery every single day.'),
+                    _buildBullet('Alternative Days: ', 'Delivery every other day (Gap of 1 day).'),
+                    _buildBullet('Custom Weekdays: ', 'Pick specific days (e.g., only Mondays, Wednesdays, and Fridays).'),
+                    const SizedBox(height: 20),
+                    
+                    _buildSectionHeader('🏖️ 2. Vacation Mode (Pause Delivery)'),
+                    const Text(
+                      'Going away? You can pause your deliveries without canceling your subscription.',
+                      style: TextStyle(color: Colors.black87, fontSize: 13),
+                    ),
+                    const SizedBox(height: 8),
+                    _buildBullet('Vacation ON: ', 'All upcoming deliveries are paused.'),
+                    _buildBullet('Vacation OFF: ', 'Deliveries resume based on your original schedule.'),
+                    const SizedBox(height: 20),
+
+                    _buildSectionHeader('⏰ 3. The 8:00 PM "Cut-off" Rule'),
+                    const Text(
+                      'This is the most important rule for making changes. Our shop owners start prepping your fresh catch by 8:00 PM every night.',
+                      style: TextStyle(color: Colors.black87, fontSize: 13),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(color: const Color(0xFFEBFFD7).withOpacity(0.5), borderRadius: BorderRadius.circular(12)),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildBullet('Before 8:00 PM: ', 'Starts Tomorrow'),
+                          _buildBullet('After 8:00 PM: ', 'Starts Day After Tomorrow'),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Why the delay? To guarantee maximum freshness and stock availability, we finalize all orders by 8:00 PM. Late-night changes happen after the next day\'s prep is already complete.',
+                      style: TextStyle(color: Colors.grey, fontSize: 12, fontStyle: FontStyle.italic),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text('Real-World Examples:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    const SizedBox(height: 4),
+                    _buildBullet('Morning: ', '"10:00 AM Monday. I turn Vacation ON. My Tuesday delivery is paused."'),
+                    _buildBullet('Night: ', '"9:30 PM Monday. I turn Vacation ON. Since it\'s past 8:00 PM, my Tuesday delivery is already packed. My vacation starts Wednesday."'),
+                    const SizedBox(height: 20),
+
+                    _buildSectionHeader('💳 4. Wallet & Payments'),
+                    const Text(
+                      'We believe in a "No Delivery = No Charge" policy.',
+                      style: TextStyle(color: Colors.black87, fontSize: 13, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    _buildBullet('One-time Orders: ', 'Charged instantly when you checkout.'),
+                    _buildBullet('Subscriptions: ', 'Money is deducted automatically from your wallet at 12:01 AM on the day of delivery.'),
+                    _buildBullet('Vacation Rule: ', 'If Vacation Mode is active, no money is deducted.'),
+                    const SizedBox(height: 12),
+                    const Text('Refunds & Credits', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF114F3B))),
+                    const SizedBox(height: 4),
+                    _buildBullet('Weight Adjustments: ', 'If you pay for 1kg but we deliver 900g, the difference is credited back to your wallet instantly.'),
+                    _buildBullet('Cancellations: ', 'Approved cancellations are refunded immediately to your Shrimpbite Wallet.'),
+                    const SizedBox(height: 20),
+
+                    _buildSectionHeader('⚠️ 5. Important Notes'),
+                    _buildBullet('Low Balance: ', 'If your wallet doesn\'t have enough funds at midnight, the delivery will be skipped, and you’ll receive a "Low Balance" notification.', isWarning: true),
+                    _buildBullet('Missed Cut-off: ', 'If you forget to turn on Vacation Mode before 8:00 PM, the system will charge and deliver the next day\'s order as planned.', isWarning: true),
+                    const SizedBox(height: 40),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Text(
+        title,
+        style: const TextStyle(
+          color: Color(0xFF114F3B),
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBullet(String title, String description, {bool isWarning = false}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('• ', style: TextStyle(fontSize: 16, color: isWarning ? Colors.red : Colors.black87)),
+          Expanded(
+            child: RichText(
+              text: TextSpan(
+                style: const TextStyle(fontSize: 13, color: Colors.black87, height: 1.4),
+                children: [
+                  TextSpan(text: title, style: TextStyle(fontWeight: FontWeight.bold, color: isWarning ? Colors.red : Colors.black)),
+                  TextSpan(text: description),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-              builder: (context) => ProfileDetailPage(title: title)),
-        );
+      onTap: () async {
+        if (title == 'About me') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const EditProfilePage()),
+          );
+        } else if (title == 'My Address' || title == 'Saved Addresses') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => const AddressManagementPage()),
+          );
+        } else if (title == 'Give us rating') {
+          final url = Uri.parse(
+              'https://play.google.com/store/apps/details?id=com.shrimpbite.app');
+          if (await canLaunchUrl(url)) {
+            await launchUrl(url, mode: LaunchMode.externalApplication);
+          }
+        } else if (title == 'About section') {
+          final url = Uri.parse('https://shrimpbite.in/index.php/about-us/');
+          if (await canLaunchUrl(url)) {
+            await launchUrl(url, mode: LaunchMode.externalApplication);
+          }
+        } else if (title == 'Contact us') {
+          final url = Uri.parse('tel:+919148949909');
+          if (await canLaunchUrl(url)) {
+            await launchUrl(url);
+          }
+        } else if (title == 'Help and Support') {
+          _showHelpSupportModal(context);
+        } else if (title == 'Subscription Details') {
+          _showSubscriptionGuideModal(context);
+        } else {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => ProfileDetailPage(title: title)),
+          );
+        }
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -578,6 +841,67 @@ class _ListTileItem extends StatelessWidget {
                         fontWeight: FontWeight.w600))),
             const Icon(Icons.arrow_forward_ios_rounded,
                 color: Color(0xFFA5C9AD), size: 16),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SupportItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final VoidCallback? onTap;
+
+  const _SupportItem({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFEBFFD7).withOpacity(0.3),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: const Color(0xFF114F3B), size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: Colors.grey.shade600,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      color: Color(0xFF114F3B),
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (onTap != null)
+              const Icon(Icons.open_in_new, color: Color(0xFF114F3B), size: 14),
           ],
         ),
       ),
@@ -619,7 +943,7 @@ class _SignOutButton extends ConsumerWidget {
 
           if (shouldLogout == true) {
             CartProviderScope.of(context).clearSession();
-            await ref.read(authProvider.notifier).logout();
+            await ref.read(auth.authProvider.notifier).logout();
             if (context.mounted) {
               Navigator.pushNamedAndRemoveUntil(
                 context,

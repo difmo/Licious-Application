@@ -4,7 +4,6 @@ import '../modules/splash/splash_page.dart';
 import '../modules/auth/deals_page.dart';
 
 import '../modules/auth/login_page.dart';
-import '../modules/auth/forgot_password_page.dart';
 
 import '../modules/home/view/main_page.dart';
 import '../modules/categories/view/categories_page.dart';
@@ -31,7 +30,6 @@ class AppPages {
         AppRoutes.deals: (context) => const DealsPage(),
         AppRoutes.welcome: (context) => const LoginPage(),
         AppRoutes.login: (context) => const LoginPage(),
-        AppRoutes.forgotPassword: (context) => const ForgotPasswordPage(),
         AppRoutes.home: (context) => const MainPage(),
         AppRoutes.subscriptions: (context) => const SubscriptionPage(),
         AppRoutes.wallet: (context) => const WalletPage(),

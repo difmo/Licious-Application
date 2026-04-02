@@ -86,7 +86,7 @@ class UserOrder {
       orderNumber: humanId,
       restaurantName: 'Shrimpbite Retailer', // Placeholder
       date: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'])
+          ? DateTime.parse(json['createdAt'].toString().endsWith('Z') ? json['createdAt'].toString() : '${json['createdAt']}Z')
               .toLocal()
               .toString()
               .split('.')
@@ -165,12 +165,16 @@ class UserProfile {
   final String email;
   final String phone;
   final String profileImage;
+  final String? walletId;
+  final List<UserAddress> addresses;
 
   const UserProfile({
     required this.name,
     required this.email,
     required this.phone,
     required this.profileImage,
+    this.walletId,
+    this.addresses = const [],
   });
 
   UserProfile copyWith({
@@ -178,12 +182,16 @@ class UserProfile {
     String? email,
     String? phone,
     String? profileImage,
+    String? walletId,
+    List<UserAddress>? addresses,
   }) {
     return UserProfile(
       name: name ?? this.name,
       email: email ?? this.email,
       phone: phone ?? this.phone,
       profileImage: profileImage ?? this.profileImage,
+      walletId: walletId ?? this.walletId,
+      addresses: addresses ?? this.addresses,
     );
   }
 }
@@ -270,7 +278,7 @@ class WalletTransaction {
       description: json['description']?.toString() ?? '',
       status: json['status']?.toString() ?? 'Success',
       createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'])
+          ? DateTime.parse(json['createdAt'].toString().endsWith('Z') ? json['createdAt'].toString() : '${json['createdAt']}Z').toLocal()
           : DateTime.now(),
     );
   }

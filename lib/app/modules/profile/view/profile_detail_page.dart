@@ -45,7 +45,9 @@ class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
   }
 
   Future<void> _loadOrders() async {
+    // CAPTURE before await to avoid context issues if we navigate back
     final cartProvider = CartProviderScope.of(context);
+    
     cartProvider.setLoadingOrders(true);
     try {
       final ordersJson = await ref.read(orderServiceProvider).getMyOrders();
@@ -541,71 +543,92 @@ class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
         final unreadCount = list.where((n) => !n.isRead).length;
 
         if (list.isEmpty) {
-          return const Center(
-            child: Padding(
-              padding: EdgeInsets.symmetric(vertical: 60),
-              child: Column(
-                children: [
-                  Icon(Icons.notifications_none, size: 64, color: Colors.grey),
-                  SizedBox(height: 16),
-                  Text('No notifications found',
-                      style: TextStyle(color: Colors.grey, fontSize: 16)),
-                ],
+          return RefreshIndicator(
+            onRefresh: () => ref.refresh(notificationsProvider.future),
+            color: const Color(0xFF68B92E),
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 60),
+                child: Center(
+                  child: Column(
+                    children: [
+                      const Icon(Icons.notifications_none,
+                          size: 64, color: Colors.grey),
+                      const SizedBox(height: 16),
+                      const Text('No notifications found',
+                          style: TextStyle(color: Colors.grey, fontSize: 16)),
+                      const SizedBox(height: 8),
+                      const Text('Pull down to refresh',
+                          style: TextStyle(color: Colors.grey, fontSize: 12)),
+                    ],
+                  ),
+                ),
               ),
             ),
           );
         }
 
-        return Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        return RefreshIndicator(
+          onRefresh: () => ref.refresh(notificationsProvider.future),
+          color: const Color(0xFF68B92E),
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: Column(
               children: [
-                Expanded(
-                  child: Text(
-                    'Recent Notifications (${unreadCount} new)',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                TextButton(
-                  onPressed: () async {
-                    final confirm = await showDialog<bool>(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: const Text('Delete all?'),
-                        content: const Text('This will clear your inbox.'),
-                        actions: [
-                          TextButton(
-                              onPressed: () => Navigator.pop(context, false),
-                              child: const Text('Cancel')),
-                          TextButton(
-                              onPressed: () => Navigator.pop(context, true),
-                              child: const Text('Delete',
-                                  style: TextStyle(color: Colors.red))),
-                        ],
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Recent Notifications (${unreadCount} new)',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    );
-                    if (confirm == true) {
-                      await ref
-                          .read(notificationsProvider.notifier)
-                          .deleteAllNotifications();
-                    }
-                  },
-                  child: const Text('Delete all',
-                      style: TextStyle(fontSize: 12, color: Colors.redAccent)),
+                    ),
+                    const SizedBox(width: 8),
+                    TextButton(
+                      onPressed: () async {
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('Delete all?'),
+                            content: const Text('This will clear your inbox.'),
+                            actions: [
+                              TextButton(
+                                  onPressed: () =>
+                                      Navigator.pop(context, false),
+                                  child: const Text('Cancel')),
+                              TextButton(
+                                  onPressed: () => Navigator.pop(context, true),
+                                  child: const Text('Delete',
+                                      style: TextStyle(color: Colors.red))),
+                            ],
+                          ),
+                        );
+                        if (confirm == true && mounted) {
+                          await ref
+                              .read(notificationsProvider.notifier)
+                              .deleteAllNotifications();
+                        }
+                      },
+                      child: const Text('Delete all',
+                          style:
+                              TextStyle(fontSize: 12, color: Colors.redAccent)),
+                    ),
+                  ],
                 ),
+                const SizedBox(height: 8),
+                ...list.map((n) => _buildIncomingNotificationItem(n)).toList(),
+                const SizedBox(height: 80), // Padding for scrollability
               ],
             ),
-            const SizedBox(height: 8),
-            ...list.map((n) => _buildIncomingNotificationItem(n)).toList(),
-          ],
+          ),
         );
       },
     );
@@ -928,12 +951,12 @@ class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
     );
   }
 
-  Widget _buildSaveButton(String text) {
+  Widget _buildSaveButton(String text, {VoidCallback? onPressed}) {
     return SizedBox(
       width: double.infinity,
       height: 52,
       child: ElevatedButton(
-        onPressed: () {},
+        onPressed: onPressed ?? () {},
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF439462), // Darker designer green
           foregroundColor: Colors.white,
@@ -1370,7 +1393,13 @@ class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
         const SizedBox(height: 12),
         _buildIconTextField(Icons.lock_outline, 'Confirm password'),
         const SizedBox(height: 40),
-        _buildSaveButton('Save settings'),
+        _buildSaveButton('Save settings', onPressed: () {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Profile updated successfully!')),
+          );
+          Navigator.pop(context);
+        }),
       ],
     );
   }

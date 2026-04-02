@@ -29,84 +29,79 @@ class _HomeHeaderState extends State<HomeHeader> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Top Bar (Profile & Wallet) ──────────────────────────────────────
+          // ── Top Bar (Location & Profile) ──────────────────────────────────────
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Wallet Placeholder
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF3F4F6),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.account_balance_wallet_rounded, size: 18, color: Colors.purple.shade300),
-                    const SizedBox(width: 4),
-                    const Text('₹0', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                  ],
+              // Location Selector
+              Expanded(
+                child: InkWell(
+                  onTap: () {
+                    if (selectedAddress == null) {
+                      LocationPermissionSheet.show(context);
+                    } else {
+                      LocationBottomSheet.show(context);
+                    }
+                  },
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.location_on, size: 22, color: Color(0xFF38B24D)),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Padding(
+                              padding: const EdgeInsets.only(top: 2.0),
+                              child: Text(
+                                selectedAddress?.title ?? 'Set Location',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w900,
+                                  color: Color(0xFF1A1A1A),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ),
+                          const Icon(Icons.keyboard_arrow_down, size: 24, color: Color(0xFF1A1A1A)),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 26),
+                        child: Text(
+                          selectedAddress?.street ?? 'Add your delivery address to start shopping',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              const Spacer(),
+              const SizedBox(width: 16),
               // Profile
               BounceWidget(
                 onTap: () {
                   MainControllerScope.of(context).changePage(4);
                 },
                 child: const CircleAvatar(
-                  radius: 16,
+                  radius: 20,
                   backgroundColor: Color(0xFFF3F4F6),
-                  child: Icon(Icons.person_outline, color: Color(0xFF1A1A1A), size: 20),
+                  child: Icon(Icons.person_outline, color: Color(0xFF1A1A1A), size: 24),
                 ),
               ),
             ],
-          ),
-          
-          const SizedBox(height: 12),
-
-          // ── Location Selector ───────────────────────────────────────────
-          InkWell(
-            onTap: () {
-              if (selectedAddress == null) {
-                LocationPermissionSheet.show(context);
-              } else {
-                LocationBottomSheet.show(context);
-              }
-            },
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.location_on, size: 18, color: Color(0xFF38B24D)),
-                    const SizedBox(width: 4),
-                    Text(
-                      selectedAddress?.title ?? 'Set Location',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w900,
-                        color: Color(0xFF1A1A1A),
-                      ),
-                    ),
-                    const Icon(Icons.keyboard_arrow_down, size: 20, color: Color(0xFF1A1A1A)),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(left: 22),
-                  child: Text(
-                    selectedAddress?.street ?? 'Add your delivery address to start shopping',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
           ),
 
           const SizedBox(height: 16),
@@ -125,7 +120,7 @@ class _HomeHeaderState extends State<HomeHeader> {
                     readOnly: true,
                     onTap: () => Navigator.pushNamed(context, AppRoutes.search),
                     decoration: InputDecoration(
-                      hintText: 'Search "curries"',
+                      hintText: 'Search Shrimp type...',
                       fillColor: Colors.white,
                       filled: true,
                       contentPadding: const EdgeInsets.symmetric(vertical: 0),
@@ -147,14 +142,6 @@ class _HomeHeaderState extends State<HomeHeader> {
                       prefixIcon: const Icon(
                         Icons.search,
                         color: Color(0xFF38B24D),
-                      ),
-                      suffixIcon: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          VerticalDivider(indent: 10, endIndent: 10),
-                          Icon(Icons.mic, color: Color(0xFF38B24D)),
-                          SizedBox(width: 8),
-                        ],
                       ),
                     ),
                   ),

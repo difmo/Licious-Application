@@ -148,9 +148,9 @@ class LocationPermissionSheet extends StatelessWidget {
 
           InkWell(
             onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
+              final navigator = Navigator.of(context);
+              navigator.pop();
+              navigator.push(
                 MaterialPageRoute(
                   builder: (_) => const SelectDeliveryAddressScreen(),
                 ),
@@ -191,20 +191,19 @@ class LocationPermissionSheet extends StatelessWidget {
                       color: Color(0xFF1A1A1A),
                     ),
                   ),
-                  Spacer(),
-                  Text(
-                    'See All',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF38B24D),
-                    ),
-                  ),
-                  Icon(Icons.arrow_forward_ios, size: 14, color: Color(0xFF38B24D)),
                 ],
               ),
             ),
-            ...addresses.take(2).map((addr) => _buildAddressItem(context, cart, addr)),
+            // Show up to 4 addresses, then scroll if more
+            ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.3),
+              child: ListView.builder(
+                shrinkWrap: true,
+                padding: EdgeInsets.zero,
+                itemCount: addresses.length,
+                itemBuilder: (context, index) => _buildAddressItem(context, cart, addresses[index]),
+              ),
+            ),
           ],
 
           const SizedBox(height: 20),
@@ -276,9 +275,9 @@ class LocationPermissionSheet extends StatelessWidget {
     if (permission == LocationPermission.whileInUse || 
         permission == LocationPermission.always) {
       if (context.mounted) {
-        Navigator.pop(context);
-        Navigator.push(
-          context,
+        final navigator = Navigator.of(context);
+        navigator.pop();
+        navigator.push(
           MaterialPageRoute(builder: (_) => const SelectDeliveryAddressScreen()),
         );
       }

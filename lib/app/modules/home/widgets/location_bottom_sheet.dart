@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../data/services/db_service.dart';
+import '../../location/view/select_delivery_address_screen.dart';
 import '../../../data/models/food_models.dart';
 import '../../profile/view/address_form_page.dart';
-import '../../location/view/select_delivery_address_screen.dart';
 
 class LocationBottomSheet extends StatelessWidget {
   const LocationBottomSheet({super.key});
@@ -70,11 +70,17 @@ class LocationBottomSheet extends StatelessWidget {
                 // Add New Address Button
                 InkWell(
                   onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => SelectDeliveryAddressScreen()),
-                    );
+                    final navigator = Navigator.of(context);
+                    final parentContext = context; // Capture context
+                    navigator.pop();
+                    navigator.push(
+                      MaterialPageRoute(builder: (_) => const SelectDeliveryAddressScreen()),
+                    ).then((result) {
+                      if (result == true && parentContext.mounted) {
+                        LocationBottomSheet.show(parentContext);
+                      }
+                      cart.loadAddresses();
+                    });
                   },
                   borderRadius: BorderRadius.circular(16),
                   child: Container(
@@ -149,7 +155,7 @@ class LocationBottomSheet extends StatelessWidget {
     return InkWell(
       onTap: () {
         cart.selectAddress(index);
-        Navigator.pop(context);
+        Navigator.of(context).pop();
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
@@ -194,10 +200,6 @@ class LocationBottomSheet extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          const Text(
-                            '• 35 m',
-                            style: TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.bold),
-                          ),
                           if (isSelected) ...[
                              const SizedBox(width: 8),
                              Container(
@@ -223,9 +225,26 @@ class LocationBottomSheet extends StatelessWidget {
                 ),
                 Column(
                   children: [
-                    Icon(Icons.share_outlined, size: 20, color: Colors.grey.shade400),
-                    const SizedBox(height: 12),
-                    Icon(Icons.more_vert_rounded, size: 20, color: Colors.grey.shade400),
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined, size: 24, color: Colors.blueAccent),
+                      onPressed: () {
+                         final navigator = Navigator.of(context);
+                         final parentContext = context;
+                         navigator.pop();
+                         navigator.push(MaterialPageRoute(builder: (_) => SelectDeliveryAddressScreen(addressToEdit: addr))).then((result) {
+                           if (result == true && parentContext.mounted) {
+                             LocationBottomSheet.show(parentContext);
+                           }
+                           cart.loadAddresses();
+                         });
+                      },
+                      tooltip: 'Edit Address',
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, size: 24, color: Colors.redAccent),
+                      onPressed: () => cart.removeAddress(addr.id),
+                      tooltip: 'Delete Address',
+                    ),
                   ],
                 ),
               ],

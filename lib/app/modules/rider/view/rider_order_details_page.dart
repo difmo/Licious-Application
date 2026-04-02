@@ -25,9 +25,11 @@ class RiderOrderDetailsPage extends ConsumerStatefulWidget {
 
 class _RiderOrderDetailsPageState extends ConsumerState<RiderOrderDetailsPage> {
   bool _isLoading = false;
-
-  /// Live-updated status from Socket.IO (falls back to the initial order status)
   late String _liveStatus;
+  
+  // To avoid "Looking up a deactivated widget's ancestor" errors
+  ScaffoldMessengerState? _messenger;
+  void Function(dynamic)? _orderUpdateCallback;
 
   @override
   void initState() {
@@ -36,45 +38,47 @@ class _RiderOrderDetailsPageState extends ConsumerState<RiderOrderDetailsPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _initSocket());
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _messenger = ScaffoldMessenger.maybeOf(context);
+  }
+
   void _initSocket() {
     final orderId = widget.order['orderId']?.toString() ?? '';
     if (orderId.isEmpty) return;
 
     final socket = ref.read(socketServiceProvider);
-    // Join the order-specific room for real-time updates
     socket.joinOrderRoom(orderId);
 
-    // Listen for status changes emitted by the server
-    socket.onOrderUpdate((data) {
+    _orderUpdateCallback = (data) {
       if (!mounted) return;
       final incomingId = data?['orderId']?.toString() ?? '';
-      if (incomingId != orderId && incomingId.isNotEmpty)
-        return; // not our order
+      if (incomingId != orderId && incomingId.isNotEmpty) return;
 
       final newStatus = data?['status']?.toString() ?? '';
       if (newStatus.isNotEmpty && newStatus != _liveStatus) {
         setState(() => _liveStatus = newStatus);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        _messenger?.showSnackBar(SnackBar(
           content: Text('📍 Status updated: $newStatus'),
           backgroundColor: AppColors.accentGreen,
           behavior: SnackBarBehavior.floating,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           duration: const Duration(seconds: 2),
         ));
       }
-
-      // Also refresh the home list so it stays in sync
       ref.invalidate(riderOrdersProvider);
-    });
+    };
+
+    socket.onOrderUpdate(_orderUpdateCallback!);
   }
 
   @override
   void dispose() {
     final orderId = widget.order['orderId']?.toString() ?? '';
-    if (orderId.isNotEmpty) {
+    if (orderId.isNotEmpty && _orderUpdateCallback != null) {
       ref.read(socketServiceProvider).leaveOrderRoom(orderId);
-      ref.read(socketServiceProvider).offOrderUpdate();
+      ref.read(socketServiceProvider).offOrderUpdate(_orderUpdateCallback);
     }
     super.dispose();
   }
@@ -85,25 +89,21 @@ class _RiderOrderDetailsPageState extends ConsumerState<RiderOrderDetailsPage> {
     final riderService = ref.read(riderServiceProvider);
 
     Map<String, dynamic> result;
-
     if (status == 'Accepted' || status == 'Rejected') {
-      result = await riderService.respondToOrder(
-        orderId: orderId,
-        response: status,
-      );
+      result = await riderService.respondToOrder(orderId: orderId, response: status);
     } else if (status == 'Delivered') {
       result = await riderService.markAsDelivered(orderId: orderId);
     } else {
-      result = await riderService.updateDeliveryStatus(
-        orderId: orderId,
-        status: status,
-      );
+      result = await riderService.updateDeliveryStatus(orderId: orderId, status: status);
     }
 
-    setState(() => _isLoading = false);
     if (mounted) {
       final isSuccess = result['success'] != false;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      setState(() {
+        _isLoading = false;
+        if (isSuccess) _liveStatus = status;
+      });
+      _messenger?.showSnackBar(SnackBar(
         content: Text(result['message'] ?? 'Status updated: $status'),
         backgroundColor: isSuccess ? AppColors.accentGreen : Colors.red,
         behavior: SnackBarBehavior.floating,
@@ -113,38 +113,48 @@ class _RiderOrderDetailsPageState extends ConsumerState<RiderOrderDetailsPage> {
       if (isSuccess && (status == 'Delivered' || status == 'Rejected')) {
         Navigator.pop(context);
       }
+    } else {
+      _isLoading = false;
     }
   }
 
   Future<void> _callCustomer(String phone) async {
     if (phone.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No phone number available')));
+      _messenger?.showSnackBar(const SnackBar(content: Text('No phone number available')));
       return;
     }
     final uri = Uri.parse('tel:$phone');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
     } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not open dialer for $phone')));
+      _messenger?.showSnackBar(SnackBar(content: Text('Could not open dialer for $phone')));
     }
   }
 
-  Future<void> _openMaps(dynamic address) async {
-    final addr = address?['address']?.toString() ?? '';
-    if (addr.isEmpty) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('No address available')));
+  Future<void> _openMaps(dynamic addressData) async {
+    String destination = '';
+    if (addressData is Map) {
+      final lat = addressData['latitude'] ?? addressData['lat'];
+      final lng = addressData['longitude'] ?? addressData['lng'];
+      if (lat != null && lng != null) {
+        destination = '$lat,$lng';
+      } else {
+        destination = addressData['fullAddress'] ?? addressData['address'] ?? addressData['street'] ?? '';
+      }
+    } else if (addressData is String) {
+      destination = addressData;
+    }
+
+    if (destination.isEmpty || destination == 'N/A') {
+      _messenger?.showSnackBar(const SnackBar(content: Text('No valid address or coordinates available')));
       return;
     }
-    final uri = Uri.parse(
-        'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(addr)}');
+
+    final uri = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=${Uri.encodeComponent(destination)}&travelmode=driving');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } else if (mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Could not open Maps')));
+      _messenger?.showSnackBar(const SnackBar(content: Text('Could not open Maps app')));
     }
   }
 
@@ -221,7 +231,7 @@ class _RiderOrderDetailsPageState extends ConsumerState<RiderOrderDetailsPage> {
                     icon: Icons.map_rounded,
                     label: 'Open Maps',
                     color: Colors.orange,
-                    onTap: () => _openMaps(deliveryAddress),
+                    onTap: () => _openMaps(deliveryAddressMap),
                   ),
                 ),
               ],
@@ -330,16 +340,10 @@ class _RiderOrderDetailsPageState extends ConsumerState<RiderOrderDetailsPage> {
 
             const SizedBox(height: 24),
 
-            // ── Status Buttons ────────────────────────────────────────────
-            if (_isLoading)
-              const Center(
-                  child:
-                      CircularProgressIndicator(color: AppColors.accentGreen))
-            else if (status.toLowerCase() != 'delivered' &&
-                status.toLowerCase() != 'completed')
+            if (status.toLowerCase() != 'delivered' && status.toLowerCase() != 'completed')
               Column(
                 children: [
-                  if (status.toLowerCase() == 'pending' ||
+                   if (status.toLowerCase() == 'pending' ||
                       status.toLowerCase() == 'preparing' ||
                       status.toLowerCase() == 'accepted' ||
                       status.toLowerCase() == 'rider accepted' ||
@@ -347,14 +351,19 @@ class _RiderOrderDetailsPageState extends ConsumerState<RiderOrderDetailsPage> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
-                        onPressed: () => _updateStatus('Out for Delivery'),
+                        // Enabled only when NOT loading; greys out automatically when null.
+                        onPressed: _isLoading
+                            ? null
+                            : () => _updateStatus('Out for Delivery'),
                         icon: const Icon(Icons.delivery_dining_rounded),
-                        label: const Text('Start Delivery (Out for Delivery)',
-                            style: TextStyle(
+                        label: Text(_isLoading ? 'Starting Delivery...' : 'Start Delivery (Out for Delivery)',
+                            style: const TextStyle(
                                 fontWeight: FontWeight.bold, fontSize: 15)),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.accentGreen,
                           foregroundColor: Colors.white,
+                          disabledBackgroundColor: Colors.grey.shade300,
+                          disabledForegroundColor: Colors.grey.shade500,
                           elevation: 0,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
@@ -362,45 +371,50 @@ class _RiderOrderDetailsPageState extends ConsumerState<RiderOrderDetailsPage> {
                         ),
                       ),
                     )
-
                   else if (status.toLowerCase() == 'out for delivery' ||
-                      status.toLowerCase() == 'out_for_delivery')
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: () => _updateStatus('Arrived'),
-                        icon: const Icon(Icons.location_on_rounded),
-                        label: const Text('I Have Arrived',
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 15)),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.orange,
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14)),
+                      status.toLowerCase() == 'out_for_delivery' ||
+                      status.toLowerCase() == 'arrived')
+                    Column(
+                      children: [
+                        // Keep the "Out for Delivery" button visible but greyed out
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: null, // Always disabled
+                            icon: const Icon(Icons.delivery_dining_rounded, color: Colors.grey),
+                            label: const Text('Out for Delivery (Active)',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold, fontSize: 15, color: Colors.grey)),
+                            style: OutlinedButton.styleFrom(
+                              backgroundColor: Colors.grey.shade100,
+                              side: BorderSide(color: Colors.grey.shade300),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14)),
+                            ),
+                          ),
                         ),
-                      ),
-                    )
-                  else if (status.toLowerCase() == 'arrived')
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: () => _updateStatus('Delivered'),
-                        icon: const Icon(Icons.check_circle_rounded),
-                        label: const Text('Mark as Delivered',
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 15)),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.accentGreen,
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14)),
+                        const SizedBox(height: 12),
+                        // Now the active "Mark as Delivered" button
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: _isLoading ? null : () => _updateStatus('Delivered'),
+                            icon: const Icon(Icons.check_circle_rounded),
+                            label: Text(_isLoading ? 'Completing...' : 'Mark as Delivered',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold, fontSize: 15)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.accentGreen,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14)),
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                 ],
               ).animate(delay: 200.ms).fadeIn().slideY(begin: 0.1, end: 0),

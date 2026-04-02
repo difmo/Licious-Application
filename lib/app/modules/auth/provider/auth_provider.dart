@@ -75,31 +75,8 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 
-  Future<void> login({
-    required String phoneNumber,
-    required String password,
-  }) async {
-     await ref.read(core.authStoreProvider.notifier).login(phone: phoneNumber, password: password);
-  }
-
   Future<CheckUserResponseModel?> checkUser({required String phoneNumber}) async {
     return await ref.read(core.authStoreProvider.notifier).checkUser(phoneNumber: phoneNumber);
-  }
-
-  Future<void> register({
-    required String fullName,
-    required String email,
-    required String phoneNumber,
-    required String password,
-    required String confirmPassword,
-  }) async {
-    await ref.read(core.authStoreProvider.notifier).register(
-      fullName: fullName,
-      email: email,
-      phoneNumber: phoneNumber,
-      password: password,
-      confirmPassword: confirmPassword,
-    );
   }
 
   Future<void> sendOtp({required String phoneNumber}) async {
@@ -114,18 +91,6 @@ class AuthNotifier extends Notifier<AuthState> {
           phoneNumber: phoneNumber,
           otp: otp,
         );
-  }
-
-  Future<void> googleAuth({required String idToken, String? accessToken, String? phoneNumber}) async {
-    await ref.read(core.authStoreProvider.notifier).googleAuth(
-          idToken: idToken,
-          accessToken: accessToken,
-          phoneNumber: phoneNumber,
-        );
-  }
-
-  Future<void> forgotPassword({required String email}) async {
-    await ref.read(core.authStoreProvider.notifier).forgotPassword(email: email);
   }
 
   Future<void> logout() async {

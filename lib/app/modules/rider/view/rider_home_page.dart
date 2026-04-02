@@ -29,14 +29,10 @@ class _RiderStats {
   final int orders;
   final double rating;
   final int totalReviews;
-  final double earnings;
-  final double avgPerOrder;
   const _RiderStats({
     required this.orders,
     required this.rating,
     required this.totalReviews,
-    required this.earnings,
-    required this.avgPerOrder,
   });
 }
 
@@ -104,21 +100,6 @@ final riderStatsProvider = FutureProvider.autoDispose<_RiderStats>((ref) async {
     'totalOrder',
     'total_order',
   ]);
-
-  double earnings = parseNum([
-    'weekly',
-    'weeklyEarnings',
-    'weekly_earnings',
-    'earnings',
-    'walletBalance',
-    'balance',
-    'totalEarnings',
-    'total_earnings',
-    'totalEarning',
-    'total_earning',
-    'totalEarninag',
-  ]);
-
   // If review service didn't provide a rating, try the earnings response
   if (rating == 0) {
     rating = parseNum(['rating', 'avgRating', 'avg_rating', 'riderRating']);
@@ -127,27 +108,10 @@ final riderStatsProvider = FutureProvider.autoDispose<_RiderStats>((ref) async {
   // ── Fallback Calculation from History ──────────────────────────────────────
   // If backend returns zeros (common with cold starts or unlinked tables),
   // we try to calculate them from the delivery history.
-  if (orders == 0 && earnings == 0) {
-    try {
-      final history = await riderService.getDeliveryHistory();
-      if (history.isNotEmpty) {
-        orders = history.length;
-        earnings = 0.0;
-        for (final item in history) {
-          earnings += (item['commission'] ?? item['earnings'] ?? 30.0);
-        }
-      }
-    } catch (_) {
-      // ignore
-    }
-  }
-
   return _RiderStats(
     orders: orders,
     rating: rating,
     totalReviews: totalReviews,
-    earnings: earnings,
-    avgPerOrder: orders > 0 ? (earnings / orders) : 0.0,
   );
 });
 
@@ -172,6 +136,10 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
   final Set<String> _processingIds = {};
   DateTime? _lastPressedAt;
 
+  ScaffoldMessengerState? _messenger;
+  void Function(dynamic)? _newOrderCallback;
+  void Function(dynamic)? _orderUpdateCallback;
+
   bool get _isOnline => ref.watch(riderStatusProvider);
   set _isOnline(bool value) =>
       ref.read(riderStatusProvider.notifier).toggle(value);
@@ -180,6 +148,12 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _initSocket());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _messenger = ScaffoldMessenger.maybeOf(context);
   }
 
   void _initSocket() {
@@ -196,14 +170,14 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
     socket.joinUserRoom(userId);
 
     // 🔔 New order dispatched to this rider
-    socket.onNewOrderAssigned((data) {
+    _newOrderCallback = (data) {
       if (!mounted) return;
       ref.invalidate(riderOrdersProvider);
       _showNewOrderBanner(data);
-    });
+    };
 
     // 🔄 Any order status changed (accept/pickup/deliver)
-    socket.onOrderUpdate((data) {
+    _orderUpdateCallback = (data) {
       if (!mounted) return;
 
       // Handle "Rider Assigned" specifically as a new task alert
@@ -215,7 +189,10 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
 
       ref.invalidate(riderOrdersProvider);
       ref.invalidate(riderStatsProvider);
-    });
+    };
+
+    socket.onNewOrderAssigned(_newOrderCallback!);
+    socket.onOrderUpdate(_orderUpdateCallback!);
   }
 
   void _showNewOrderBanner(dynamic data) {
@@ -242,8 +219,8 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
         ? addressRaw['address']?.toString() ?? ''
         : addressRaw?.toString() ?? '';
 
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
+    _messenger?.clearSnackBars();
+    _messenger?.showSnackBar(
       SnackBar(
         duration: const Duration(seconds: 6),
         backgroundColor: Colors.transparent,
@@ -265,8 +242,8 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
       socket.leaveRiderRoom(authState.user.id);
       socket.leaveUserRoom(authState.user.id);
     }
-    socket.offNewOrderAssigned();
-    socket.offOrderUpdate();
+    if (_newOrderCallback != null) socket.offNewOrderAssigned(_newOrderCallback);
+    if (_orderUpdateCallback != null) socket.offOrderUpdate(_orderUpdateCallback);
     super.dispose();
   }
 
@@ -369,7 +346,7 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
   }
 
   void _showSnack(String message, {bool isError = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+    _messenger?.showSnackBar(SnackBar(
       content:
           Text(message, style: const TextStyle(fontWeight: FontWeight.w500)),
       backgroundColor: isError ? Colors.redAccent : AppColors.accentGreen,
@@ -437,8 +414,8 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
       final result = await riderService.respondToOrder(
           orderId: orderId, response: response);
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+      if (mounted && _messenger != null && _messenger!.mounted) {
+        _messenger!.showSnackBar(
           SnackBar(
             content: Text(result['message'] ?? 'Action successful'),
             backgroundColor:
@@ -466,8 +443,8 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
             orderId: orderId,
             status: 'Out for Delivery',
           );
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      if (mounted && _messenger != null && _messenger!.mounted) {
+        _messenger!.showSnackBar(SnackBar(
           content: Text(result['message'] ?? '🚚 Out for Delivery!'),
           backgroundColor: AppColors.accentGreen,
           behavior: SnackBarBehavior.floating,
@@ -489,10 +466,10 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
       final riderService = ref.read(riderServiceProvider);
       final result = await riderService.markAsDelivered(orderId: orderId);
 
-      if (mounted) {
+      if (mounted && _messenger != null && _messenger!.mounted) {
         final isSuccess = result['success'] != false;
-        ScaffoldMessenger.of(context).clearSnackBars();
-        ScaffoldMessenger.of(context).showSnackBar(
+        _messenger!.clearSnackBars();
+        _messenger!.showSnackBar(
           SnackBar(
             content: Row(
               children: [
@@ -546,7 +523,7 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
         if (_lastPressedAt == null ||
             now.difference(_lastPressedAt!) > const Duration(seconds: 2)) {
           _lastPressedAt = now;
-          ScaffoldMessenger.of(context).showSnackBar(
+          _messenger?.showSnackBar(
             const SnackBar(
               content: Text(
                 'Press back again to exit the app.',
@@ -762,8 +739,6 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
                                 _buildStat('Rating', '—', Icons.star_rounded,
                                     color: Colors.amber,
                                     bgColor: const Color(0xFFFFF8E1)),
-                                _buildStat('Total Earnings', '₹—',
-                                    Icons.account_balance_wallet_rounded),
                               ],
                             ),
                             data: (stats) => Row(
@@ -777,10 +752,6 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
                                     Icons.star_rounded,
                                     color: Colors.amber,
                                     bgColor: const Color(0xFFFFF8E1)),
-                                _buildStat(
-                                    'Total Earnings',
-                                    '₹${stats.earnings.toStringAsFixed(0)}',
-                                    Icons.account_balance_wallet_rounded),
                               ],
                             ),
                           ),
@@ -1156,25 +1127,28 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                 child: Row(
                   children: [
-                    // Left: Out for Delivery
+                    // Left: Out for Delivery (Greyed out if already active)
                     Expanded(
                       child: OutlinedButton.icon(
-                        onPressed: isProcessing
+                        onPressed: (isProcessing || orderStatus == 'out for delivery' || orderStatus == 'out_for_delivery')
                             ? null
                             : () => _markOutForDelivery(order['orderId']),
                         icon:
                             const Icon(Icons.delivery_dining_rounded, size: 16),
-                        label: const Text('Out for\nDelivery',
+                        label: Text(
+                            (orderStatus == 'out for delivery' || orderStatus == 'out_for_delivery')
+                                ? 'ON ROAD'
+                                : 'START DELIVERY',
                             textAlign: TextAlign.center,
-                            style: TextStyle(
-                                fontSize: 11, fontWeight: FontWeight.bold)),
+                            style: const TextStyle(
+                                fontSize: 10, fontWeight: FontWeight.bold)),
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: isProcessing
+                          foregroundColor: (isProcessing || orderStatus == 'out for delivery' || orderStatus == 'out_for_delivery')
                               ? Colors.grey
                               : AppColors.accentGreen,
                           side: BorderSide(
-                              color: isProcessing
-                                  ? Colors.grey
+                              color: (isProcessing || orderStatus == 'out for delivery' || orderStatus == 'out_for_delivery')
+                                  ? Colors.grey.shade300
                                   : AppColors.accentGreen),
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12)),
@@ -1183,17 +1157,17 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    // Right: Mark as Delivered
+                    // Right: Mark as Delivered (DELIVER)
                     Expanded(
                       child: ElevatedButton.icon(
                         onPressed: isProcessing
                             ? null
                             : () => _markDelivered(order['orderId']),
                         icon: const Icon(Icons.check_circle_rounded, size: 16),
-                        label: const Text('Mark as\nDelivered',
+                        label: const Text('DELIVER',
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                                fontSize: 11, fontWeight: FontWeight.bold)),
+                                fontSize: 10, fontWeight: FontWeight.bold)),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: isProcessing
                               ? Colors.grey

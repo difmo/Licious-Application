@@ -102,32 +102,42 @@ class RestaurantMenuPage extends ConsumerWidget {
                           Row(
                             children: [
                               Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      shop.deliveryTime.isNotEmpty
-                                          ? shop.deliveryTime
-                                          : _deliveryTime,
-                                      style: const TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
-                                        color: Color(0xFF1A1A1A),
-                                      ),
-                                    ),
-                                    if (shop.location.isNotEmpty) ...[
-                                      const SizedBox(height: 3),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
                                       Text(
-                                        shop.location,
+                                        shop.name,
+                                        style: const TextStyle(
+                                          fontSize: 22,
+                                          fontWeight: FontWeight.w900,
+                                          color: Color(0xFF1A1A1A),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        currentShop.cuisine.isNotEmpty
+                                            ? currentShop.cuisine
+                                            : (shop.businessName.isNotEmpty ? shop.businessName : 'Seafood'),
                                         style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.grey.shade600),
+                                            fontSize: 13,
+                                            color: Colors.grey.shade600,
+                                            fontWeight: FontWeight.w500),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                       ),
+                                      if (shop.location.isNotEmpty) ...[
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          shop.location,
+                                          style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey.shade500),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
                                     ],
-                                  ],
-                                ),
+                                  ),
                               ),
                               Container(
                                 padding: const EdgeInsets.symmetric(
@@ -207,29 +217,30 @@ class RestaurantMenuPage extends ConsumerWidget {
                           ] else ...[
                             const SizedBox(height: 12),
                             // Offer banner
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 8),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFEBFFD7),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.local_offer,
-                                      size: 14, color: Color(0xFF439462)),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Flat ₹100 OFF above ₹499',
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
-                                      color: Color(0xFF439462),
+                            if (currentShop.offer.isNotEmpty)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEBFFD7),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.local_offer,
+                                        size: 14, color: Color(0xFF439462)),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      currentShop.offer,
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF439462),
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
-                            ),
                           ],
                         ],
                       ),
@@ -237,11 +248,13 @@ class RestaurantMenuPage extends ConsumerWidget {
                   ),
 
                   // ── Products Section Header ────────────────────────────────────
-                  const SliverPadding(
-                    padding: EdgeInsets.fromLTRB(16, 4, 16, 12),
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
                     sliver: SliverToBoxAdapter(
                       child: Text(
-                        'SHRIMP VARIETIES',
+                        currentShop.cuisine.isNotEmpty
+                            ? '${currentShop.cuisine.toUpperCase()} VARIETIES'
+                            : 'PRODUCT VARIETIES',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w800,
@@ -434,6 +447,13 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
                     ),
                   ),
                 ),
+
+              // Favorite toggle (top right)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: _FavoriteHeart(productId: p.id),
+              ),
             ],
           ),
 

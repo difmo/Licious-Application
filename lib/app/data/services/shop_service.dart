@@ -24,7 +24,6 @@ class ShopService {
     try {
       final json = await _client.get(
         '${ApiClient.baseUrl}/shops',
-        requiresAuth: true,
       );
 
       final raw = json['data'] ?? json['shops'] ?? json['retailers'];
@@ -49,7 +48,6 @@ class ShopService {
     try {
       final json = await _client.get(
         '${ApiClient.baseUrl}/shops/$shopId/products',
-        requiresAuth: true,
       );
       final data = (json['data'] ?? json['products']) as List<dynamic>? ?? [];
       return data
@@ -92,7 +90,7 @@ class ShopService {
       final queryString = Uri(queryParameters: queryParams).query;
       final url = '${ApiClient.baseUrl}/products${queryString.isNotEmpty ? '?$queryString' : ''}';
 
-      final json = await _client.get(url, requiresAuth: true);
+      final json = await _client.get(url);
       
       final List<dynamic> rawList = (json['data'] ?? []) as List<dynamic>;
       final products = rawList

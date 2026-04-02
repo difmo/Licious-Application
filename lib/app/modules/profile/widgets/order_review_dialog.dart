@@ -163,13 +163,17 @@ class _OrderReviewDialogState extends State<OrderReviewDialog> {
 
     if (mounted) {
       setState(() => _isSubmitting = false);
+      
+      // Capture messenger BEFORE popping the dialog
+      final messenger = ScaffoldMessenger.of(context);
+      
       if (response['success'] == true) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           const SnackBar(content: Text('Thank you for your feedback!')),
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(content: Text(response['message'] ?? 'Failed to submit review')),
         );
       }

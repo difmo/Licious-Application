@@ -28,6 +28,7 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
 
   bool _isSendingOtp = false;
   bool _isVerifying = false;
+  String? _localError;
 
   @override
   void initState() {
@@ -53,6 +54,7 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
   Future<void> _sendOtp() async {
     setState(() {
       _isSendingOtp = true;
+      _localError = null;
       for (var c in _controllers) {
         c.clear();
       }
@@ -89,6 +91,9 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
 
     debugPrint('[OTP] User submitting OTP: $otp for ${widget.phoneNumber}');
 
+    // CAPTURE provider BEFORE await to avoid context issues if we navigate/unmount during verifyOtp
+    final cartProvider = CartProviderScope.of(context);
+
     setState(() => _isVerifying = true);
 
     await ref.read(authProvider.notifier).verifyOtp(
@@ -106,7 +111,6 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
 
       // Update local profile state
       try {
-        final cartProvider = CartProviderScope.of(context);
         cartProvider.updateUserProfile(
           UserProfile(
             name: authState.user.fullName,
@@ -129,15 +133,26 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
       }
     } else if (authState is AuthError) {
       debugPrint('[OTP] Verification failed: ${authState.message}');
+      
+      setState(() {
+        _localError = authState.message;
+        _isVerifying = false;
+      });
+
+      // Clear inputs on error to make it "smooth" to retry
+      for (var c in _controllers) {
+        c.clear();
+      }
+      if (_focusNodes.isNotEmpty) _focusNodes[0].requestFocus();
+
       _showSnackBar(authState.message, backgroundColor: Colors.red);
-      ref.read(authProvider.notifier).reset();
+      // Don't reset immediately, let the user see the error
     }
   }
 
-  // ── Snack bar helper ──────────────────────────────────────────────────────
-
   void _showSnackBar(String message, {Color backgroundColor = Colors.black87}) {
     if (!mounted) return;
+    ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content:
@@ -145,7 +160,7 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
         backgroundColor: backgroundColor,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        duration: const Duration(seconds: 3),
+        duration: const Duration(seconds: 4),
       ),
     );
   }
@@ -218,25 +233,33 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
               const SizedBox(height: 28),
 
               // ── 6 OTP boxes ─────────────────────────────────────────────
-              FittedBox(
-                fit: BoxFit.scaleDown,
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    ...List.generate(_otpLength, (index) {
-                      return Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 5),
-                        width: 46,
-                        height: 54,
+                  children: List.generate(_otpLength, (index) {
+                    return Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      width: 44,
+                      height: 54,
+                      child: KeyboardListener(
+                        focusNode: FocusNode(),
+                        onKeyEvent: (event) {
+                          if (event is KeyDownEvent &&
+                              event.logicalKey == LogicalKeyboardKey.backspace &&
+                              _controllers[index].text.isEmpty &&
+                              index > 0) {
+                            _focusNodes[index - 1].requestFocus();
+                          }
+                        },
                         child: TextField(
                           controller: _controllers[index],
                           focusNode: _focusNodes[index],
                           keyboardType: TextInputType.number,
                           textAlign: TextAlign.center,
-                          textAlignVertical: TextAlignVertical.center,
                           maxLength: 1,
                           style: const TextStyle(
-                            fontSize: 20,
+                            fontSize: 22,
                             fontWeight: FontWeight.bold,
                             color: Colors.black87,
                           ),
@@ -263,19 +286,30 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
                               } else {
                                 _focusNodes[index].unfocus();
                               }
-                            } else {
-                              if (index > 0) {
-                                _focusNodes[index - 1].requestFocus();
-                              }
                             }
                           },
                         ),
-                      );
-                    }),
-                  ],
+                      ),
+                    );
+                  }),
                 ),
               ),
 
+              if (_localError != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Center(
+                    child: Text(
+                      _localError!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.red,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ),
               const SizedBox(height: 15),
 
               // ── Resend ───────────────────────────────────────────────────
@@ -316,27 +350,31 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
               ),
               const SizedBox(height: 40),
 
-              // ── Verify & Proceed Button ──────────────────────────────────
               Consumer(
                 builder: (context, ref, child) {
                   final authCore = ref.watch(core.authStoreProvider);
+                  // The session is ready only if we have a verificationId
                   final isSessionReady = authCore.verificationId != null;
+                  final isBusy = _isVerifying || _isSendingOtp || (authCore.status == core.AuthStatus.loading);
 
                   return CommonButton(
                     text: 'Verify & Proceed',
-                    onPressed: _isVerifying
+                    onPressed: isBusy
                         ? null
                         : () {
                             if (!isSessionReady) {
+                              // If they click very fast before codeSent callback, we show it's still establishing
                               _showSnackBar(
-                                  'Please wait, preparing secure OTP connection...');
+                                  'Establishing secure connection... Please wait a moment.',
+                                  backgroundColor: Colors.orange.shade800);
                               return;
                             }
                             _verifyOtp();
                           },
                     backgroundColor: const Color(0xFF2E7D32),
                     borderRadius: 28,
-                    isLoading: _isVerifying,
+                    // Show loading if we are verifying, sending, OR if we don't have a session ID yet but are NOT in error state
+                    isLoading: isBusy || (!isSessionReady && authCore.error == null),
                   );
                 },
               ),

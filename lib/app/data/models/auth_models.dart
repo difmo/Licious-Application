@@ -5,6 +5,7 @@ class UserModel {
   final String phoneNumber;
   final String role;
   final bool isShopActive;
+  final String? walletId;
 
   UserModel({
     required this.id,
@@ -13,26 +14,29 @@ class UserModel {
     required this.phoneNumber,
     this.role = 'customer',
     this.isShopActive = true,
+    this.walletId,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
+    final String name = json['fullName'] ?? json['name'] ?? '';
     return UserModel(
       id: json['_id'] ?? json['id'] ?? '',
-      fullName: json['fullName'] ?? json['name'] ?? '',
+      fullName: name.isEmpty ? 'shrimpbite user' : name,
       email: json['email'] ?? '',
       phoneNumber: json['phoneNumber'] ?? json['phone'] ?? '',
       role: json['role'] ?? 'customer',
       isShopActive: json['isShopActive'] ?? json['isActive'] ?? true,
+      walletId: (json['walletId'] ?? json['wallet_id'])?.toString(),
     );
   }
 
   factory UserModel.placeholder(String phone) {
     return UserModel(
       id: 'placeholder',
-      fullName: 'New User',
+      fullName: 'shrimpbite user',
       email: '',
       phoneNumber: phone,
-      role: 'customer',
+      role: 'user',
     );
   }
 
@@ -44,6 +48,7 @@ class UserModel {
       'phoneNumber': phoneNumber,
       'role': role,
       'isShopActive': isShopActive,
+      'walletId': walletId,
     };
   }
 
@@ -62,6 +67,7 @@ class UserModel {
       phoneNumber: phoneNumber ?? this.phoneNumber,
       role: role ?? this.role,
       isShopActive: isShopActive ?? this.isShopActive,
+      walletId: walletId ?? this.walletId,
     );
   }
 }

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../data/services/order_service.dart';
+import './order_tracking_page.dart';
 
 class ActiveOrdersPage extends ConsumerStatefulWidget {
   const ActiveOrdersPage({super.key});
@@ -228,7 +229,14 @@ class _ActiveOrderCard extends StatelessWidget {
                   ],
                 ),
                 GestureDetector(
-                  onTap: () {}, // Absorb tap: do not open the track order page
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => OrderTrackingPage(order: order),
+                      ),
+                    );
+                  },
                   child: Container(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 14, vertical: 6),

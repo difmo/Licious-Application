@@ -87,7 +87,7 @@ class _OrderSuccessPageState extends State<OrderSuccessPage> {
                     .shake(delay: 600.ms, duration: 400.ms),
                 const SizedBox(height: 48),
                 const Text(
-                  'Your order was\nsuccesful !',
+                  'Your order was\nsuccessful !',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 24,

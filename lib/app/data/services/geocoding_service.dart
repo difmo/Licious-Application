@@ -85,6 +85,50 @@ class GeocodingService {
       return null;
     }
   }
+
+  // --- Search Autocomplete Methods ---
+  
+  Future<List<Map<String, dynamic>>> getPlacePredictions(String query) async {
+    try {
+      final apiKey = dotenv.get('MAPS_API_KEY');
+      final url = 'https://maps.googleapis.com/maps/api/place/autocomplete/json?input=$query&key=$apiKey&components=country:in';
+
+      final response = await _dio.get(url).timeout(const Duration(seconds: 5));
+
+      if (response.statusCode == 200 && response.data['status'] == 'OK') {
+        final List predictions = response.data['predictions'];
+        return predictions.map((p) => {
+          'placeId': p['place_id'],
+          'description': p['description'],
+          'mainText': p['structured_formatting']?['main_text'] ?? '',
+          'secondaryText': p['structured_formatting']?['secondary_text'] ?? '',
+        }).toList();
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<Map<String, double>?> getPlaceDetails(String placeId) async {
+    try {
+      final apiKey = dotenv.get('MAPS_API_KEY');
+      final url = 'https://maps.googleapis.com/maps/api/place/details/json?place_id=$placeId&key=$apiKey&fields=geometry';
+
+      final response = await _dio.get(url).timeout(const Duration(seconds: 5));
+
+      if (response.statusCode == 200 && response.data['status'] == 'OK') {
+        final location = response.data['result']['geometry']['location'];
+        return {
+          'latitude': location['lat']?.toDouble(),
+          'longitude': location['lng']?.toDouble(),
+        };
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
 }
 
 final geocodingServiceProvider = Provider<GeocodingService>((ref) {

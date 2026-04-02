@@ -4,7 +4,8 @@ import 'package:intl/intl.dart';
 import '../../data/models/subscription_model.dart';
 import '../../data/services/subscription_service.dart';
 import '../../data/services/order_service.dart';
-import '../../modules/wallet/view/wallet_page.dart' show walletBalanceProvider;
+import '../../data/services/db_service.dart';
+import '../../core/utils/date_utils.dart';
 import '../orders/view/order_tracking_page.dart';
 
 class SubscriptionPage extends ConsumerStatefulWidget {
@@ -74,7 +75,8 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
   Widget build(BuildContext context) {
     final subscriptionsAsync = ref.watch(mySubscriptionsProvider);
     final ordersAsync = ref.watch(myOrdersProvider);
-    final balanceAsync = ref.watch(walletBalanceProvider);
+    final cart = CartProviderScope.of(context);
+    final balance = cart.walletBalance;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -83,13 +85,13 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
           onRefresh: () async {
             ref.invalidate(mySubscriptionsProvider);
             ref.invalidate(myOrdersProvider);
-            ref.invalidate(walletBalanceProvider);
+            CartProviderScope.read(context).syncWallet();
           },
           color: const Color(0xFF68B92E),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildHeader(balanceAsync),
+              _buildHeader(balance),
               _buildHorizontalCalendar(subscriptionsAsync),
               Expanded(
                 child: subscriptionsAsync.when(
@@ -97,15 +99,16 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
                     data: (orders) => SingleChildScrollView(
                       physics: const AlwaysScrollableScrollPhysics(),
                       padding: const EdgeInsets.all(20),
-                      child: Column(
-                        children: [
-                          _buildStatusCard(subs, orders),
-                          const SizedBox(height: 20),
-                          _buildYourPlans(subs),
-                          const SizedBox(height: 30),
-                          _buildQuickActions(subs),
-                        ],
-                      ),
+                        child: Column(
+                          children: [
+                            _buildStatusCard(subs, orders),
+                            const SizedBox(height: 20),
+                            _buildYourPlans(subs),
+                            const SizedBox(height: 30),
+                            _buildQuickActions(subs),
+                            _buildVacationNote(),
+                          ],
+                        ),
                     ),
                     loading: () => const Center(
                         child: CircularProgressIndicator(
@@ -126,7 +129,7 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
     );
   }
 
-  Widget _buildHeader(AsyncValue<double> balanceAsync) {
+  Widget _buildHeader(double balance) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
       child: Row(
@@ -160,18 +163,11 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
                 const Icon(Icons.account_balance_wallet,
                     color: Color(0xFF68B92E), size: 16),
                 const SizedBox(width: 6),
-                balanceAsync.when(
-                  data: (b) => Text('₹${b.toStringAsFixed(0)}',
-                      style: const TextStyle(
-                          color: Color(0xFF2E7D32),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14)),
-                  loading: () => const SizedBox(
-                      width: 12,
-                      height: 12,
-                      child: CircularProgressIndicator(strokeWidth: 2)),
-                  error: (_, __) => const Text('--'),
-                ),
+                Text('₹${balance.toStringAsFixed(0)}',
+                    style: const TextStyle(
+                        color: Color(0xFF2E7D32),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14)),
               ],
             ),
           ),
@@ -190,12 +186,37 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
         itemCount: 30,
         itemBuilder: (context, index) {
           final date = _startDate.add(Duration(days: index));
-          final isSelected = date.day == _selectedDate.day &&
-              date.month == _selectedDate.month;
+          final ymd = AppDateUtils.formatDate(date);
+          final isSelected = date.year == _selectedDate.year &&
+              date.month == _selectedDate.month &&
+              date.day == _selectedDate.day;
           final isToday = date.day == DateTime.now().day &&
               date.month == DateTime.now().month;
 
-          // Show dot if any subscriptions deliver that day
+          // Determine if date is in the past
+          final now = DateTime.now();
+          final today = DateTime(now.year, now.month, now.day);
+          final isPast = date.isBefore(today);
+
+          // Logic: Only show vacation/pause icons for Today or Future dates
+          final isVacation = !isPast && 
+            subsAsync.maybeWhen(
+              data: (subs) {
+                final deliverableOnThisDay =
+                    subs.where((s) => _deliversOn(s, date)).toList();
+                if (deliverableOnThisDay.isEmpty) return false;
+                
+                // It's a "Vacation" day if every sub that is supposed to deliver is either:
+                // 1. Individually paused (status == 'Paused')
+                // 2. On a specific vacation date
+                return deliverableOnThisDay.every((s) =>
+                    s.status == 'Paused' ||
+                    s.vacationDates.any((vd) => AppDateUtils.formatDate(vd) == ymd));
+              },
+              orElse: () => false,
+            );
+
+          // Show dot if any ACTIVE subscriptions deliver that day (and not currently paused)
           final hasSub = subsAsync.maybeWhen(
             data: (subs) =>
                 subs.any((s) => s.status == 'Active' && _deliversOn(s, date)),
@@ -208,8 +229,10 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
               width: 60,
               margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
               decoration: BoxDecoration(
-                color:
-                    isSelected ? const Color(0xFF68B92E) : Colors.transparent,
+                // Task 2: Gray background for vacation dates
+                color: isSelected
+                    ? const Color(0xFF68B92E)
+                    : (isVacation ? Colors.grey.shade200 : Colors.transparent),
                 borderRadius: BorderRadius.circular(16),
                 border: isToday && !isSelected
                     ? Border.all(
@@ -227,10 +250,19 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
                   const SizedBox(height: 3),
                   Text(date.day.toString(),
                       style: TextStyle(
-                          color: isSelected ? Colors.white : Colors.black,
+                          color: isSelected 
+                              ? Colors.white 
+                              : (isVacation ? Colors.grey : Colors.black),
                           fontSize: 17,
                           fontWeight: FontWeight.w900)),
-                  if (hasSub)
+                  if (isVacation)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Icon(Icons.pause_circle_outline,
+                          size: 14, color: (isSelected ? Colors.white70 : Colors.grey)),
+                    ),
+                  // Dot logic: Hide dot if it's a vacation date
+                  if (hasSub && !isVacation)
                     Container(
                       margin: const EdgeInsets.only(top: 3),
                       width: 6,
@@ -615,27 +647,15 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
   }
 
   Widget _buildQuickActions(List<UserSubscription> subs) {
-    final isVacationOn = subs.any((s) =>
-        s.status == 'Active' &&
-        s.vacationDates.any((vd) =>
-            vd.isAfter(DateTime.now().subtract(const Duration(days: 1)))));
+    final isVacationOn = subs.isNotEmpty && subs.every((s) => s.status == 'Paused');
 
     return Row(
       children: [
         Expanded(
           child: _ActionButton(
-            icon: Icons.pause_circle_outline,
-            label: 'Pause Tomorrow',
-            color: Colors.orange,
-            onTap: subs.isEmpty ? null : () => _pauseTomorrow(subs),
-          ),
-        ),
-        const SizedBox(width: 15),
-        Expanded(
-          child: _ActionButton(
             icon: Icons.flight_takeoff,
             label: isVacationOn ? 'Vacation: ON' : 'Vacation: OFF',
-            color: isVacationOn ? Colors.blue : Colors.redAccent,
+            color: isVacationOn ? Colors.orange : Colors.grey.shade700,
             onTap: subs.isEmpty
                 ? null
                 : () => _toggleVacationMode(subs, isVacationOn),
@@ -645,85 +665,117 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
     );
   }
 
-  void _pauseTomorrow(List<UserSubscription> subs) async {
-    final tomorrow = DateTime.now().add(const Duration(days: 1));
-    final activeSubs = subs.where((s) => s.status == 'Active').toList();
-    if (activeSubs.isEmpty) return;
-
-    for (final sub in activeSubs) {
-      await ref.read(subscriptionServiceProvider).updateVacation(
-            subscriptionId: sub.id,
-            startDate: tomorrow,
-            endDate: tomorrow,
-          );
-    }
-    ref.invalidate(mySubscriptionsProvider);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Tomorrow\'s delivery paused for all plans!'),
-        backgroundColor: Colors.green,
-      ));
-    }
-  }
-
-  void _toggleVacationMode(
-      List<UserSubscription> subs, bool isCurrentlyOn) async {
-    final activeSubs = subs.where((s) => s.status == 'Active').toList();
-    if (activeSubs.isEmpty) return;
-
-    if (isCurrentlyOn) {
-      // Turn Vacation Mode OFF by setting dates in the past (or clearing via API logic)
-      final past = DateTime.now().subtract(const Duration(days: 2));
-      for (final sub in activeSubs) {
-        await ref.read(subscriptionServiceProvider).updateVacation(
-              subscriptionId: sub.id,
-              startDate: past,
-              endDate: past,
-            );
-      }
-      ref.invalidate(mySubscriptionsProvider);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Vacation mode turned OFF!'),
-          backgroundColor: Colors.orange,
-        ));
-      }
-    } else {
-      // Turn Vacation Mode ON by showing Date Picker
-      final DateTimeRange? picked = await showDateRangePicker(
-        context: context,
-        firstDate: DateTime.now(),
-        lastDate: DateTime.now().add(const Duration(days: 90)),
-        builder: (context, child) => Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Color(0xFF68B92E),
-              onPrimary: Colors.white,
+  Widget _buildVacationNote() {
+    return Container(
+      margin: const EdgeInsets.only(top: 15),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.blue.shade100),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.info_outline, size: 16, color: Colors.blue.shade800),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Note: Vacations for tomorrow must be set before 8:00 PM. '
+              'Changes after 8:00 PM will apply from the day after tomorrow.',
+              style: TextStyle(
+                fontSize: 10,
+                color: Colors.blue.shade900,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
-          child: child!,
+        ],
+      ),
+    );
+  }
+
+  void _showCutOffAlert() {
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Too Late to Pause'),
+        content: const Text(
+          'Orders for tomorrow are already being processed (Cut-off was 8:00 PM). '
+          'You can only set vacations for the day after tomorrow.',
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context), child: const Text('OK')),
+        ],
+      ),
+    );
+  }
+
+  void _toggleVacationMode(List<UserSubscription> subs, bool wasOn) async {
+    final subService = ref.read(subscriptionServiceProvider);
+
+    if (wasOn) {
+      // Resume logic
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Resume Deliveries?'),
+          content: const Text('All your paused subscriptions will be resumed starting from tomorrow.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Resume Now', style: TextStyle(color: Color(0xFF68B92E)))),
+          ],
         ),
       );
+      if (confirm != true) return;
 
-      if (picked != null) {
-        for (final sub in activeSubs) {
-          await ref.read(subscriptionServiceProvider).updateVacation(
-                subscriptionId: sub.id,
-                startDate: picked.start,
-                endDate: picked.end,
-              );
-        }
+      if (!mounted) return;
+      showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator(color: Color(0xFF68B92E))));
+      
+      try {
+        final pausedSubs = subs.where((s) => s.status == 'Paused').toList();
+        await Future.wait(pausedSubs.map((s) => subService.updateStatus(s.id, 'Active')));
         ref.invalidate(mySubscriptionsProvider);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('Vacation mode activated!'),
-            backgroundColor: Colors.blue,
-          ));
-        }
+        await ref.read(mySubscriptionsProvider.future);
+        if (mounted) Navigator.pop(context);
+      } catch (_) { if (mounted) Navigator.pop(context); }
+
+    } else {
+      // Pause logic with cut-off check
+      if (AppDateUtils.isPastCutOff()) {
+        _showCutOffAlert();
+        return;
       }
+
+      final confirm = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Activate Vacation Mode?'),
+          content: const Text('This will pause all your deliveries indefinitely starting from tomorrow.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Pause All', style: TextStyle(color: Colors.orange))),
+          ],
+        ),
+      );
+      if (confirm != true) return;
+
+      if (!mounted) return;
+      showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator(color: Color(0xFF68B92E))));
+      
+      try {
+        final activeSubs = subs.where((s) => s.status == 'Active').toList();
+        await Future.wait(activeSubs.map((s) => subService.updateStatus(s.id, 'Paused')));
+        ref.invalidate(mySubscriptionsProvider);
+        await ref.read(mySubscriptionsProvider.future);
+        if (mounted) Navigator.pop(context);
+      } catch (_) { if (mounted) Navigator.pop(context); }
     }
   }
 }
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
 
 class _ActionButton extends StatelessWidget {
   final IconData icon;

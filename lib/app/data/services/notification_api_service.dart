@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../network/api_client.dart';
 import '../models/notification_model.dart';
@@ -18,14 +19,32 @@ class NotificationsNotifier extends AsyncNotifier<List<NotificationModel>> {
   }
 
   Future<void> addNotification(NotificationModel notification) async {
+    // We update the state immediately to ensure it's reactive
     final currentData = state.asData?.value ?? [];
+    // Check if duplicate ID exists to avoid double entry
+    if (currentData.any((n) => n.id == notification.id)) return;
+    
     state = AsyncValue.data([notification, ...currentData].take(20).toList());
   }
 
   Future<void> refresh() async {
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(
-        () => ref.read(notificationApiServiceProvider).getNotifications());
+    final service = ref.read(notificationApiServiceProvider);
+    final newData = await service.getNotifications();
+    final currentData = state.asData?.value ?? [];
+    
+    // Merge: unique by ID, prioritize newData but keep fcm-* ones that might not be in DB yet
+    final Map<String, NotificationModel> map = {};
+    for (var n in currentData) {
+      map[n.id] = n;
+    }
+    for (var n in newData) {
+      map[n.id] = n;
+    }
+    
+    final merged = map.values.toList();
+    merged.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    
+    state = AsyncValue.data(merged.take(20).toList());
   }
 
   Future<void> markAsRead(String id) async {
@@ -86,37 +105,12 @@ class NotificationApiService {
               as List? ??
           [];
 
-      if (data.isEmpty) return _getMockNotifications();
-
       return data.map((json) => NotificationModel.fromJson(json)).toList();
     } catch (e) {
-      // If API fails, fallback to mock data
-      return _getMockNotifications();
+      debugPrint('Error fetching notifications: $e');
+      // On real error, we can either return empty or some helpful mock
+      return [];
     }
-  }
-
-  List<NotificationModel> _getMockNotifications() {
-    final now = DateTime.now();
-    return [
-      NotificationModel(
-        id: 'mock1',
-        title: 'Order Delivered 🎉',
-        body:
-            'Your order #ORD-4589 has been delivered successfully. Enjoy your meal!',
-        type: 'order',
-        isRead: false,
-        createdAt: now.subtract(const Duration(minutes: 2)),
-      ),
-      NotificationModel(
-        id: 'mock2',
-        title: 'Delivery Partner Assigned 🛵',
-        body:
-            'Rahul has been assigned to your order and is heading to the store.',
-        type: 'delivery',
-        isRead: false,
-        createdAt: now.subtract(const Duration(minutes: 15)),
-      ),
-    ];
   }
 
   Future<bool> markAsRead(String id) async {

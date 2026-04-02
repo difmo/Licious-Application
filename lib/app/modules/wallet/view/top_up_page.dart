@@ -19,6 +19,7 @@ class _TopUpPageState extends ConsumerState<TopUpPage> {
   bool _isLoading = false;
   // Cache service so we can call dispose() without using ref after unmount
   late PaymentService _paymentService;
+  double? _pendingAmount;
 
   @override
   void initState() {
@@ -36,7 +37,7 @@ class _TopUpPageState extends ConsumerState<TopUpPage> {
     final amount = double.tryParse(_amountController.text) ?? 0.0;
 
     final result = await ref.read(walletServiceProvider).topUpSuccess(
-          amount: amount,
+          amount: _pendingAmount ?? amount,
           razorpayOrderId: response.orderId!,
           razorpayPaymentId: response.paymentId!,
           razorpaySignature: response.signature!,
@@ -47,10 +48,10 @@ class _TopUpPageState extends ConsumerState<TopUpPage> {
       if (result['success'] == true) {
         // Sync both the ChangeNotifier (used in Profile/Checkout) 
         // and invalidate the Riverpod providers (used in WalletPage)
-        CartProviderScope.of(context).syncWallet();
-        ref.invalidate(walletBalanceProvider);
+        CartProviderScope.read(context).syncWallet();
         ref.invalidate(walletHistoryProvider);
         
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
               content: Text('Wallet topped up successfully!'),
@@ -58,6 +59,7 @@ class _TopUpPageState extends ConsumerState<TopUpPage> {
         );
         Navigator.pop(context);
       } else {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content: Text(result['message'] ?? 'Verification failed'),
@@ -68,6 +70,7 @@ class _TopUpPageState extends ConsumerState<TopUpPage> {
   }
 
   void _handlePaymentFailure(PaymentFailureResponse response) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
           content: Text('Payment Failed: ${response.message}'),
@@ -76,6 +79,7 @@ class _TopUpPageState extends ConsumerState<TopUpPage> {
   }
 
   void _handleExternalWallet(ExternalWalletResponse response) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
           content: Text('External Wallet: ${response.walletName}'),
@@ -92,7 +96,6 @@ class _TopUpPageState extends ConsumerState<TopUpPage> {
 
   @override
   Widget build(BuildContext context) {
-    final profile = CartProviderScope.of(context).userProfile;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -125,6 +128,10 @@ class _TopUpPageState extends ConsumerState<TopUpPage> {
                     fontWeight: FontWeight.w800,
                     color: AppColors.primaryDark),
                 hintText: '0',
+                hintStyle: const TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.grey),
                 focusedBorder: UnderlineInputBorder(
                     borderSide:
                         BorderSide(color: AppColors.primaryDark, width: 2)),
@@ -149,24 +156,31 @@ class _TopUpPageState extends ConsumerState<TopUpPage> {
                         CircularProgressIndicator(color: AppColors.accentGreen))
                 : ElevatedButton(
                     onPressed: () async {
-                      final amount =
-                          double.tryParse(_amountController.text) ?? 0.0;
+                      final amountText = _amountController.text.trim();
+                      final amount = double.tryParse(amountText) ?? 0.0;
                       if (amount < 100) {
                         ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                                 content: Text('Minimum top-up is ₹100')));
                         return;
                       }
+
+                      if (!mounted) return;
+                      final profile = CartProviderScope.read(context).userProfile;
                       final messenger = ScaffoldMessenger.of(context);
+                      
                       try {
+                        _pendingAmount = amount;
                         await _paymentService.openCheckout(
                           amount: amount,
                           contact: profile.phone,
                           email: profile.email,
                         );
                       } catch (e) {
-                        messenger.showSnackBar(
-                            SnackBar(content: Text(e.toString())));
+                        if (mounted) {
+                          messenger.showSnackBar(
+                              SnackBar(content: Text(e.toString())));
+                        }
                       }
                     },
                     style: ElevatedButton.styleFrom(

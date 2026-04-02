@@ -41,7 +41,8 @@ class AddressManagementPage extends ConsumerWidget {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const SelectDeliveryAddressScreen()),
+                  MaterialPageRoute(
+                      builder: (_) => const SelectDeliveryAddressScreen(isFromProfile: true)),
                 ).then((_) => cart.loadAddresses());
               },
               borderRadius: BorderRadius.circular(16),
@@ -165,11 +166,6 @@ class AddressManagementPage extends ConsumerWidget {
                             color: Color(0xFF1A1A1A),
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        const Text(
-                          '• 35 m',
-                          style: TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.bold),
-                        ),
                         if (isSelected) ...[
                           const SizedBox(width: 8),
                           Container(
@@ -195,51 +191,28 @@ class AddressManagementPage extends ConsumerWidget {
               ),
               Column(
                 children: [
-                  Icon(Icons.share_outlined, size: 20, color: Colors.grey.shade400),
-                  const SizedBox(height: 12),
-                  GestureDetector(
-                    onTap: () {
-                       // Show more options (Edit/Delete)
-                       _showAddressOptions(context, cart, addr);
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined, size: 22, color: Colors.blueAccent),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => SelectDeliveryAddressScreen(addressToEdit: addr, isFromProfile: true),
+                        ),
+                      ).then((_) => cart.loadAddresses());
                     },
-                    child: Icon(Icons.more_vert_rounded, size: 20, color: Colors.grey.shade400),
+                    tooltip: 'Edit Address',
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, size: 22, color: Colors.redAccent),
+                    onPressed: () => cart.removeAddress(addr.id),
+                    tooltip: 'Delete Address',
                   ),
                 ],
               ),
             ],
           ),
         ],
-      ),
-    );
-  }
-
-  void _showAddressOptions(BuildContext context, CartProvider cart, UserAddress addr) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (context) => Container(
-        padding: const EdgeInsets.symmetric(vertical: 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.edit_outlined),
-              title: const Text('Edit Address', style: TextStyle(fontWeight: FontWeight.bold)),
-              onTap: () {
-                Navigator.pop(context);
-                // Implementation for editing (could link back to form or map)
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.delete_outline, color: Colors.redAccent),
-              title: const Text('Delete Address', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
-              onTap: () {
-                cart.removeAddress(addr.id);
-                Navigator.pop(context);
-              },
-            ),
-          ],
-        ),
       ),
     );
   }

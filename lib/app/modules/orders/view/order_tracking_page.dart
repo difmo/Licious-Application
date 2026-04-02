@@ -407,6 +407,14 @@ class _OrderTrackingPageState extends ConsumerState<OrderTrackingPage> {
                 padding: EdgeInsets.symmetric(vertical: 20),
                 child: Divider(color: Color(0xFFEEEEEE), thickness: 1.5),
               ),
+
+              // ── Items List ──────────────────────────────────────────────
+              _buildItemsSection(items),
+
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: Divider(color: Color(0xFFEEEEEE), thickness: 1.5),
+              ),
               
               // ── Rider Section ──────────────────────────────────────────────
               _buildRiderSection(),
@@ -419,6 +427,51 @@ class _OrderTrackingPageState extends ConsumerState<OrderTrackingPage> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildItemsSection(List<dynamic> items) {
+    if (items.isEmpty) return const SizedBox();
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('ORDER ITEMS',
+            style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey)),
+        const SizedBox(height: 12),
+        ...items.map((item) {
+          final product = item['product'];
+          final name = (product is Map && product['name'] != null) ? product['name'].toString() : 'Item';
+          final qty = item['quantity']?.toString() ?? '1';
+          final price = item['price']?.toString() ?? '';
+          
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF7F8FA),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: Text('${qty}x', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF114F3B))),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                ),
+                if (price.isNotEmpty && price != '0' && price != '0.0')
+                  Text('₹$price', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+              ],
+            ),
+          );
+        }).toList(),
+      ],
     );
   }
 

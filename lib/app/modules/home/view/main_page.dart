@@ -48,8 +48,16 @@ class _MainPageState extends ConsumerState<MainPage> {
     });
     // Initial cart sync from API
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
       final cart = CartProviderScope.of(context);
+      
       await cart.loadCartFromApi();
+      if (!mounted) return;
+      
+      // Proactively load addresses to see if we need the permission sheet
+      await cart.loadAddresses(); 
+      if (!mounted) return;
+
       _initSocketListeners();
       
       // If no address exists, show the Zepto-style permission sheet
@@ -102,20 +110,33 @@ class _MainPageState extends ConsumerState<MainPage> {
       if (!mounted) return;
 
       final data = message.data;
-      debugPrint('📩 FCM Fallback Data: $data');
+      final notification = message.notification;
+      debugPrint('📩 FCM Incoming Data: $data');
 
+      // 1. ALWAYS add to the local notification list so it's not "static"
+      if (notification != null) {
+        ref.read(notificationsProvider.notifier).addNotification(
+              NotificationModel(
+                id: message.messageId ?? 'fcm-${DateTime.now().millisecondsSinceEpoch}',
+                title: notification.title ?? 'Shrimpbite Update',
+                body: notification.body ?? '',
+                type: data['type']?.toString() ?? 'promotion',
+                isRead: false,
+                createdAt: DateTime.now(),
+              ),
+            );
+      }
+
+      // 2. Handle specific delivery triggers for the review dialog
       final String? type = data['type']?.toString().toLowerCase();
       final String? status = data['status']?.toString().toLowerCase();
       final String? orderId = data['orderId']?.toString() ??
           data['order_id']?.toString() ??
           data['_id']?.toString();
 
-      // Check if this is a delivery notification (matches your logs!)
-      // Note: Data might be in notification or raw data
       if (type == 'order_delivered' ||
           status == 'delivered' ||
-          (message.notification?.title?.toLowerCase().contains('delivered') ??
-              false)) {
+          (notification?.title?.toLowerCase().contains('delivered') ?? false)) {
         debugPrint('🔔 FCM Fallback: Triggering review dialog for $orderId');
         _handleOrderDelivered({'orderId': orderId});
       }

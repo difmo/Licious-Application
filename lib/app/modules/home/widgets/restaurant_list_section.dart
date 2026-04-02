@@ -5,21 +5,6 @@ import '../provider/shop_provider.dart';
 import '../../home/view/restaurant_menu_page.dart';
 import '../../../widgets/modern_filter_bottom_sheet.dart';
 
-// ── Cuisine types to cycle through for display ───────────────────────────────
-const List<String> _cuisineTypes = [
-  'Seafood · Coastal',
-  'Seafood · Grill',
-  'Seafood · Pan Asian',
-  'Seafood · Kerala',
-  'Seafood · Thai',
-  'Seafood · Mughlai',
-  'Seafood · Chinese',
-  'Seafood · Continental',
-  'Seafood · Goan',
-  'Seafood · Fusion',
-  'Seafood · Tandoor',
-];
-
 // ── Placeholder hero images (local assets as fallback) ───────────────────────
 const List<String> _heroImages = [
   'assets/images/shrimp_dish_1.png',
@@ -33,29 +18,6 @@ const List<String> _heroImages = [
   'assets/images/shrimp_tiger_trio.png',
   'assets/images/shrimp_cooked_duo.png',
 ];
-
-// ── Offer cycling logic ───────────────────────────────────────────────────────
-String _offerText(int index) {
-  switch (index % 3) {
-    case 0:
-      return 'Flat ₹100 OFF above ₹499';
-    case 1:
-      return 'Flat ₹150 OFF above ₹799';
-    default:
-      return 'Flat ₹200 OFF above ₹999';
-  }
-}
-
-int _offerAbove(int index) {
-  switch (index % 3) {
-    case 0:
-      return 499;
-    case 1:
-      return 799;
-    default:
-      return 999;
-  }
-}
 
 class RestaurantListSection extends ConsumerWidget {
   const RestaurantListSection({super.key});
@@ -105,15 +67,6 @@ class _ShopsList extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              Text(
-                '${shops.length} places',
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(width: 8),
               InkWell(
                 onTap: () => ModernFilterBottomSheet.show(context),
                 borderRadius: BorderRadius.circular(8),
@@ -170,30 +123,30 @@ class _ShopCard extends StatelessWidget {
   const _ShopCard({required this.shop, required this.index});
 
   Color get _offerColor {
-    final above = _offerAbove(index);
-    if (above >= 999) return const Color(0xFF7B2FF7);
-    if (above >= 799) return const Color(0xFF1565C0);
+    if (shop.offer.contains('200')) return const Color(0xFF7B2FF7);
+    if (shop.offer.contains('150')) return const Color(0xFF1565C0);
     return const Color(0xFF68B92E);
   }
 
   String get _heroImage => _heroImages[index % _heroImages.length];
-  String get _cuisine => _cuisineTypes[index % _cuisineTypes.length];
+  String get _cuisine => shop.cuisine.isNotEmpty ? shop.cuisine : 'Seafood';
 
 
 
 
 
   String get _deliveryTime {
-    final mins = 50 + (index * 5) % 40;
-    return '$mins–${mins + 15} mins';
+    if (shop.deliveryTime != '30-45 mins') return shop.deliveryTime;
+    final mins = 15 + (index * 5) % 20;
+    return '$mins–${mins + 10} mins';
   }
 
   double get _distance {
     final code = shop.id.codeUnits.fold<int>(0, (a, b) => a + b);
-    return ((code % 50) + 5) / 10.0; // 0.5 – 5.4 km
+    return ((code % 30) + 5) / 10.0; // 0.5 – 3.4 km
   }
 
-  bool get _isFeatured => index < 3;
+  bool get _isFeatured => shop.isFeatured;
 
   @override
   Widget build(BuildContext context) {
@@ -440,28 +393,30 @@ class _ShopCard extends StatelessWidget {
               ),
 
               // ── Offer Strip ──────────────────────────────────────────────
-              Padding(
-                padding: const EdgeInsets.fromLTRB(14, 8, 14, 14),
-                child: Row(
-                  children: [
-                    Icon(Icons.local_offer_outlined,
-                        size: 14, color: _offerColor),
-                    const SizedBox(width: 5),
-                    Expanded(
-                      child: Text(
-                        _offerText(index),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: _offerColor,
-                          fontWeight: FontWeight.w600,
+              if (shop.offer.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 8, 14, 14),
+                  child: Row(
+                    children: [
+                      Icon(Icons.local_offer_outlined,
+                          size: 14, color: _offerColor),
+                      const SizedBox(width: 5),
+                      Expanded(
+                        child: Text(
+                          shop.offer,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: _offerColor,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
+              if (shop.offer.isEmpty) const SizedBox(height: 14),
             ]),
           ),
         ),

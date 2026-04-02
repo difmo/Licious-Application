@@ -116,9 +116,15 @@ class AuthInterceptor extends QueuedInterceptor {
     return handler.next(err);
   }
 
-  void _onRefreshFailed(String reason) {
+  void _onRefreshFailed(String reason) async {
+    final token = await _storage.getAccessToken();
+    if (token == null || token.isEmpty) {
+      // Already logged out or never logged in, ignore to avoid loops
+      return;
+    }
+
     debugPrint('AuthInterceptor: FORCE LOGOUT TRIGGERED - $reason');
-    _storage.clearAll();
+    await _storage.clearAll();
     _logoutController.add(reason);
     _logoutCallback?.onForceLogout(reason);
   }

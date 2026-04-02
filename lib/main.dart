@@ -44,23 +44,40 @@ void main() async {
   );
 }
 
-class ShrimpbiteApp extends ConsumerWidget {
+class ShrimpbiteApp extends ConsumerStatefulWidget {
   const ShrimpbiteApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final cartService = ref.watch(cartServiceProvider);
-    final walletService = ref.watch(walletServiceProvider);
-    final addressService = ref.watch(addressServiceProvider);
-    final authService = ref.watch(authServiceProvider);
+  ConsumerState<ShrimpbiteApp> createState() => _ShrimpbiteAppState();
+}
 
-    return CartProviderScope(
-      provider: CartProvider(
+class _ShrimpbiteAppState extends ConsumerState<ShrimpbiteApp> {
+  late CartProvider _cartProvider;
+  bool _isInit = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_isInit) {
+      final cartService = ref.watch(cartServiceProvider);
+      final walletService = ref.watch(walletServiceProvider);
+      final addressService = ref.watch(addressServiceProvider);
+      final authService = ref.watch(authServiceProvider);
+
+      _cartProvider = CartProvider(
         service: cartService,
         walletService: walletService,
         addressService: addressService,
         authService: authService,
-      ),
+      );
+      _isInit = true;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return CartProviderScope(
+      provider: _cartProvider,
       child: MaterialApp(
         title: 'Shrimpbite',
         debugShowCheckedModeBanner: false,

@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/subscription_model.dart';
 import '../../../data/services/subscription_service.dart';
 import '../../../data/services/order_service.dart';
+import '../../orders/view/order_tracking_page.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/utils/date_utils.dart';
 
 class SubscriptionDashboardPage extends ConsumerWidget {
   const SubscriptionDashboardPage({super.key});
@@ -21,13 +23,32 @@ class SubscriptionDashboardPage extends ConsumerWidget {
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: subscriptionsAsync.when(
-        data: (subscriptions) => subscriptions.isEmpty
-            ? _buildEmptyState(context)
-            : _buildSubscriptionList(context, ref, subscriptions),
-        loading: () => const Center(
-            child: CircularProgressIndicator(color: AppColors.accentGreen)),
-        error: (err, stack) => Center(child: Text('Error: $err')),
+      body: RefreshIndicator(
+        color: AppColors.accentGreen,
+        onRefresh: () async {
+          ref.invalidate(mySubscriptionsProvider);
+          try {
+            await ref.read(mySubscriptionsProvider.future);
+          } catch (_) {}
+        },
+        child: subscriptionsAsync.when(
+          data: (subscriptions) => subscriptions.isEmpty
+              ? Stack(
+                  children: [
+                    ListView(physics: const AlwaysScrollableScrollPhysics()), // Allows pull-to-refresh
+                    _buildEmptyState(context),
+                  ],
+                )
+              : _buildSubscriptionList(context, ref, subscriptions),
+          loading: () => const Center(
+              child: CircularProgressIndicator(color: AppColors.accentGreen)),
+          error: (err, stack) => Stack(
+            children: [
+              ListView(physics: const AlwaysScrollableScrollPhysics()),
+              Center(child: Text('Error: $err')),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -64,12 +85,88 @@ class SubscriptionDashboardPage extends ConsumerWidget {
   Widget _buildSubscriptionList(BuildContext context, WidgetRef ref,
       List<UserSubscription> subscriptions) {
     return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(16),
-      itemCount: subscriptions.length,
+      itemCount: subscriptions.length + 1,
       itemBuilder: (context, index) {
+        if (index == subscriptions.length) {
+          return _buildVacationNote();
+        }
         final sub = subscriptions[index];
         return _buildSubscriptionCard(context, ref, sub);
       },
+    );
+  }
+
+  Widget _buildVacationNote() {
+    return Container(
+      margin: const EdgeInsets.only(top: 8, bottom: 24),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.blue.shade100),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.tips_and_updates_outlined, size: 20, color: Colors.blue.shade800),
+              const SizedBox(width: 8),
+              Text(
+                'Vacation & Scheduling Rules',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue.shade900,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _buildRuleRow('Vacation ON: ', 'Pauses your deliveries while away.'),
+          _buildRuleRow('Vacation OFF: ', 'Normal deliveries resume as scheduled.'),
+          const SizedBox(height: 12),
+          Text(
+            '⏰ The 8:00 PM Cut-off Rule',
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.blue.shade900),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '• Before 8:00 PM: Changes apply from TOMORROW\n'
+            '• After 8:00 PM: Changes apply from DAY AFTER TOMORROW\n\n'
+            'Why? By 8 PM, preparation and inventory checks for the next day begin to ensure maximum freshness!',
+            style: TextStyle(fontSize: 12, color: Colors.blue.shade900, height: 1.4),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            '📊 Examples:',
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.blue.shade900),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Example A (Morning): "It\'s 10:00 AM on Monday. I set Vacation to ON. My Tuesday delivery will be paused."\n\n'
+            'Example B (Late Night): "It\'s 9:30 PM on Monday. I set Vacation to ON. My Tuesday delivery is already prepped, so it will still arrive. My vacation will start from Wednesday."',
+            style: TextStyle(fontSize: 12, color: Colors.blue.shade900, height: 1.4, fontStyle: FontStyle.italic),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRuleRow(String title, String desc) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: RichText(
+        text: TextSpan(
+          style: TextStyle(fontSize: 12, color: Colors.blue.shade900),
+          children: [
+            TextSpan(text: title, style: const TextStyle(fontWeight: FontWeight.bold)),
+            TextSpan(text: desc),
+          ],
+        ),
+      ),
     );
   }
 
@@ -120,6 +217,20 @@ class SubscriptionDashboardPage extends ConsumerWidget {
                       Text('${sub.frequency} • Qty: ${sub.quantity}',
                           style: TextStyle(
                               color: Colors.grey.shade600, fontSize: 13)),
+                      if (!isActive)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4.0),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.shade50,
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: Colors.blue.shade200)
+                            ),
+                            child: Text('🏖️ Vacation ON', 
+                              style: TextStyle(color: Colors.blue.shade700, fontSize: 10, fontWeight: FontWeight.bold)),
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -127,6 +238,36 @@ class SubscriptionDashboardPage extends ConsumerWidget {
                   value: isActive,
                   activeThumbColor: AppColors.accentGreen,
                   onChanged: (val) async {
+                    if (!val && AppDateUtils.isPastCutOff()) {
+                      _showCutOffAlert(context);
+                      return;
+                    }
+
+                    if (val && !isActive) {
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          title: const Text('Resume Subscription?', style: TextStyle(fontWeight: FontWeight.bold)),
+                          content: const Text(
+                            'If you turn on this subscription, it will resume deliveries from tomorrow and your vacation mode gets turned off automatically.',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, false),
+                              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, true),
+                              child: const Text('Yes, Resume', style: TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.bold)),
+                            ),
+                          ],
+                        ),
+                      );
+
+                      if (confirm != true) return;
+                    }
+
                     final newStatus = val ? 'Active' : 'Paused';
                     final success = await ref
                         .read(subscriptionServiceProvider)
@@ -169,7 +310,9 @@ class SubscriptionDashboardPage extends ConsumerWidget {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (isActive)
+                    if (isActive) ...[
+                      _TrackDeliveryButton(subscriptionId: sub.id),
+                      const SizedBox(width: 6),
                       ElevatedButton(
                         onPressed: () => _placeSpotOrder(context, ref, sub),
                         style: ElevatedButton.styleFrom(
@@ -186,6 +329,7 @@ class SubscriptionDashboardPage extends ConsumerWidget {
                             style: TextStyle(
                                 fontSize: 11, fontWeight: FontWeight.bold)),
                       ),
+                    ],
                     const SizedBox(width: 4),
                     TextButton.icon(
                       onPressed: () => _showVacationPicker(context, ref, sub),
@@ -249,9 +393,10 @@ class SubscriptionDashboardPage extends ConsumerWidget {
 
   void _showVacationPicker(
       BuildContext context, WidgetRef ref, UserSubscription sub) async {
+    final firstDate = AppDateUtils.getFirstAllowedDate();
     final DateTimeRange? picked = await showDateRangePicker(
       context: context,
-      firstDate: DateTime.now(),
+      firstDate: firstDate,
       lastDate: DateTime.now().add(const Duration(days: 90)),
       builder: (context, child) {
         return Theme(
@@ -269,10 +414,18 @@ class SubscriptionDashboardPage extends ConsumerWidget {
     );
 
     if (picked != null) {
+      // Task 3: Check if they picked tomorrow but it's past cut-off
+      final isTomorrowPicked = AppDateUtils.formatDate(picked.start) ==
+          AppDateUtils.formatDate(firstDate);
+      if (isTomorrowPicked && AppDateUtils.isPastCutOff()) {
+        if (context.mounted) _showCutOffAlert(context);
+        return;
+      }
+
+      final dates = AppDateUtils.getDatesBetween(picked.start, picked.end);
       final res = await ref.read(subscriptionServiceProvider).updateVacation(
             subscriptionId: sub.id,
-            startDate: picked.start,
-            endDate: picked.end,
+            vacationDates: dates,
           );
 
       if (context.mounted) {
@@ -285,5 +438,78 @@ class SubscriptionDashboardPage extends ConsumerWidget {
         }
       }
     }
+  }
+
+  void _showCutOffAlert(BuildContext context) {
+    if (!context.mounted) return;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Too Late to Pause'),
+        content: const Text(
+          'Orders for tomorrow are already being processed (Cut-off was 8:00 PM). '
+          'You can only set vacations for the day after tomorrow.',
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context), child: const Text('OK')),
+        ],
+      ),
+    );
+  }
+}
+
+class _TrackDeliveryButton extends ConsumerWidget {
+  final String subscriptionId;
+
+  const _TrackDeliveryButton({required this.subscriptionId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // This value is cached by FutureProvider.family, so it's efficient to watch.
+    final orderAsync = ref.watch(orderBySubscriptionProvider(subscriptionId));
+
+    return orderAsync.maybeWhen(
+      data: (order) {
+        if (order.isEmpty) return const SizedBox.shrink();
+
+        final status = (order['status'] ?? '').toString().toLowerCase();
+        // Don't show tracking for finished or non-existent orders
+        if (status == 'delivered' || status == 'cancelled' || status.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        return ElevatedButton(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => OrderTrackingPage(order: order),
+              ),
+            );
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFFE8F5E9),
+            foregroundColor: const Color(0xFF1B5E20),
+            elevation: 0,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            minimumSize: Size.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: const [
+              Icon(Icons.location_searching, size: 14),
+              SizedBox(width: 4),
+              Text('Track',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+            ],
+          ),
+        );
+      },
+      orElse: () => const SizedBox.shrink(),
+    );
   }
 }

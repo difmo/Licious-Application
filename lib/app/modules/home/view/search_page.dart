@@ -63,7 +63,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
             onSubmitted: _onSearch,
             textInputAction: TextInputAction.search,
             decoration: InputDecoration(
-              hintText: 'Search for shops or products...',
+              hintText: 'Search Shrimp type...',
               hintStyle: const TextStyle(fontSize: 14, color: Colors.grey),
               prefixIcon:
                   const Icon(Icons.search, color: Color(0xFF38B24D), size: 20),

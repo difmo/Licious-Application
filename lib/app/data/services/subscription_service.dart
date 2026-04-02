@@ -50,7 +50,7 @@ class SubscriptionService {
             message: json['message']?.toString() ??
                 'Failed to load user subscriptions');
       }
-      final data = json['subscriptions'] as List<dynamic>? ?? [];
+      final data = (json['subscriptions'] ?? json['data']) as List<dynamic>? ?? [];
       return data
           .map((e) => UserSubscription.fromJson(e as Map<String, dynamic>))
           .toList();
@@ -109,19 +109,17 @@ class SubscriptionService {
     }
   }
 
-  /// Schedule vacation (pause delivery for a range).
+  /// Schedule vacation with a list of specific dates (YYYY-MM-DD format).
   Future<Map<String, dynamic>> updateVacation({
     required String subscriptionId,
-    required DateTime startDate,
-    required DateTime endDate,
+    required List<String> vacationDates,
   }) async {
     try {
       final json = await _client.post(
         '${ApiClient.subscriptionBaseUrl}/vacation',
         data: {
           'subscriptionId': subscriptionId,
-          'startDate': startDate.toIso8601String(),
-          'endDate': endDate.toIso8601String(),
+          'vacationDates': vacationDates,
         },
         requiresAuth: true,
       );

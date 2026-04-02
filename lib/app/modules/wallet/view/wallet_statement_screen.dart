@@ -393,14 +393,16 @@ class _TransactionItemWidget extends StatelessWidget {
                   color: isCredit ? Colors.green : Colors.redAccent,
                 ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                'Bal: ₹${transaction.balanceAfter.toStringAsFixed(0)}',
-                style: const TextStyle(
-                    fontSize: 10,
-                    color: Colors.grey,
-                    fontWeight: FontWeight.bold),
-              ),
+              if (transaction.balanceAfter > 0) ...[
+                const SizedBox(height: 4),
+                Text(
+                  'Bal: ₹${transaction.balanceAfter.toStringAsFixed(0)}',
+                  style: const TextStyle(
+                      fontSize: 10,
+                      color: Colors.grey,
+                      fontWeight: FontWeight.bold),
+                ),
+              ],
             ],
           ),
         ],

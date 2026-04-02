@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../data/network/api_client.dart';
@@ -7,6 +8,7 @@ import '../../../data/services/db_service.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../data/services/location_service.dart';
 import '../../../data/services/geocoding_service.dart';
+import '../../location/view/select_delivery_address_screen.dart';
 import 'payment_method_page.dart';
 
 class ShippingAddressPage extends ConsumerStatefulWidget {
@@ -21,9 +23,12 @@ class _ShippingAddressPageState extends ConsumerState<ShippingAddressPage> {
   final _formKey = GlobalKey<FormState>();
 
   final _fullAddressCtrl = TextEditingController();
+  final _nameCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController();
   final _cityCtrl = TextEditingController();
   final _stateCtrl = TextEditingController();
   final _pincodeCtrl = TextEditingController();
+  bool _useProfileDetails = false;
 
   String _selectedLabel = 'Home';
   final List<Map<String, dynamic>> _labels = [
@@ -49,6 +54,8 @@ class _ShippingAddressPageState extends ConsumerState<ShippingAddressPage> {
   @override
   void dispose() {
     _fullAddressCtrl.dispose();
+    _nameCtrl.dispose();
+    _phoneCtrl.dispose();
     _cityCtrl.dispose();
     _stateCtrl.dispose();
     _pincodeCtrl.dispose();
@@ -59,14 +66,17 @@ class _ShippingAddressPageState extends ConsumerState<ShippingAddressPage> {
     setState(() => _isSaving = true);
     try {
       final loc = await ref.read(locationServiceProvider).getCurrentLocation();
+      if (!mounted) return;
       if (loc != null) {
         final geo = ref.read(geocodingServiceProvider);
-        final data = await geo.getAddressFromLatLng(loc.latitude, loc.longitude);
+        final data =
+            await geo.getAddressFromLatLng(loc.latitude, loc.longitude);
+        if (!mounted) return;
         if (data != null) {
-           _fullAddressCtrl.text = data['addressLine'] ?? '';
-           _cityCtrl.text = data['city'] ?? '';
-           _stateCtrl.text = data['state'] ?? '';
-           _pincodeCtrl.text = data['postalCode'] ?? '';
+          _fullAddressCtrl.text = data['addressLine'] ?? '';
+          _cityCtrl.text = data['city'] ?? '';
+          _stateCtrl.text = data['state'] ?? '';
+          _pincodeCtrl.text = data['postalCode'] ?? '';
         }
       }
     } catch (e) {
@@ -85,9 +95,16 @@ class _ShippingAddressPageState extends ConsumerState<ShippingAddressPage> {
       final cart = CartProviderScope.of(context);
       final service = cart.addressService!;
 
+      String combinedAddress = '';
+      if (_nameCtrl.text.trim().isNotEmpty)
+        combinedAddress += 'Name: ${_nameCtrl.text.trim()}, ';
+      if (_phoneCtrl.text.trim().isNotEmpty)
+        combinedAddress += 'Phone: ${_phoneCtrl.text.trim()}, ';
+      combinedAddress += _fullAddressCtrl.text.trim();
+
       final result = await service.saveAddress(
         label: _selectedLabel,
-        fullAddress: _fullAddressCtrl.text.trim(),
+        fullAddress: combinedAddress,
         city: _cityCtrl.text.trim(),
         state: _stateCtrl.text.trim(),
         pincode: _pincodeCtrl.text.trim(),
@@ -100,21 +117,21 @@ class _ShippingAddressPageState extends ConsumerState<ShippingAddressPage> {
           setState(() {
             _showAddForm = false;
             _isSaving = false;
-            // Clear fields
             _fullAddressCtrl.clear();
             _cityCtrl.clear();
             _pincodeCtrl.clear();
             _stateCtrl.clear();
+            _nameCtrl.clear();
+            _phoneCtrl.clear();
           });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('Address saved successfully!'),
-              backgroundColor: AppColors.primary,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
-            ),
-          );
+          
+          // AUTO-NAVIGATE TO PAYMENT
+          if (mounted) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const PaymentMethodPage()),
+            );
+          }
         }
       }
     } catch (e) {
@@ -173,21 +190,86 @@ class _ShippingAddressPageState extends ConsumerState<ShippingAddressPage> {
             padding: const EdgeInsets.only(bottom: 20, top: 10),
             child: const _CheckoutStepper(currentStep: 1),
           ),
-          Expanded(
-            child: SingleChildScrollView(
-               physics: const BouncingScrollPhysics(),
-               child: Column(
-                  children: [
-                    if (addresses.isNotEmpty) ...[
-                       _buildAddressListView(cart),
-                       const Divider(height: 32, indent: 24, endIndent: 24),
+          if (_showAddForm)
+            Expanded(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: _buildAddAddressView(),
+              ),
+            )
+          else ...[
+            // TOP SECTION: Add new address actions
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Add New Address',
+                      style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1F2937))),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => setState(() => _showAddForm = true),
+                          icon: const Icon(Icons.edit_location_alt_rounded,
+                              size: 20, color: AppColors.accentGreen),
+                          label: const Text('Add Manually',
+                              style: TextStyle(
+                                  color: AppColors.accentGreen,
+                                  fontWeight: FontWeight.bold)),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            side:
+                                const BorderSide(color: AppColors.accentGreen),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            setState(() => _showAddForm = true);
+                            _detectLocation();
+                          },
+                          icon: const Icon(Icons.my_location,
+                              size: 20, color: Colors.white),
+                          label: const Text('Locate Me',
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.accentGreen,
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                      ),
                     ],
-                    _buildAddAddressView(),
-                  ],
-               ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          if (addresses.isNotEmpty) _buildBottomAction(cart),
+
+            const Divider(
+                height: 1, indent: 24, endIndent: 24, color: Colors.black12),
+
+            // BOTTOM SECTION: Scrollable saved addresses list
+            Expanded(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: _buildAddressListView(cart),
+              ),
+            ),
+          ],
+          if (addresses.isNotEmpty && !_showAddForm) _buildBottomAction(cart),
         ],
       ),
     );
@@ -196,37 +278,45 @@ class _ShippingAddressPageState extends ConsumerState<ShippingAddressPage> {
   Widget _buildAddressListView(CartProvider cart) {
     final addresses = cart.addresses;
     return Container(
-        key: const ValueKey('address_list'),
-        padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Select Delivery Address',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1F2937),
-              ),
+      key: const ValueKey('address_list'),
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Select Delivery Address',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1F2937),
             ),
-            const SizedBox(height: 16),
-            if (addresses.isEmpty)
-              _buildEmptyState()
-            else
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: addresses.length,
-                itemBuilder: (context, index) {
-                  final addr = addresses[index];
-                  final isSelected = cart.selectedAddressIndex == index;
-                  return _buildAddressCard(addr, isSelected, () {
-                    cart.selectAddress(index);
-                  });
-                },
-              ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 16),
+          if (addresses.isEmpty)
+            _buildEmptyState()
+          else
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: addresses.length,
+              itemBuilder: (context, index) {
+                final addr = addresses[index];
+                final isSelected = cart.selectedAddressIndex == index;
+                return _buildAddressCard(addr, isSelected, () {
+                  cart.selectAddress(index);
+                }, () {
+                  cart.removeAddress(addr.id);
+                }, () {
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => SelectDeliveryAddressScreen(
+                              addressToEdit: addr))).then((_) => cart.loadAddresses());
+                });
+              },
+            ),
+        ],
+      ),
     );
   }
 
@@ -266,8 +356,8 @@ class _ShippingAddressPageState extends ConsumerState<ShippingAddressPage> {
     );
   }
 
-  Widget _buildAddressCard(
-      UserAddress addr, bool isSelected, VoidCallback onTap) {
+  Widget _buildAddressCard(UserAddress addr, bool isSelected,
+      VoidCallback onTap, VoidCallback onDelete, VoidCallback onEdit) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -370,29 +460,47 @@ class _ShippingAddressPageState extends ConsumerState<ShippingAddressPage> {
               ),
             ),
             const SizedBox(width: 8),
-            Container(
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color:
-                      isSelected ? AppColors.accentGreen : Colors.grey.shade300,
-                  width: 2,
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isSelected
+                          ? AppColors.accentGreen
+                          : Colors.grey.shade300,
+                      width: 2,
+                    ),
+                  ),
+                  child: isSelected
+                      ? Center(
+                          child: Container(
+                            width: 12,
+                            height: 12,
+                            decoration: const BoxDecoration(
+                              color: AppColors.accentGreen,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        )
+                      : null,
                 ),
-              ),
-              child: isSelected
-                  ? Center(
-                      child: Container(
-                        width: 12,
-                        height: 12,
-                        decoration: BoxDecoration(
-                          color: AppColors.accentGreen,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    )
-                  : null,
+                const SizedBox(height: 16),
+                InkWell(
+                  onTap: onEdit,
+                  child: const Icon(Icons.edit_outlined,
+                      color: Colors.blueAccent, size: 22),
+                ),
+                const SizedBox(height: 16),
+                InkWell(
+                  onTap: onDelete,
+                  child: const Icon(Icons.delete_outline,
+                      color: Colors.redAccent, size: 22),
+                ),
+              ],
             ),
           ],
         ),
@@ -411,22 +519,29 @@ class _ShippingAddressPageState extends ConsumerState<ShippingAddressPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-             // Detect Location Button
-             Row(
-               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-               children: [
-                 const Text(
+            // Detect Location Button
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
                   'Add New Address',
-                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1F2937)),
-                 ),
-                 TextButton.icon(
-                    onPressed: _detectLocation,
-                    icon: const Icon(Icons.my_location, size: 18, color: AppColors.accentGreen),
-                    label: const Text('Locate Me', style: TextStyle(color: AppColors.accentGreen, fontWeight: FontWeight.bold)),
-                 ),
-               ],
-             ),
-             const SizedBox(height: 16),
+                  style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1F2937)),
+                ),
+                TextButton.icon(
+                  onPressed: _detectLocation,
+                  icon: const Icon(Icons.my_location,
+                      size: 18, color: AppColors.accentGreen),
+                  label: const Text('Locate Me',
+                      style: TextStyle(
+                          color: AppColors.accentGreen,
+                          fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
             const Text(
               'Address Label',
               style: TextStyle(
@@ -499,6 +614,75 @@ class _ShippingAddressPageState extends ConsumerState<ShippingAddressPage> {
               validator: (v) => v!.isEmpty ? 'Please enter your address' : null,
             ),
             const SizedBox(height: 20),
+
+            // Toggle for Profile Data
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Use my profile details',
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                        color: Color(0xFF1B2D1F))),
+                Switch(
+                  value: _useProfileDetails,
+                  activeColor: AppColors.accentGreen,
+                  activeTrackColor: const Color(0xFFEBFFD7),
+                  onChanged: (v) {
+                    setState(() {
+                      _useProfileDetails = v;
+                      if (v) {
+                        final profile =
+                            CartProviderScope.of(context).userProfile;
+                        _nameCtrl.text =
+                            profile.name != 'Guest User' ? profile.name : '';
+                        String phone = profile.phone.trim();
+                        if (phone.startsWith('+91')) {
+                          phone = phone.substring(3).trim();
+                        } else if (phone.startsWith('91') && phone.length > 10) {
+                          phone = phone.substring(2).trim();
+                        }
+                        _phoneCtrl.text = phone;
+                      } else {
+                        _nameCtrl.clear();
+                        _phoneCtrl.clear();
+                      }
+                    });
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            _buildInputField(
+              controller: _nameCtrl,
+              label: 'Receiver Name',
+              hint: 'John Doe',
+              readOnly: _useProfileDetails,
+              icon: Icons.person_outline,
+              validator: (v) =>
+                  v!.isEmpty ? 'Please enter receiver name' : null,
+            ),
+            const SizedBox(height: 16),
+
+            _buildInputField(
+              controller: _phoneCtrl,
+              label: 'Phone Number',
+              hint: '10-digit mobile number',
+              readOnly: _useProfileDetails,
+              icon: Icons.phone_outlined,
+              keyboardType: TextInputType.phone,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(10),
+              ],
+              validator: (v) {
+                if (v == null || v.isEmpty) return 'Please enter phone number';
+                if (v.length != 10) return 'Must be 10 digits';
+                return null;
+              },
+            ),
+            const SizedBox(height: 20),
             Row(
               children: [
                 Expanded(
@@ -518,7 +702,15 @@ class _ShippingAddressPageState extends ConsumerState<ShippingAddressPage> {
                     hint: '123456',
                     icon: Icons.pin_drop_rounded,
                     keyboardType: TextInputType.number,
-                    validator: (v) => v!.length < 6 ? 'Invalid pin' : null,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(6),
+                    ],
+                    validator: (v) {
+                      if (v == null || v.isEmpty) return 'Field required';
+                      if (v.length != 6) return 'Must be 6 digits';
+                      return null;
+                    },
                   ),
                 ),
               ],
@@ -591,7 +783,9 @@ class _ShippingAddressPageState extends ConsumerState<ShippingAddressPage> {
     required String label,
     required String hint,
     required IconData icon,
+    bool readOnly = false,
     TextInputType? keyboardType,
+    List<TextInputFormatter>? inputFormatters,
     String? Function(String?)? validator,
   }) {
     return Column(
@@ -605,7 +799,9 @@ class _ShippingAddressPageState extends ConsumerState<ShippingAddressPage> {
         const SizedBox(height: 8),
         TextFormField(
           controller: controller,
+          readOnly: readOnly,
           keyboardType: keyboardType,
+          inputFormatters: inputFormatters,
           validator: validator,
           cursorColor: AppColors.accentGreen,
           decoration: InputDecoration(
@@ -613,7 +809,7 @@ class _ShippingAddressPageState extends ConsumerState<ShippingAddressPage> {
             hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
             prefixIcon: Icon(icon, color: Colors.grey.shade400, size: 22),
             filled: true,
-            fillColor: Colors.white,
+            fillColor: readOnly ? Colors.grey.shade100 : Colors.white,
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             border: OutlineInputBorder(

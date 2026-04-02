@@ -69,22 +69,30 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
         // Refresh the profile provider to stay in sync with server
         ref.invalidate(userProfileProvider);
         
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(response.message.isNotEmpty 
-                ? response.message 
-                : 'Profile updated successfully!'),
-            backgroundColor: const Color(0xFF68B92E),
-          ),
-        );
-        Navigator.pop(context);
+        if (mounted) {
+          // Capture messenger BEFORE popping
+          final messenger = ScaffoldMessenger.of(context);
+          
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text(response.message.isNotEmpty 
+                  ? response.message 
+                  : 'Profile updated successfully!'),
+              backgroundColor: const Color(0xFF68B92E),
+            ),
+          );
+          
+          Navigator.pop(context);
+        }
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(response.message),
-            backgroundColor: Colors.red,
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(response.message),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -160,23 +168,6 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
                             fontSize: 48,
                             fontWeight: FontWeight.bold,
                             color: Color(0xFF114F3B),
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF68B92E),
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
-                          ),
-                          child: const Icon(
-                            Icons.camera_alt,
-                            color: Colors.white,
-                            size: 18,
                           ),
                         ),
                       ),
@@ -281,24 +272,28 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
           controller: controller,
           keyboardType: keyboardType,
           enabled: enabled,
-          decoration: InputDecoration(
-            hintText: hint,
-            prefixIcon: Icon(icon, color: Colors.grey.shade400, size: 20),
-            filled: true,
-            fillColor: enabled ? Colors.grey.shade50 : Colors.grey.shade100,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
+            decoration: InputDecoration(
+              hintText: hint,
+              prefixIcon: Icon(icon, color: const Color(0xFF68B92E), size: 20),
+              filled: true,
+              fillColor: enabled ? Colors.grey.shade50 : Colors.grey.shade100,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFF68B92E), width: 1.5),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFF68B92E), width: 1.5),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFF68B92E), width: 2),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 16,
+              ),
             ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
-            ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 16,
-            ),
-          ),
         ),
       ],
     );

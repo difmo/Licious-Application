@@ -23,18 +23,20 @@ class CartProvider extends ChangeNotifier {
         _walletService = walletService,
         _addressService = addressService,
         _authService = authService {
-    loadProfile();
-    loadAddresses();
-    syncWallet();
+    // We only trigger these if the services are present
+    if (_authService != null) loadProfile();
+    if (_addressService != null) loadAddresses();
+    if (_walletService != null) syncWallet();
   }
 
   AddressService? get addressService => _addressService;
 
   UserProfile _userProfile = const UserProfile(
-    name: 'Guest User',
+    name: 'shrimpbite user',
     email: '',
     phone: '',
     profileImage: 'assets/images/image copy 2.png',
+    addresses: [],
   );
 
   bool get isLoggedIn => _userProfile.email.isNotEmpty;
@@ -125,10 +127,9 @@ class CartProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  List<UserAddress> _addresses = [];
   bool _isAddressesLoading = false;
   int _selectedAddressIndex =
-      1; // Default to the second mock address (marked DEFAULT in screenshot)
+      0; // Default to first address
 
   bool get isAddressesLoading => _isAddressesLoading;
 
@@ -140,14 +141,14 @@ class CartProvider extends ChangeNotifier {
   }
 
   UserAddress? get selectedAddress {
-    if (_addresses.isEmpty) return null;
+    final addrs = _userProfile.addresses;
+    if (addrs.isEmpty) return null;
     if (_selectedAddressIndex >= 0 &&
-        _selectedAddressIndex < _addresses.length) {
-      return _addresses[_selectedAddressIndex];
+        _selectedAddressIndex < addrs.length) {
+      return addrs[_selectedAddressIndex];
     }
-    if (_addresses.isEmpty) return null;
-    return _addresses.firstWhere((a) => a.isDefault,
-        orElse: () => _addresses.first);
+    return addrs.firstWhere((a) => a.isDefault,
+        orElse: () => addrs.first);
   }
 
   final List<UserPaymentMethod> _payments = [
@@ -468,7 +469,7 @@ class CartProvider extends ChangeNotifier {
   List<FoodCategory> get foodCategories => _foodCategories;
   List<Restaurant> get restaurants => _restaurants;
   List<UserOrder> get orders => _orders;
-  List<UserAddress> get addresses => _addresses;
+  List<UserAddress> get addresses => _userProfile.addresses;
   List<UserPaymentMethod> get payments => _payments;
   UserProfile get userProfile => _userProfile;
 
@@ -479,13 +480,15 @@ class CartProvider extends ChangeNotifier {
 
   void clearSession() {
     _userProfile = const UserProfile(
-      name: 'Guest User',
+      name: 'shrimpbite user',
       email: '',
       phone: '',
       profileImage: 'assets/images/image copy 2.png',
     );
     _items.clear();
     _favoriteIds.clear();
+    _userProfile = _userProfile.copyWith(addresses: []);
+    _orders.clear();
     notifyListeners();
   }
 
@@ -500,7 +503,9 @@ class CartProvider extends ChangeNotifier {
           name: user.fullName,
           email: user.email,
           phone: user.phoneNumber,
-          profileImage: 'assets/images/image copy 2.png', // Fallback or user image if added to model
+          profileImage: 'assets/images/image copy 2.png', 
+          walletId: user.walletId,
+          addresses: _userProfile.addresses, // Keep existing addresses
         );
         notifyListeners();
       }
@@ -586,18 +591,20 @@ class CartProvider extends ChangeNotifier {
       }
     } else {
       // Fallback for local testing
+      final newAddrs = List<UserAddress>.from(_userProfile.addresses);
       if (address.isDefault) {
-        for (int i = 0; i < _addresses.length; i++) {
-          _addresses[i] = UserAddress(
-            id: _addresses[i].id,
-            title: _addresses[i].title,
-            street: _addresses[i].street,
-            details: _addresses[i].details,
+        for (int i = 0; i < newAddrs.length; i++) {
+          newAddrs[i] = UserAddress(
+            id: newAddrs[i].id,
+            title: newAddrs[i].title,
+            street: newAddrs[i].street,
+            details: newAddrs[i].details,
             isDefault: false,
           );
         }
       }
-      _addresses.add(address);
+      newAddrs.add(address);
+      _userProfile = _userProfile.copyWith(addresses: newAddrs);
       notifyListeners();
     }
   }
@@ -618,8 +625,7 @@ class CartProvider extends ChangeNotifier {
       final result = await _addressService!.getAddresses();
       if (result['success']) {
         final List<dynamic> data = result['data'] ?? [];
-        _addresses = data
-            .map((json) => UserAddress(
+        _userProfile = _userProfile.copyWith(addresses: data.map((json) => UserAddress(
                   id: json['_id'] ?? '',
                   title: json['label'] ?? 'Address',
                   street: json['fullAddress'] ?? '',
@@ -642,13 +648,13 @@ class CartProvider extends ChangeNotifier {
                   }(),
                   isDefault: json['isDefault'] ?? false,
                 ))
-            .toList();
+            .toList().reversed.toList());
 
         // Reset selection to default address if available
-        final defaultIdx = _addresses.indexWhere((a) => a.isDefault);
+        final defaultIdx = _userProfile.addresses.indexWhere((a) => a.isDefault);
         if (defaultIdx != -1) {
           _selectedAddressIndex = defaultIdx;
-        } else if (_addresses.isNotEmpty) {
+        } else if (_userProfile.addresses.isNotEmpty) {
           _selectedAddressIndex = 0;
         }
       }
@@ -660,22 +666,46 @@ class CartProvider extends ChangeNotifier {
     }
   }
 
-  void updateAddress(UserAddress address) {
-    final index = _addresses.indexWhere((a) => a.id == address.id);
-    if (index != -1) {
-      if (address.isDefault) {
-        for (int i = 0; i < _addresses.length; i++) {
-          _addresses[i] = UserAddress(
-            id: _addresses[i].id,
-            title: _addresses[i].title,
-            street: _addresses[i].street,
-            details: _addresses[i].details,
-            isDefault: false,
-          );
+  Future<void> updateAddress(UserAddress address) async {
+    if (_addressService != null) {
+      final addressParts = address.details.split(',');
+      final cityName = addressParts.isNotEmpty ? addressParts.first.trim() : 'City';
+      final stateName = address.details.contains(',') ? address.details.split(',')[1].trim() : '';
+      final pin = address.details.split(' ').last;
+      
+      final result = await _addressService!.updateAddress(
+        address.id,
+        {
+          "label": address.title,
+          "fullAddress": address.street,
+          "city": cityName,
+          "state": stateName,
+          "pincode": pin,
+          "isDefault": address.isDefault,
         }
+      );
+      if (result['success']) {
+        loadAddresses();
       }
-      _addresses[index] = address;
-      notifyListeners();
+    } else {
+      final newAddrs = List<UserAddress>.from(_userProfile.addresses);
+      final index = newAddrs.indexWhere((a) => a.id == address.id);
+      if (index != -1) {
+        if (address.isDefault) {
+          for (int i = 0; i < newAddrs.length; i++) {
+            newAddrs[i] = UserAddress(
+              id: newAddrs[i].id,
+              title: newAddrs[i].title,
+              street: newAddrs[i].street,
+              details: newAddrs[i].details,
+              isDefault: false,
+            );
+          }
+        }
+        newAddrs[index] = address;
+        _userProfile = _userProfile.copyWith(addresses: newAddrs);
+        notifyListeners();
+      }
     }
   }
 
@@ -686,7 +716,9 @@ class CartProvider extends ChangeNotifier {
         loadAddresses();
       }
     } else {
-      _addresses.removeWhere((a) => a.id == id);
+      final newAddrs = List<UserAddress>.from(_userProfile.addresses);
+      newAddrs.removeWhere((a) => a.id == id);
+      _userProfile = _userProfile.copyWith(addresses: newAddrs);
       notifyListeners();
     }
   }
@@ -780,9 +812,20 @@ class CartProviderScope extends InheritedNotifier<CartProvider> {
     required super.child,
   }) : super(notifier: provider);
 
-  static CartProvider of(BuildContext context) {
-    return context
-        .dependOnInheritedWidgetOfExactType<CartProviderScope>()!
-        .notifier!;
+  static CartProvider of(BuildContext context, {bool listen = true}) {
+    if (listen) {
+      return context
+          .dependOnInheritedWidgetOfExactType<CartProviderScope>()!
+          .notifier!;
+    } else {
+      return (context
+              .getElementForInheritedWidgetOfExactType<CartProviderScope>()!
+              .widget as CartProviderScope)
+          .notifier!;
+    }
   }
+
+  /// Helper to get the provider without registering as a listener.
+  /// Safer for use inside button callbacks or after async awaits.
+  static CartProvider read(BuildContext context) => of(context, listen: false);
 }

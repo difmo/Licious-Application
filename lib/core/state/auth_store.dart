@@ -9,6 +9,7 @@ import '../api/auth_interceptor.dart';
 import '../../app/data/network/api_client.dart';
 import '../../app/data/services/fcm_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../utils/logger.dart';
 
 // Unified Auth Provider for the app
 final authServiceProvider = Provider<AuthService>((ref) {
@@ -49,6 +50,7 @@ class AuthState {
     String? successMessage,
     String? otp,
     String? verificationId,
+    bool clearVerificationId = false,
   }) {
     return AuthState(
       status: status ?? this.status,
@@ -56,7 +58,8 @@ class AuthState {
       error: error ?? this.error,
       successMessage: successMessage ?? this.successMessage,
       otp: otp ?? this.otp,
-      verificationId: verificationId ?? this.verificationId,
+      verificationId:
+          clearVerificationId ? null : (verificationId ?? this.verificationId),
     );
   }
 }
@@ -72,6 +75,7 @@ class AuthStore extends Notifier<AuthState> {
     // Listen for force logout events from the interceptor
     _logoutSubscription?.cancel();
     _logoutSubscription = AuthInterceptor.onForceLogoutStream.listen((reason) {
+      AppLogger.w('AuthStore: Force logout triggered. Reason: $reason');
       setUnauthenticated(error: reason);
     });
 
@@ -92,12 +96,12 @@ class AuthStore extends Notifier<AuthState> {
       final String? cachedUserJson = await _storage.getUser();
 
       if (token != null && token.isNotEmpty) {
-         debugPrint('AuthStore: Token detected. Attempting profile fetch...');
+         AppLogger.d('AuthStore: Session token detected. Attempting profile fetch...');
         
         final response = await ref.read(authServiceProvider).getProfile();
 
         if (response.success && response.data != null) {
-          debugPrint('AuthStore: Session verified online.');
+          AppLogger.d('AuthStore: Session verified online.');
           // Update cache
           await _storage.saveUser(jsonEncode(response.data!.toJson()));
           state = AuthState.authenticated(response.data!);
@@ -120,8 +124,8 @@ class AuthStore extends Notifier<AuthState> {
       } else {
         state = AuthState.unauthenticated();
       }
-    } catch (e) {
-      debugPrint('AuthStore: Fatal recovery error $e');
+    } catch (e, stack) {
+      AppLogger.e('AuthStore: Fatal recovery error', e, stack);
       state = AuthState.unauthenticated(error: e.toString());
     }
   }
@@ -137,7 +141,7 @@ class AuthStore extends Notifier<AuthState> {
     state = state.copyWith(user: user);
   }
 
-  /// Calls the detection API. Returns the action ("password" or "otp").
+  /// Calls the detection API. Returns the action ("otp" only now).
   /// Does NOT change auth state — it's a pure lookup.
   Future<CheckUserResponseModel?> checkUser({required String phoneNumber}) async {
     try {
@@ -148,33 +152,9 @@ class AuthStore extends Notifier<AuthState> {
     }
   }
 
-  Future<void> login({required String phone, required String password}) async {
-    state = state.copyWith(status: AuthStatus.loading, error: null, successMessage: null);
-    try {
-      final fcmToken = await FCMService().getToken();
-      final response = await ref.read(authServiceProvider).login(
-            phoneNumber: phone,
-            password: password,
-            fcmToken: fcmToken,
-          );
-
-      if (response.success && response.data != null && response.token != null) {
-        await _persistAuth(
-          response.data!,
-          response.token!,
-          response.refreshToken ?? '',
-        );
-        unawaited(FCMService.sendTokenToBackend());
-      } else {
-        state = AuthState.unauthenticated(error: response.message);
-      }
-    } catch (e) {
-      state = AuthState.unauthenticated(error: e.toString());
-    }
-  }
-
   Future<void> sendOtp({required String phoneNumber}) async {
-    state = state.copyWith(status: AuthStatus.loading, error: null);
+    state = state.copyWith(
+        status: AuthStatus.loading, error: null, clearVerificationId: true);
     try {
       String formattedPhone = phoneNumber.trim();
       if (formattedPhone.length == 10) {
@@ -200,8 +180,7 @@ class AuthStore extends Notifier<AuthState> {
               error: e.message ?? 'Phone verification failed');
         },
         codeSent: (String verificationId, int? resendToken) {
-          debugPrint(
-              'AuthStore: OTP code sent. Verification ID: $verificationId');
+          AppLogger.i('AuthStore: Code sent to $formattedPhone. Verification ID: $verificationId');
           state = state.copyWith(
             status: AuthStatus.initial,
             successMessage: 'OTP sent to your phone via SMS',
@@ -242,10 +221,9 @@ class AuthStore extends Notifier<AuthState> {
           );
 
       if (response.success) {
-        debugPrint('AuthStore: OTP verification result - SUCCESS');
+        AppLogger.i('AuthStore: Authentication SUCCESS for $phoneNumber');
         
         final user = response.data ?? UserModel.placeholder(phoneNumber);
-        // Map token with a fallback (it might be needed for subsequent requests)
         final access = response.token ?? ''; 
         final refresh = response.refreshToken ?? '';
 
@@ -253,91 +231,38 @@ class AuthStore extends Notifier<AuthState> {
         unawaited(syncFcmToken());
       } else {
         debugPrint('AuthStore: verification result - FAILED: ${response.message}');
-        state = AuthState.unauthenticated(error: response.message);
+        state = AuthState.unauthenticated(error: _handleAuthError(response.message));
       }
-    } catch (e) {
-      debugPrint('AuthStore: Error finalizing Firebase sign-in: $e');
-      state = AuthState.unauthenticated(error: e.toString());
+    } catch (e, stack) {
+      AppLogger.e('AuthStore: Error finalizing Firebase sign-in', e, stack);
+      state = AuthState.unauthenticated(error: _handleAuthError(e));
     }
   }
 
-  Future<void> register({
-    required String fullName,
-    required String email,
-    required String phoneNumber,
-    required String password,
-    required String confirmPassword,
-  }) async {
-    state = state.copyWith(status: AuthStatus.loading, error: null);
-    try {
-      final fcmToken = await FCMService().getToken();
-      final response = await ref.read(authServiceProvider).register(
-            fullName: fullName,
-            email: email,
-            phoneNumber: phoneNumber,
-            password: password,
-            confirmPassword: confirmPassword,
-            fcmToken: fcmToken,
-          );
-      if (response.success) {
-        state = state.copyWith(
-          status: AuthStatus.unauthenticated,
-          successMessage: response.message,
-        );
-      } else {
-        state = AuthState.unauthenticated(error: response.message);
+  String _handleAuthError(dynamic e) {
+    if (e is FirebaseAuthException) {
+      switch (e.code) {
+        case 'invalid-verification-code':
+          return 'The OTP you entered is invalid. Please check and try again.';
+        case 'session-expired':
+          return 'This OTP session has expired. Please request a new one.';
+        case 'too-many-requests':
+          return 'Too many login attempts. Please try again later.';
+        default:
+          return e.message ?? 'Authentication failed. Please try again.';
       }
-    } catch (e) {
-      state = AuthState.unauthenticated(error: e.toString());
     }
-  }
-
-  Future<void> googleAuth(
-      {required String idToken,
-      String? accessToken,
-      String? phoneNumber}) async {
-    state = state.copyWith(status: AuthStatus.loading, error: null);
-    try {
-      String finalToken = idToken;
-
-      // ── Firebase Token Exchange ──────────────────────────────────────────
-      // Backends usually require a *Firebase* ID Token, not a plain *Google* ID Token.
-      if (accessToken != null) {
-        debugPrint('AuthStore: Exchanging Google token for Firebase token...');
-        final AuthCredential credential = GoogleAuthProvider.credential(
-          accessToken: accessToken,
-          idToken: idToken,
-        );
-        final userCredential =
-            await FirebaseAuth.instance.signInWithCredential(credential);
-        final firebaseIdToken = await userCredential.user?.getIdToken();
-
-        if (firebaseIdToken != null) {
-          finalToken = firebaseIdToken;
-          debugPrint('AuthStore: Firebase token exchange successful.');
-        }
-      }
-
-      final fcmToken = await FCMService().getToken();
-      final response = await ref.read(authServiceProvider).googleAuth(
-            idToken: finalToken,
-            phoneNumber: phoneNumber,
-            fcmToken: fcmToken,
-          );
-
-      if (response.success && response.data != null && response.token != null) {
-        await _persistAuth(
-          response.data!,
-          response.token!,
-          response.refreshToken ?? '',
-        );
-        unawaited(FCMService.sendTokenToBackend());
-      } else {
-        state = AuthState.unauthenticated(error: response.message);
-      }
-    } catch (e) {
-      state = AuthState.unauthenticated(error: e.toString());
+    
+    final msg = e.toString();
+    if (msg.contains('invalid-verification-code') || msg.contains('invalid OTP')) {
+      return 'The OTP you entered is incorrect.';
     }
+    if (msg.contains('session-expired')) {
+      return 'OTP has expired. Please resend code.';
+    }
+    
+    // Clean up generic Firebase prefix if present
+    return msg.replaceFirst(RegExp(r'\[.*?\] '), '');
   }
 
   Future<void> verifyOtp(
@@ -359,23 +284,8 @@ class AuthStore extends Notifier<AuthState> {
     await _signInWithFirebaseCredential(phoneNumber, credential);
   }
 
-  Future<void> forgotPassword({required String email}) async {
-    state = state.copyWith(status: AuthStatus.loading, error: null);
-    try {
-      final response =
-          await ref.read(authServiceProvider).forgotPassword(email: email);
-      if (!response.success) {
-        state = AuthState.unauthenticated(error: response.message);
-      } else {
-        state = AuthState.initial();
-      }
-    } catch (e) {
-      state = AuthState.unauthenticated(error: e.toString());
-    }
-  }
-
   Future<void> logout() async {
-    state = AuthState.loading();
+    state = AuthStatus.loading != state.status ? AuthState.loading() : state;
     try {
       await ref.read(authServiceProvider).logout();
     } catch (_) {}

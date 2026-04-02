@@ -25,10 +25,13 @@ class HomePage extends ConsumerWidget {
           bottom: false,
           child: RefreshIndicator(
             onRefresh: () async {
+              // Capture provider before any awaits
+              final cart = CartProviderScope.of(context);
               await ref.read(shopsListProvider.notifier).refresh();
+              
               // Proactively refresh other related data if needed
-              CartProviderScope.of(context).loadAddresses();
-              CartProviderScope.of(context).syncWallet();
+              cart.loadAddresses();
+              cart.syncWallet();
             },
             color: const Color(0xFF68B92E),
             child: CustomScrollView(

@@ -3,6 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/services/order_service.dart';
 import '../../../data/services/socket_service.dart';
+import './order_tracking_page.dart';
+import '../../../data/services/db_service.dart';
+import '../../../data/models/product_model.dart';
 import '../../auth/provider/auth_provider.dart';
 
 // Local provider removed, using shared provider from order_service.dart
@@ -358,20 +361,77 @@ class _LiveOrderCardState extends State<_LiveOrderCard>
     return '';
   }
 
+  void _handleReorder() {
+    HapticFeedback.mediumImpact();
+    // Logic for Reorder: Add each item back to cart
+    final cart = CartProviderScope.read(context);
+    final items = widget.order['items'] as List<dynamic>? ?? [];
+
+    for (final item in items) {
+      final p = item['product'] as Map<String, dynamic>? ?? {};
+      final qty = (item['quantity'] as num?)?.toInt() ?? 1;
+
+      // Map nested product object to CartItem
+      final cartItem = CartItem(
+        id: (p['_id'] ?? p['id'] ?? '').toString(),
+        title: (p['name'] ?? '').toString(),
+        unitPrice: (p['price'] as num?)?.toDouble() ?? 0.0,
+        subtitle: (p['weight'] ?? '').toString(),
+        image: (p['images'] is List && p['images'].isNotEmpty
+            ? p['images'].first.toString()
+            : ''),
+        category: (p['category'] ?? '').toString(),
+        shopId: (widget.order['retailerId'] ??
+                widget.order['shopId'] ??
+                p['retailerId'] ??
+                '')
+            .toString(),
+        shopName:
+            (widget.order['retailerName'] ?? widget.order['shopName'] ?? '')
+                .toString(),
+        quantity: qty,
+      );
+      cart.addToCart(cartItem);
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Added your order items back to cart!'),
+        backgroundColor: Color(0xFF114F3B),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onDoubleTap: () {
-        HapticFeedback.mediumImpact();
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Added to cart for reorder!'),
-          backgroundColor: Color(0xFF114F3B),
-        ));
+        if (_isDelivered) {
+          _handleReorder();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Order is still active!'),
+            backgroundColor: Color(0xFFE67E22),
+          ));
+        }
         _controller.forward().then((_) => _controller.reverse());
       },
       onTapDown: (_) => _controller.forward(),
       onTapUp: (_) => _controller.reverse(),
       onTapCancel: () => _controller.reverse(),
+      onTap: () {
+        if (_isDelivered) {
+          _handleReorder();
+        } else {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => OrderTrackingPage(order: widget.order),
+            ),
+          );
+        }
+      },
       child: AnimatedBuilder(
         animation: _scaleAnimation,
         builder: (context, child) =>

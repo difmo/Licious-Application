@@ -110,6 +110,8 @@ class _LocationPickerScreenState extends ConsumerState<LocationPickerScreen> {
       _lngCtrl.text = location.longitude.toString();
     });
     _moveCamera(location);
+    // Explicitly trigger the address fetch immediately
+    _onCameraIdle();
   }
 
   void _onCameraMove(CameraPosition position) {
@@ -218,7 +220,7 @@ class _LocationPickerScreenState extends ConsumerState<LocationPickerScreen> {
                         onCameraMove: _onCameraMove,
                         onCameraIdle: _onCameraIdle,
                         myLocationEnabled: true,
-                        myLocationButtonEnabled: false,
+                        myLocationButtonEnabled: true,
                         zoomControlsEnabled: false,
                       ),
                       
@@ -253,19 +255,6 @@ class _LocationPickerScreenState extends ConsumerState<LocationPickerScreen> {
                           ),
                         ),
 
-                      // Floating "My Location" Button
-                      Positioned(
-                        bottom: 16,
-                        right: 16,
-                        child: FloatingActionButton(
-                          mini: true,
-                          heroTag: 'map_my_loc',
-                          backgroundColor: Colors.white,
-                          foregroundColor: AppColors.accentGreen,
-                          onPressed: _initLocation,
-                          child: const Icon(Icons.my_location_rounded, size: 22),
-                        ),
-                      ),
                     ],
                   ),
                 ),

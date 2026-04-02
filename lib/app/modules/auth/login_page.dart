@@ -4,10 +4,8 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../widgets/common_button.dart';
 import 'provider/auth_provider.dart';
-import 'widgets/input_field.dart';
 import 'otp_verification_page.dart';
 import '../../routes/app_routes.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -22,7 +20,6 @@ class _LoginPageState extends ConsumerState<LoginPage>
 
   bool _agreeToTerms = false;
   bool _isChecking = false;
-  bool _isGoogleLoading = false;
 
   late TapGestureRecognizer _termsRecognizer;
   late TapGestureRecognizer _privacyRecognizer;
@@ -43,10 +40,10 @@ class _LoginPageState extends ConsumerState<LoginPage>
 
     _animController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 200),
+      duration: const Duration(milliseconds: 300),
     );
     _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
-    _slideAnim = Tween<Offset>(begin: const Offset(0, 0.15), end: Offset.zero)
+    _slideAnim = Tween<Offset>(begin: const Offset(0, 0.1), end: Offset.zero)
         .animate(
             CurvedAnimation(parent: _animController, curve: Curves.easeOut));
     _animController.forward();
@@ -108,8 +105,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
   // ── Format phone for backend (+91 prefix) ─────────────────────────────────
 
   String _formatPhone(String raw) {
-    final trimmed = raw.trim();
-    if (trimmed.startsWith('+')) return trimmed;
+    final trimmed = raw.replaceAll(RegExp(r'\D'), '');
     if (trimmed.length == 10) return '+91$trimmed';
     if (trimmed.length == 12 && trimmed.startsWith('91')) return '+$trimmed';
     return trimmed;
@@ -157,60 +153,6 @@ class _LoginPageState extends ConsumerState<LoginPage>
     );
   }
 
-  Future<void> _googleSignIn() async {
-
-
-    setState(() => _isGoogleLoading = true);
-
-    try {
-      debugPrint('[Google Diagnostic] Starting Google Sign-In...');
-      final GoogleSignIn googleSignIn = GoogleSignIn();
-      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
-
-      if (googleUser == null) {
-        debugPrint(
-            '[Google Diagnostic] APP ISSUE: Google login window closed or failed to Open. Check SHA-1/Firebase Config.');
-        setState(() => _isGoogleLoading = false);
-        return;
-      }
-
-      debugPrint(
-          '[Google Diagnostic] Google account selected: ${googleUser.email}');
-      final GoogleSignInAuthentication googleAuthResult =
-          await googleUser.authentication;
-      final String? idToken = googleAuthResult.idToken;
-      final String? accessToken = googleAuthResult.accessToken;
-
-      if (idToken == null) {
-        debugPrint(
-            '[Google Diagnostic] APP ISSUE: Google idToken is NULL. Check Firebase setup on Android.');
-        _showSnackBar('Google Authentication failed. Please try again.');
-        setState(() => _isGoogleLoading = false);
-        return;
-      }
-
-      debugPrint('[Google Diagnostic] Attempting Backend Sync with idToken...');
-      await ref.read(authProvider.notifier).googleAuth(
-            idToken: idToken,
-            accessToken: accessToken,
-          );
-
-      final authState = ref.read(authProvider);
-      if (authState is AuthError) {
-        debugPrint('[Google Diagnostic] BACKEND ISSUE: ${authState.message}');
-        _showSnackBar(authState.message, backgroundColor: Colors.red);
-      } else if (authState is AuthAuthenticated) {
-        debugPrint(
-            '[Google Diagnostic] SUCCESS: Logged in as ${authState.user.fullName}');
-      }
-    } catch (e) {
-      debugPrint('[Google Diagnostic] UNEXPECTED ERROR: $e');
-      _showSnackBar('An error occurred during Google Sign-In.');
-    } finally {
-      if (mounted) setState(() => _isGoogleLoading = false);
-    }
-  }
-
   Future<void> _launchURL(String url) async {
     final Uri uri = Uri.parse(url);
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
@@ -223,8 +165,8 @@ class _LoginPageState extends ConsumerState<LoginPage>
 
   @override
   Widget build(BuildContext context) {
-    // Listen for authentication changes (for Google Sign-In and global success)
     ref.listen<AuthState>(authProvider, (previous, next) {
+      if (!mounted) return;
       if (next is AuthAuthenticated) {
         if (next.user.role == 'rider') {
           Navigator.pushNamedAndRemoveUntil(
@@ -242,227 +184,176 @@ class _LoginPageState extends ConsumerState<LoginPage>
         physics: const BouncingScrollPhysics(),
         child: Column(
           children: [
-            // ── Top food image ──
-            SizedBox(
-              height: 300,
-              width: double.infinity,
-              child: Image.asset(
-                'assets/images/image copy 5.png',
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(
-                  color: Colors.grey.shade300,
-                  child: const Icon(
-                    Icons.image_not_supported,
-                    size: 50,
-                    color: Colors.grey,
+            // ── Top Header with Brand Image ──
+            Stack(
+              children: [
+                SizedBox(
+                  height: 320,
+                  width: double.infinity,
+                  child: Image.asset(
+                    'assets/images/image copy 5.png',
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      color: const Color(0xFF114F3B),
+                      child: const Center(
+                        child: Icon(Icons.shopping_bag_outlined, size: 60, color: Colors.white24),
+                      ),
+                    ),
                   ),
                 ),
-              ),
+                Container(
+                  height: 320,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.bottomCenter,
+                      end: Alignment.topCenter,
+                      colors: [
+                        Colors.white,
+                        Colors.white.withOpacity(0.0),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
 
-            // ── Form card ──
+            // ── Form Content ──
             FadeTransition(
               opacity: _fadeAnim,
               child: SlideTransition(
                 position: _slideAnim,
-                child: Container(
-                  padding: const EdgeInsets.fromLTRB(24, 32, 24, 32),
-                  color: Colors.white,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(28, 0, 28, 48),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'Welcome back !',
+                        'Premium Seafresh\nDelivered To You',
                         style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
+                          fontSize: 32,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF114F3B),
+                          height: 1.1,
                         ),
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 12),
                       const Text(
-                        'Enter your phone number to continue',
-                        style: TextStyle(fontSize: 15, color: Colors.grey),
+                        'Enter your mobile number to get started with OTP verification.',
+                        style: TextStyle(fontSize: 16, color: Colors.black54, height: 1.4),
                       ),
-                      const SizedBox(height: 28),
+                      const SizedBox(height: 40),
 
-                      // Phone Number field
-                      InputField(
-                        controller: _phoneController,
-                        label: 'Phone Number',
-                        hintText: 'Enter your phone number',
-                        prefixIcon: Icons.phone_outlined,
-                        keyboardType: TextInputType.phone,
-                        maxLength: 10,
+                      // Phone Number Input
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.grey.shade200),
+                        ),
+                        child: TextField(
+                          controller: _phoneController,
+                          keyboardType: TextInputType.phone,
+                          maxLength: 10,
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1.5),
+                          decoration: InputDecoration(
+                            counterText: '',
+                            hintText: '98765 43210',
+                            hintStyle: TextStyle(color: Colors.grey.shade400, letterSpacing: 1.5),
+                            prefixIcon: const Padding(
+                              padding: EdgeInsets.only(left: 16, right: 8),
+                              child: Text(
+                                '+91 ',
+                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
+                              ),
+                            ),
+                            prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(vertical: 18),
+                          ),
+                        ),
                       ),
-                      const SizedBox(height: 28),
+                      const SizedBox(height: 24),
 
                       // Terms & Conditions Checkbox
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          SizedBox(
-                            height: 24,
-                            width: 24,
-                            child: Checkbox(
-                              value: _agreeToTerms,
-                              onChanged: (v) =>
-                                  setState(() => _agreeToTerms = v ?? false),
-                              activeColor: const Color(0xFF0EA5E9),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              side: BorderSide(
-                                  color: Colors.grey.shade400, width: 1.5),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: RichText(
-                              text: TextSpan(
-                                text: 'I agree to the ',
-                                style: const TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.grey,
-                                    height: 1.5),
-                                children: [
-                                  TextSpan(
-                                    text: 'Terms & Conditions',
-                                    style: const TextStyle(
-                                        color: Color(0xFF0EA5E9),
-                                        fontWeight: FontWeight.bold),
-                                    recognizer: _termsRecognizer,
-                                  ),
-                                  const TextSpan(
-                                      text: ' and ',
-                                      style: TextStyle(color: Colors.grey)),
-                                  TextSpan(
-                                    text: 'Privacy Policy',
-                                    style: const TextStyle(
-                                        color: Color(0xFF0EA5E9),
-                                        fontWeight: FontWeight.bold),
-                                    recognizer: _privacyRecognizer,
-                                  ),
-                                ],
+                      GestureDetector(
+                        onTap: () => setState(() => _agreeToTerms = !_agreeToTerms),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SizedBox(
+                              height: 24,
+                              width: 24,
+                              child: Checkbox(
+                                value: _agreeToTerms,
+                                onChanged: (v) =>
+                                    setState(() => _agreeToTerms = v ?? false),
+                                activeColor: const Color(0xFF2E7D32),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                side: BorderSide(
+                                    color: Colors.grey.shade300, width: 2),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 28),
-
-                      // Continue button
-                      CommonButton(
-                        text: 'Continue',
-                        onPressed: _continue,
-                        isLoading: _isChecking,
-                      ),
-                      const SizedBox(height: 24),
-
-                      // ── OR Divider ──
-                      Row(
-                        children: [
-                          Expanded(child: Divider(color: Colors.grey.shade300)),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: Text(
-                              'OR',
-                              style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey.shade500,
-                                  fontWeight: FontWeight.w600),
-                            ),
-                          ),
-                          Expanded(child: Divider(color: Colors.grey.shade300)),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-
-                      // ── Google Signup Button ──
-                      SizedBox(
-                        width: double.infinity,
-                        height: 54,
-                        child: OutlinedButton(
-                          onPressed: _isGoogleLoading ? null : _googleSignIn,
-                          style: OutlinedButton.styleFrom(
-                            side: BorderSide(color: Colors.grey.shade300),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            elevation: 0,
-                          ),
-                          child: _isGoogleLoading
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.black54,
-                                  ),
-                                )
-                              : Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: RichText(
+                                text: TextSpan(
+                                  text: 'I agree to the ',
+                                  style: const TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.black54,
+                                      height: 1.5),
                                   children: [
-                                    Image.asset(
-                                      'assets/images/google_logo.png',
-                                      height: 22,
+                                    TextSpan(
+                                      text: 'Terms & Conditions',
+                                      style: const TextStyle(
+                                          color: Color(0xFF2E7D32),
+                                          fontWeight: FontWeight.bold),
+                                      recognizer: _termsRecognizer,
                                     ),
-                                    const SizedBox(width: 12),
-                                    const Text(
-                                      'Signup with Google',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.black87,
-                                      ),
+                                    const TextSpan(
+                                        text: ' and ',
+                                        style: TextStyle(color: Colors.black54)),
+                                    TextSpan(
+                                      text: 'Privacy Policy',
+                                      style: const TextStyle(
+                                          color: Color(0xFF2E7D32),
+                                          fontWeight: FontWeight.bold),
+                                      recognizer: _privacyRecognizer,
                                     ),
                                   ],
                                 ),
-                        ),
-                      ),
-                      const SizedBox(height: 28),
-
-                      // ── How it works callout ──
-                      Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF0F9FF),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                              color: const Color(0xFFBAE6FD), width: 1),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Row(
-                              children: [
-                                Icon(Icons.info_outline,
-                                    color: Color(0xFF0284C7), size: 15),
-                                SizedBox(width: 6),
-                                Text(
-                                  'How it works',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF0284C7),
-                                  ),
-                                ),
-                              ],
+                              ),
                             ),
-                            const SizedBox(height: 6),
-                            _hintRow('🛒', 'Customers receive an OTP via SMS'),
-                            _hintRow(
-                                '🏍️', 'Riders also receive an OTP via SMS'),
                           ],
                         ),
                       ),
+                      const SizedBox(height: 44),
 
-                      const SizedBox(height: 48),
-
-                      // Sign up flow is now built-in to 'Continue' button
-                      // If you are new, backend will return action: "otp"
-
-                      const SizedBox(height: 24),
+                      // Continue button
+                      CommonButton(
+                        text: 'Send OTP',
+                        onPressed: _continue,
+                        isLoading: _isChecking,
+                        backgroundColor: const Color(0xFF2E7D32),
+                        borderRadius: 28,
+                      ),
+                      
+                      const SizedBox(height: 32),
+                      
+                      // Trust indicators
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _trustItem(Icons.verified_user_outlined, 'Secure'),
+                          const SizedBox(width: 24),
+                          _trustItem(Icons.speed_outlined, 'Fast'),
+                          const SizedBox(width: 24),
+                          _trustItem(Icons.local_shipping_outlined, 'Fresh'),
+                        ],
+                      ),
                     ],
                   ),
                 ),
@@ -474,22 +365,19 @@ class _LoginPageState extends ConsumerState<LoginPage>
     );
   }
 
-  Widget _hintRow(String emoji, String text) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 4),
-      child: Row(
-        children: [
-          Text(emoji, style: const TextStyle(fontSize: 13)),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(
-                  fontSize: 12, color: Color(0xFF0369A1), height: 1.4),
-            ),
-          ),
-        ],
-      ),
+  Widget _trustItem(IconData icon, String label) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: Colors.grey.shade400),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey.shade500,
+              fontWeight: FontWeight.w600),
+        ),
+      ],
     );
   }
 }
