@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'app_routes.dart';
 import '../modules/splash/splash_page.dart';
-import '../modules/auth/deals_page.dart';
 
 import '../modules/auth/login_page.dart';
 
@@ -22,13 +21,11 @@ import '../modules/orders/view/track_order_page.dart';
 import '../modules/location/view/location_map_picker.dart';
 import '../modules/location/view/address_details_screen.dart';
 import '../modules/home/view/search_page.dart';
+import '../modules/subscriptions/view/subscription_dashboard_page.dart';
 
 class AppPages {
   static Map<String, WidgetBuilder> get routes => {
         AppRoutes.splash: (context) => const SplashPage(),
-        AppRoutes.initialRoute: (context) => const LoginPage(),
-        AppRoutes.deals: (context) => const DealsPage(),
-        AppRoutes.welcome: (context) => const LoginPage(),
         AppRoutes.login: (context) => const LoginPage(),
         AppRoutes.home: (context) => const MainPage(),
         AppRoutes.subscriptions: (context) => const SubscriptionPage(),
@@ -58,5 +55,7 @@ class AppPages {
         },
         AppRoutes.locationMapPicker: (context) => const LocationMapPicker(),
         AppRoutes.search: (context) => const SearchPage(),
+        AppRoutes.mySubscriptions: (context) =>
+            const SubscriptionDashboardPage(),
       };
 }

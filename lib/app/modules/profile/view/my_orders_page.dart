@@ -349,14 +349,16 @@ class _OrderCard extends ConsumerWidget {
                                 final cartItem = CartItem(
                                   id: (p['_id'] ?? p['id'] ?? '').toString(),
                                   title: (p['name'] ?? '').toString(),
-                                  unitPrice: (p['price'] as num?)?.toDouble() ?? 0.0,
-                                  subtitle: (p['weight'] ?? '').toString(),
+                                  unitPrice: (item['price'] ?? p['price'] as num?)?.toDouble() ?? 0.0,
+                                  subtitle: (item['weightLabel'] ?? p['weightLabel'] ?? p['weight'] ?? '').toString(),
                                   image: (p['images'] is List && p['images'].isNotEmpty
                                       ? p['images'].first.toString()
                                       : ''),
                                   category: (p['category'] ?? '').toString(),
                                   shopId: (order['retailerId'] ?? order['shopId'] ?? p['retailerId'] ?? '').toString(),
                                   shopName: (order['retailerName'] ?? order['shopName'] ?? '').toString(),
+                                  variantId: (item['variantId'] ?? p['variantId'])?.toString(),
+                                  weightLabel: (item['weightLabel'] ?? p['weightLabel'])?.toString(),
                                   quantity: qty,
                                 );
                                 cart.addToCart(cartItem);

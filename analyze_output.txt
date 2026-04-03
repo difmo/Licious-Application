@@ -1,6 +1,0 @@
-Analyzing Shrimpbite...                                         
-
-warning - Unused import: './saved_cards_page.dart' - lib\app\modules\profile\view\profile_page.dart:7:8 - unused_import
-warning - Unused import: './transactions_page.dart' - lib\app\modules\profile\view\profile_page.dart:8:8 - unused_import
-warning - Unused import: '../../home/view/favorites_page.dart' - lib\app\modules\profile\view\profile_page.dart:11:8 - unused_import
-

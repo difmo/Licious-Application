@@ -35,15 +35,15 @@ final apiClientProvider = Provider<ApiClient>((ref) {
   final storage = ref.watch(storageServiceProvider);
   dio.interceptors.addAll([
     AuthInterceptor(dio, storage),
-    // PrettyDioLogger(
-    //   requestHeader: true,
-    //   requestBody: true,
-    //   responseBody: true,
-    //   responseHeader: false,
-    //   error: true,
-    //   compact: true,
-    //   maxWidth: 90,
-    // ),
+    PrettyDioLogger(
+      requestHeader: true,
+      requestBody: true,
+      responseBody: true,
+      responseHeader: false,
+      error: true,
+      compact: true,
+      maxWidth: 90,
+    ),
   ]);
 
   return ApiClient(dio);

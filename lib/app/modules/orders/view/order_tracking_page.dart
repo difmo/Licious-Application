@@ -23,7 +23,9 @@ class _OrderTrackingPageState extends ConsumerState<OrderTrackingPage> {
   void initState() {
     super.initState();
     _order = Map<String, dynamic>.from(widget.order);
-    _statusHistory = List<dynamic>.from(_order['statusHistory'] ?? []);
+    _statusHistory = List<dynamic>.from(
+      _order['statusHistory'] ?? _order['updates'] ?? _order['timeline'] ?? [],
+    );
     
     _loadOrderDetails();
     _setupSocket();
@@ -48,7 +50,8 @@ class _OrderTrackingPageState extends ConsumerState<OrderTrackingPage> {
       if (freshData.isNotEmpty && mounted) {
         setState(() {
           _order = freshData;
-          _statusHistory = List<dynamic>.from(_order['statusHistory'] ?? []);
+          _statusHistory = List<dynamic>.from(
+              _order['statusHistory'] ?? _order['updates'] ?? _order['timeline'] ?? []);
           _isLoading = false;
         });
       } else if (mounted) {
@@ -59,20 +62,22 @@ class _OrderTrackingPageState extends ConsumerState<OrderTrackingPage> {
     }
   }
 
+  void Function(dynamic)? _orderUpdateCallback;
+
   void _setupSocket() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final orderId = _order['orderId']?.toString() ?? '';
       if (orderId.isNotEmpty) {
         final socket = ref.read(socketServiceProvider);
         socket.joinOrderRoom(orderId);
-        socket.onOrderUpdate((data) {
+        
+        _orderUpdateCallback = (data) {
           if (!mounted) return;
           setState(() {
             _order['status'] = data['status'] ?? _order['status'];
             if (data['statusHistory'] != null) {
               _statusHistory = List<dynamic>.from(data['statusHistory']);
             } else {
-              // Append the new status entry locally
               _statusHistory.add({
                 'status': data['status'],
                 'role': 'system',
@@ -80,7 +85,9 @@ class _OrderTrackingPageState extends ConsumerState<OrderTrackingPage> {
               });
             }
           });
-        });
+        };
+        
+        socket.onOrderUpdate(_orderUpdateCallback!);
       }
     });
   }
@@ -88,10 +95,16 @@ class _OrderTrackingPageState extends ConsumerState<OrderTrackingPage> {
   @override
   void dispose() {
     final orderId = _order['orderId']?.toString() ?? '';
+    final socket = ref.read(socketServiceProvider);
+    
     if (orderId.isNotEmpty) {
-      ref.read(socketServiceProvider).leaveOrderRoom(orderId);
-      ref.read(socketServiceProvider).offEvent('orderUpdate');
+      socket.leaveOrderRoom(orderId);
     }
+    
+    if (_orderUpdateCallback != null) {
+      socket.offOrderUpdate(_orderUpdateCallback!);
+    }
+    
     super.dispose();
   }
 
@@ -215,7 +228,9 @@ class _OrderTrackingPageState extends ConsumerState<OrderTrackingPage> {
     if (items.isNotEmpty) {
       final item = items.first;
       final product = item['product'];
-      itemName = (product is Map && product['name'] != null) ? product['name'].toString() : 'Item';
+      final baseName = (product is Map && product['name'] != null) ? product['name'].toString() : 'Item';
+      final weight = (item['weightLabel'] ?? item['weight_label'] ?? (product is Map ? product['weightLabel'] : null) ?? '').toString();
+      itemName = '$baseName${weight.isNotEmpty ? " ($weight)" : ""}';
       qty = item['quantity']?.toString() ?? '1';
       
       // Attempt to get retailer name
@@ -228,7 +243,7 @@ class _OrderTrackingPageState extends ConsumerState<OrderTrackingPage> {
         }
       }
     }
-    final subtitle = items.isNotEmpty ? '${qty}x $itemName' : '';
+    final subtitle = items.isNotEmpty ? (items.length > 1 ? '${items.length} items' : '${qty}x $itemName') : '';
 
     final isSub =
         _order['orderType'] == 'Subscription' || _order['frequency'] != null;
@@ -447,6 +462,9 @@ class _OrderTrackingPageState extends ConsumerState<OrderTrackingPage> {
           final name = (product is Map && product['name'] != null) ? product['name'].toString() : 'Item';
           final qty = item['quantity']?.toString() ?? '1';
           final price = item['price']?.toString() ?? '';
+          final weight = (item['weightLabel'] ?? item['weight_label'] ?? item['label'] ?? (product is Map ? (product['weightLabel'] ?? product['label'] ?? product['weight']) : null) ?? '').toString();
+          
+          final displayName = '$name${weight.isNotEmpty ? " ($weight)" : ""}';
           
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
@@ -463,7 +481,7 @@ class _OrderTrackingPageState extends ConsumerState<OrderTrackingPage> {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text(name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                  child: Text(displayName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
                 ),
                 if (price.isNotEmpty && price != '0' && price != '0.0')
                   Text('₹$price', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
@@ -583,7 +601,7 @@ class _OrderTrackingPageState extends ConsumerState<OrderTrackingPage> {
   }
 
   Widget _buildAddressSection() {
-    final addr = _order['deliveryAddress'];
+    final addr = _order['deliveryAddress'] ?? _order['address'] ?? _order['shippingAddress'];
     if (addr == null || (addr is Map && addr.isEmpty)) {
       return const Padding(
         padding: EdgeInsets.only(left: 36),

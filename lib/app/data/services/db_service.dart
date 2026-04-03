@@ -6,6 +6,7 @@ import 'wallet_service.dart';
 import 'address_service.dart';
 import 'auth_service.dart';
 import '../network/api_client.dart';
+import '../../../core/utils/logger.dart';
 
 class CartProvider extends ChangeNotifier {
   final CartService? _service;
@@ -745,45 +746,59 @@ class CartProvider extends ChangeNotifier {
   }
 
   void addToCart(CartItem cartItem) {
-    final idx = _items.indexWhere((item) => item.title == cartItem.title);
+    AppLogger.i('CartProvider: Adding to cart - ID: ${cartItem.id}, Title: ${cartItem.title}, Variant: ${cartItem.variantId}, Qty: ${cartItem.quantity}');
+
+    final idx = _items.indexWhere((item) =>
+        item.id == cartItem.id && item.variantId == cartItem.variantId);
     if (idx >= 0) {
       _items[idx].quantity += cartItem.quantity;
       if (_service != null) {
-        _service!.updateQuantity(_items[idx].id, _items[idx].quantity);
+        _service!.updateQuantity(_items[idx].id, _items[idx].quantity,
+            variantId: _items[idx].variantId);
       }
     } else {
       _items.add(cartItem);
+      AppLogger.d('CartProvider: New item added to cart.');
       if (_service != null) {
-        _service!.addToCart(cartItem.id, cartItem.quantity);
+        _service!.addToCart(cartItem.id, cartItem.quantity,
+            variantId: cartItem.variantId, weightLabel: cartItem.weightLabel);
       }
     }
     notifyListeners();
   }
 
-  void increment(String title) {
-    final idx = _items.indexWhere((item) => item.title == title);
+  void increment(String productId, {String? variantId}) {
+    final idx = _items.indexWhere(
+        (item) => item.id == productId && item.variantId == variantId);
     if (idx >= 0) {
       _items[idx].quantity++;
       if (_service != null) {
-        _service!.updateQuantity(_items[idx].id, _items[idx].quantity);
+        _service!.updateQuantity(productId, _items[idx].quantity,
+            variantId: variantId);
       }
       notifyListeners();
     }
   }
 
-  void decrement(String title) {
-    final idx = _items.indexWhere((item) => item.title == title);
+  void clear() {
+    _items.clear();
+    notifyListeners();
+  }
+
+  void decrement(String productId, {String? variantId}) {
+    final idx = _items.indexWhere(
+        (item) => item.id == productId && item.variantId == variantId);
     if (idx >= 0) {
-      final itemId = _items[idx].id;
       if (_items[idx].quantity > 1) {
         _items[idx].quantity--;
         if (_service != null) {
-          _service!.updateQuantity(itemId, _items[idx].quantity);
+          _service!.updateQuantity(productId, _items[idx].quantity,
+              variantId: variantId);
         }
       } else {
         _items.removeAt(idx);
         if (_service != null) {
-          _service!.removeFromCart(itemId);
+          _service!.removeFromCart(productId, variantId: variantId);
         }
       }
       notifyListeners();

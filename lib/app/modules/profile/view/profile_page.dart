@@ -289,7 +289,10 @@ class _ActiveOrdersAndSubscriptions extends ConsumerWidget {
     final subscriptionsAsync = ref.watch(mySubscriptionsProvider);
     final activeSubscriptionsCount = subscriptionsAsync.maybeWhen(
       data: (subs) =>
-          subs.where((s) => s.status.toLowerCase() == 'active').length,
+          subs.where((s) {
+            final st = s.status.toLowerCase();
+            return st == 'active' || st == 'paused';
+          }).length,
       orElse: () => 0,
     );
 

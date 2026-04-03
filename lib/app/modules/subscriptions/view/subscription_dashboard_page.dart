@@ -7,6 +7,8 @@ import '../../orders/view/order_tracking_page.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/date_utils.dart';
 
+import 'package:flutter_slidable/flutter_slidable.dart';
+
 class SubscriptionDashboardPage extends ConsumerWidget {
   const SubscriptionDashboardPage({super.key});
 
@@ -84,16 +86,31 @@ class SubscriptionDashboardPage extends ConsumerWidget {
 
   Widget _buildSubscriptionList(BuildContext context, WidgetRef ref,
       List<UserSubscription> subscriptions) {
+    // Filter out cancelled subscriptions
+    final activeOrPausedSubs = subscriptions.where((s) {
+      final status = s.status.toLowerCase();
+      return status == 'active' || status == 'paused';
+    }).toList();
+
+    if (activeOrPausedSubs.isEmpty) {
+      return Stack(
+        children: [
+          ListView(physics: const AlwaysScrollableScrollPhysics()),
+          _buildEmptyState(context),
+        ],
+      );
+    }
+
     return ListView.builder(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(16),
-      itemCount: subscriptions.length + 1,
+      itemCount: activeOrPausedSubs.length + 1,
       itemBuilder: (context, index) {
-        if (index == subscriptions.length) {
+        if (index == activeOrPausedSubs.length) {
           return _buildVacationNote();
         }
-        final sub = subscriptions[index];
-        return _buildSubscriptionCard(context, ref, sub);
+        final sub = activeOrPausedSubs[index];
+        return _SubscriptionCard(sub: sub);
       },
     );
   }
@@ -169,275 +186,211 @@ class SubscriptionDashboardPage extends ConsumerWidget {
       ),
     );
   }
+}
 
-  Widget _buildSubscriptionCard(
-      BuildContext context, WidgetRef ref, UserSubscription sub) {
+class _SubscriptionCard extends ConsumerStatefulWidget {
+  final UserSubscription sub;
+
+  const _SubscriptionCard({required this.sub});
+
+  @override
+  ConsumerState<_SubscriptionCard> createState() => _SubscriptionCardState();
+}
+
+class _SubscriptionCardState extends ConsumerState<_SubscriptionCard> {
+  bool _isCancelled = false;
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isCancelled) return const SizedBox.shrink();
+
+    final sub = widget.sub;
     final bool isActive = sub.status == 'Active';
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: sub.productImage.isNotEmpty
-                      ? Image.asset(sub.productImage,
-                          width: 60,
-                          height: 60,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 300),
+      child: Slidable(
+        key: ValueKey(sub.id),
+        endActionPane: ActionPane(
+          motion: const ScrollMotion(),
+          children: [
+            SlidableAction(
+              onPressed: (context) async {
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Cancel Subscription?'),
+                    content: const Text('Are you sure you want to completely cancel this subscription?'),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('No')),
+                      TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Yes, Cancel', style: TextStyle(color: Colors.red))),
+                    ],
+                  ),
+                );
+
+                if (confirm == true) {
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (_) => const Center(child: CircularProgressIndicator(color: AppColors.accentGreen)),
+                  );
+                  
+                  final success = await ref.read(subscriptionServiceProvider).cancelSubscription(sub.id);
+                  if (mounted) Navigator.pop(context);
+
+                  if (success) {
+                    setState(() => _isCancelled = true);
+                    ref.invalidate(mySubscriptionsProvider);
+                  }
+                }
+              },
+              backgroundColor: const Color(0xFFFE4A49),
+              foregroundColor: Colors.white,
+              icon: Icons.delete,
+              label: 'Cancel',
+              borderRadius: BorderRadius.circular(20),
+            ),
+          ],
+        ),
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.grey.shade200),
+          ),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: sub.productImage.isNotEmpty
+                          ? Image.network(sub.productImage,
+                              width: 60,
+                              height: 60,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Container(
+                                  color: Colors.grey.shade100,
+                                  width: 60,
+                                  height: 60,
+                                  child: const Icon(Icons.shopping_basket)))
+                          : Container(
                               color: Colors.grey.shade100,
                               width: 60,
                               height: 60,
-                              child: const Icon(Icons.shopping_basket)))
-                      : Container(
-                          color: Colors.grey.shade100,
-                          width: 60,
-                          height: 60,
-                          child: const Icon(Icons.shopping_basket)),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(sub.productName,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 16)),
-                      const SizedBox(height: 4),
-                      Text('${sub.frequency} • Qty: ${sub.quantity}',
-                          style: TextStyle(
-                              color: Colors.grey.shade600, fontSize: 13)),
-                      if (!isActive)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 4.0),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Colors.blue.shade50,
-                              borderRadius: BorderRadius.circular(4),
-                              border: Border.all(color: Colors.blue.shade200)
+                              child: const Icon(Icons.shopping_basket)),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                              '${sub.productName}${sub.weightLabel != null && sub.weightLabel!.isNotEmpty ? " (${sub.weightLabel})" : ""}',
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 16)),
+                          const SizedBox(height: 4),
+                          Text('${sub.frequency} • Qty: ${sub.quantity}',
+                              style: TextStyle(
+                                  color: Colors.grey.shade600, fontSize: 13)),
+                          if (!isActive)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4.0),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.shade50,
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(color: Colors.blue.shade200)
+                                ),
+                                child: Text('🏖️ Vacation ON', 
+                                  style: TextStyle(color: Colors.blue.shade700, fontSize: 10, fontWeight: FontWeight.bold)),
+                              ),
                             ),
-                            child: Text('🏖️ Vacation ON', 
-                              style: TextStyle(color: Colors.blue.shade700, fontSize: 10, fontWeight: FontWeight.bold)),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                Switch(
-                  value: isActive,
-                  activeThumbColor: AppColors.accentGreen,
-                  onChanged: (val) async {
-                    if (!val && AppDateUtils.isPastCutOff()) {
-                      _showCutOffAlert(context);
-                      return;
-                    }
+                        ],
+                      ),
+                    ),
+                    Switch(
+                      value: isActive,
+                      activeThumbColor: AppColors.accentGreen,
+                      onChanged: (val) async {
+                        if (!val && AppDateUtils.isPastCutOff()) {
+                          _showCutOffAlert(context);
+                          return;
+                        }
 
-                    if (val && !isActive) {
-                      await showDialog(
-                        context: context,
-                        builder: (context) => AlertDialog(
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          title: const Text('Vacation Mode ON', style: TextStyle(fontWeight: FontWeight.bold)),
-                          content: const Text(
-                            'Your subscription is currently paused on Vacation Mode. Please turn off your vacation mode by tapping "Manage" to resume deliveries.',
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context),
-                              child: const Text('OK', style: TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.bold)),
+                        if (val && !isActive) {
+                          await showDialog(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                              title: const Text('🏖️ Vacation Mode is ON', style: TextStyle(fontWeight: FontWeight.bold)),
+                              content: const Text(
+                                'Your subscription is currently paused. Please go to Daily Deliveries and turn off Vacation Mode to resume your deliveries.',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: const Text('OK', style: TextStyle(color: AppColors.primaryDark, fontWeight: FontWeight.bold)),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                      );
-                      // Return immediately so the switch does not activate
-                      return;
-                    }
+                          );
+                          return;
+                        }
 
-                    final newStatus = val ? 'Active' : 'Paused';
-                    final success = await ref
-                        .read(subscriptionServiceProvider)
-                        .updateStatus(sub.id, newStatus);
-                    if (success) {
-                      ref.invalidate(mySubscriptionsProvider);
-                    }
-                  },
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Next Delivery',
-                          style: TextStyle(
-                              color: Colors.black54,
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 2),
-                      Text(
-                        isActive ? "Tomorrow, 7:00 AM" : "Paused",
-                        style: TextStyle(
-                          color: isActive ? AppColors.accentGreen : Colors.red,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (isActive) ...[
-                      _TrackDeliveryButton(subscriptionId: sub.id),
-                      const SizedBox(width: 6),
-                      ElevatedButton(
-                        onPressed: () => _placeSpotOrder(context, ref, sub),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.orange.shade50,
-                          foregroundColor: Colors.orange.shade900,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(horizontal: 10),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
-                        ),
-                        child: const Text('Deliver Today',
-                            style: TextStyle(
-                                fontSize: 11, fontWeight: FontWeight.bold)),
-                      ),
-                    ],
-                    const SizedBox(width: 4),
-                    TextButton.icon(
-                      onPressed: () => _showVacationPicker(context, ref, sub),
-                      icon: const Icon(Icons.calendar_month, size: 16),
-                      label: const Text('Manage'),
-                      style: TextButton.styleFrom(
-                        foregroundColor: AppColors.primaryDark,
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        textStyle: const TextStyle(
-                            fontSize: 11, fontWeight: FontWeight.bold),
-                      ),
+                        final newStatus = val ? 'Active' : 'Paused';
+                        final success = await ref
+                            .read(subscriptionServiceProvider)
+                            .updateStatus(sub.id, newStatus);
+                        if (success) {
+                          ref.invalidate(mySubscriptionsProvider);
+                        }
+                      },
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+              const Divider(height: 1),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Next Delivery',
+                            style: TextStyle(
+                                color: Colors.black54,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 2),
+                        Text(
+                          isActive ? 'Tomorrow, 7:00 AM' : 'Paused',
+                          style: TextStyle(
+                            color: isActive ? AppColors.accentGreen : Colors.red,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (isActive) _TrackDeliveryButton(subscriptionId: sub.id),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
-  }
-
-  Future<void> _placeSpotOrder(
-      BuildContext context, WidgetRef ref, UserSubscription sub) async {
-    // Logic to place a one-time order for today
-    final success = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Deliver Today?'),
-        content: Text(
-            'Would you like an extra delivery of ${sub.productName} today?'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel')),
-          TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Yes, Order')),
-        ],
-      ),
-    );
-
-    if (success == true) {
-      // For now, using default address and wallet as payment
-      // In a real app, you might want to confirm these
-      final res = await ref.read(orderServiceProvider).placeSpotOrder(
-        deliveryAddress: {}, // Backend should handle if empty or use user default
-        paymentMethod: 'Wallet',
-      );
-
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(res['message'] ?? 'Spot order placed successfully'),
-          backgroundColor: res['success'] == true ? Colors.green : Colors.red,
-        ));
-      }
-    }
-  }
-
-  void _showVacationPicker(
-      BuildContext context, WidgetRef ref, UserSubscription sub) async {
-    final firstDate = AppDateUtils.getFirstAllowedDate();
-    final DateTimeRange? picked = await showDateRangePicker(
-      context: context,
-      firstDate: firstDate,
-      lastDate: DateTime.now().add(const Duration(days: 90)),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: AppColors.primaryDark,
-              onPrimary: Colors.white,
-              surface: Colors.white,
-              onSurface: Colors.black,
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-
-    if (picked != null) {
-      // Task 3: Check if they picked tomorrow but it's past cut-off
-      final isTomorrowPicked = AppDateUtils.formatDate(picked.start) ==
-          AppDateUtils.formatDate(firstDate);
-      if (isTomorrowPicked && AppDateUtils.isPastCutOff()) {
-        if (context.mounted) _showCutOffAlert(context);
-        return;
-      }
-
-      final dates = AppDateUtils.getDatesBetween(picked.start, picked.end);
-      final res = await ref.read(subscriptionServiceProvider).updateVacation(
-            subscriptionId: sub.id,
-            vacationDates: dates,
-          );
-
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(res['message'] ?? 'Vacation updated'),
-          backgroundColor: res['success'] == true ? Colors.green : Colors.red,
-        ));
-        if (res['success'] == true) {
-          ref.invalidate(mySubscriptionsProvider);
-        }
-      }
-    }
   }
 
   void _showCutOffAlert(BuildContext context) {
-    if (!context.mounted) return;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -447,8 +400,7 @@ class SubscriptionDashboardPage extends ConsumerWidget {
           'You can only set vacations for the day after tomorrow.',
         ),
         actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context), child: const Text('OK')),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK')),
         ],
       ),
     );

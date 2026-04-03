@@ -87,39 +87,44 @@ class AuthStore extends Notifier<AuthState> {
   }
 
   Future<void> init() async {
-    if (state.status != AuthStatus.loading) {
-      state = AuthState.loading();
-    }
+    // Avoid double loading
+    if (state.status == AuthStatus.loading) return;
+    
+    state = AuthState.loading();
 
     try {
       final String? token = await _storage.getAccessToken();
       final String? cachedUserJson = await _storage.getUser();
 
       if (token != null && token.isNotEmpty) {
-         AppLogger.d('AuthStore: Session token detected. Attempting profile fetch...');
-        
+        // OPTIMISTIC RESTORE: Use cached user if available to show Home instantly
+        if (cachedUserJson != null) {
+          try {
+            final user = UserModel.fromJson(jsonDecode(cachedUserJson));
+            state = AuthState.authenticated(user);
+            AppLogger.d('AuthStore: Optimistic restore from cache successful.');
+          } catch (e) {
+            AppLogger.e('AuthStore: Failed to parse cached user: $e');
+          }
+        }
+
+        // BACKGROUND REFRESH: Verify session and update profile data
+        AppLogger.d('AuthStore: Refreshing profile in background...');
         final response = await ref.read(authServiceProvider).getProfile();
 
         if (response.success && response.data != null) {
-          AppLogger.d('AuthStore: Session verified online.');
-          // Update cache
+          AppLogger.d('AuthStore: Profile refreshed successfully.');
           await _storage.saveUser(jsonEncode(response.data!.toJson()));
           state = AuthState.authenticated(response.data!);
         } else {
-          debugPrint('AuthStore: Online verification failed: ${response.message}');
+          AppLogger.e('AuthStore: Background refresh failed: ${response.message}');
           
+          // If explicitly unauthorized, clear the session
           if (response.message.contains('401') || response.message.contains('Unauthorized')) {
-            debugPrint('AuthStore: Credentials invalid. Clearing session.');
+            AppLogger.w('AuthStore: Credentials invalid. Clearing session.');
             await logout();
-          } else if (cachedUserJson != null) {
-            // OPTIMISTIC RESTORE: We have a token that isn't definitely 401, 
-            // and we have a cached user. Let's log them in.
-            debugPrint('AuthStore: Possible network error. Restoring from cache...');
-            final user = UserModel.fromJson(jsonDecode(cachedUserJson));
-            state = AuthState.authenticated(user);
-          } else {
-            state = AuthState.unauthenticated(error: response.message);
           }
+          // Note: If it's a network error, we stay in the optimistic 'authenticated' state
         }
       } else {
         state = AuthState.unauthenticated();
@@ -156,25 +161,34 @@ class AuthStore extends Notifier<AuthState> {
     state = state.copyWith(
         status: AuthStatus.loading, error: null, clearVerificationId: true);
     try {
-      String formattedPhone = phoneNumber.trim();
-      if (formattedPhone.length == 10) {
+      // 1. Sanitize: Remove all spaces, dashes, parentheses
+      String formattedPhone = phoneNumber.replaceAll(RegExp(r'[\s\-\(\)]'), '');
+      
+      // 2. Intelligent Auto-Prefixing for India (default)
+      if (formattedPhone.length == 10 && !formattedPhone.startsWith('+')) {
         formattedPhone = '+91$formattedPhone';
       } else if (formattedPhone.length == 12 &&
           formattedPhone.startsWith('91')) {
         formattedPhone = '+$formattedPhone';
+      } else if (!formattedPhone.startsWith('+')) {
+        // Fallback: If it still lacks +, assume +91 or warn? 
+        // For now, if it's missing +, we add + as a last resort if it looks like E.164 without prefix
+        if (formattedPhone.length > 5) {
+           formattedPhone = '+$formattedPhone';
+        }
       }
 
-      debugPrint('AuthStore: Requesting OTP for $formattedPhone');
+      AppLogger.d('AuthStore: Requesting OTP for "$formattedPhone" (Length: ${formattedPhone.length})');
 
       await FirebaseAuth.instance.verifyPhoneNumber(
         phoneNumber: formattedPhone,
         verificationCompleted: (PhoneAuthCredential credential) async {
           // Automatic SMS code retrieval or instant verification
-          debugPrint('AuthStore: Phone verification completed automatically.');
+          AppLogger.i('AuthStore: Phone verification completed automatically.');
           await _signInWithFirebaseCredential(formattedPhone, credential);
         },
         verificationFailed: (FirebaseAuthException e) {
-          debugPrint(
+          AppLogger.e(
               'AuthStore: Phone verification failed: ${e.code} - ${e.message}');
           state = AuthState.unauthenticated(
               error: e.message ?? 'Phone verification failed');
@@ -230,7 +244,7 @@ class AuthStore extends Notifier<AuthState> {
         await _persistAuth(user, access, refresh);
         unawaited(syncFcmToken());
       } else {
-        debugPrint('AuthStore: verification result - FAILED: ${response.message}');
+        AppLogger.w('AuthStore: verification result - FAILED: ${response.message}');
         state = AuthState.unauthenticated(error: _handleAuthError(response.message));
       }
     } catch (e, stack) {

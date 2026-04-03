@@ -13,7 +13,6 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 }
 
 /// Centralized service for Firebase Cloud Messaging (FCM) integration.
-/// - Requests permission on startup
 /// - Gets/refreshes the device token
 /// - Sends the token to the backend
 /// - Handles foreground, background, and terminated notifications
@@ -63,7 +62,7 @@ class FCMService {
     );
 
     // Request permission
-    await FCMService().requestPermission();
+    //    await FCMService().requestPermission();
 
     // Handle foreground messages — show as local notification
     FirebaseMessaging.onMessage.listen((message) {

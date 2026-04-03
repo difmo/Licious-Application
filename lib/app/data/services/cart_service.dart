@@ -47,44 +47,53 @@ class CartService {
 
   // ── Add to Cart ──────────────────────────────────────────────────────────
   /// POST /api/app/cart/add (requires auth token)
-  Future<void> addToCart(String productId, int quantity) async {
+  Future<void> addToCart(String productId, int quantity,
+      {String? variantId, String? weightLabel}) async {
     try {
       await _client.post(
         '${ApiClient.baseUrl}/cart/add',
         data: {
           'productId': productId,
           'quantity': quantity,
+          if (variantId != null) 'variantId': variantId,
+          if (weightLabel != null) 'weightLabel': weightLabel,
         },
         requiresAuth: true,
       );
+      print('CartService: Add to cart SUCCESS - Product: $productId, Variant: $variantId');
     } catch (e) {
-      // SILENT FAIL for now, as UI might be using optimistic updates
+      print('CartService: Add to cart ERROR - $e');
+      rethrow;
     }
   }
 
   // ── Update Cart Item ─────────────────────────────────────────────────────
   /// PUT /api/app/cart/update (requires auth token)
-  Future<void> updateQuantity(String productId, int quantity) async {
+  Future<void> updateQuantity(String productId, int quantity,
+      {String? variantId}) async {
     try {
       await _client.put(
         '${ApiClient.baseUrl}/cart/update',
         data: {
           'productId': productId,
           'quantity': quantity,
+          if (variantId != null) 'variantId': variantId,
         },
         requiresAuth: true,
       );
+      print('CartService: Update quantity SUCCESS - Product: $productId, Variant: $variantId, New Qty: $quantity');
     } catch (e) {
-      // SILENT FAIL
+      print('CartService: Update quantity ERROR - $e');
+      rethrow;
     }
   }
 
   // ── Remove from Cart ─────────────────────────────────────────────────────
   /// DELETE /api/app/cart/remove/:productId (requires auth token)
-  Future<void> removeFromCart(String productId) async {
+  Future<void> removeFromCart(String productId, {String? variantId}) async {
     try {
       await _client.delete(
-        '${ApiClient.baseUrl}/cart/remove/$productId',
+        '${ApiClient.baseUrl}/cart/remove/$productId${variantId != null ? "?variantId=$variantId" : ""}',
         requiresAuth: true,
       );
     } catch (e) {
@@ -136,6 +145,8 @@ class CartService {
               '')
           .toString(),
       shopName: (json['retailerName'] ?? json['shopName'] ?? '').toString(),
+      variantId: (json['variantId'] ?? p['variantId'] ?? p['variant_id'])?.toString(),
+      weightLabel: (json['weightLabel'] ?? p['weightLabel'] ?? p['weight_label'])?.toString(),
     );
   }
 }

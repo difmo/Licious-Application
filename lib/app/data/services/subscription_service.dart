@@ -64,6 +64,8 @@ class SubscriptionService {
     required String productId,
     required String frequency,
     required int quantity,
+    String? variantId,
+    String? weightLabel,
     List<String> customDays = const [],
     DateTime? startDate,
   }) async {
@@ -72,6 +74,8 @@ class SubscriptionService {
         'productId': productId,
         'frequency': frequency,
         'quantity': quantity,
+        'variantId': variantId,
+        'weightLabel': weightLabel,
         'customDays': customDays,
         'startDate': startDate?.toIso8601String(),
       };
@@ -129,6 +133,49 @@ class SubscriptionService {
       };
     } catch (e) {
       return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  /// Cancel a subscription entirely.
+  Future<bool> cancelSubscription(String subscriptionId) async {
+    try {
+      final json = await _client.post(
+        '${ApiClient.subscriptionBaseUrl}/cancel',
+        data: {
+          'subscriptionId': subscriptionId,
+        },
+        requiresAuth: true,
+      );
+      return json['success'] as bool? ?? false;
+    } catch (e) {
+      return false;
+    }
+  }
+  /// Update status for ALL active subscriptions at once (Vacation Toggle).
+  Future<bool> updateAllStatus(String status) async {
+    try {
+      final json = await _client.patch(
+        '${ApiClient.subscriptionBaseUrl}/status-all',
+        data: {'status': status},
+        requiresAuth: true,
+      );
+      return json['success'] as bool? ?? false;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Add or remove a specific vacation date for ALL active subscriptions (Bulk Skip).
+  Future<bool> updateAllVacationDate(String date, String action) async {
+    try {
+      final json = await _client.patch(
+        '${ApiClient.subscriptionBaseUrl}/vacation-all-date',
+        data: {'date': date, 'action': action},
+        requiresAuth: true,
+      );
+      return json['success'] as bool? ?? false;
+    } catch (e) {
+      return false;
     }
   }
 }

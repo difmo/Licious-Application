@@ -2,10 +2,12 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sms_autofill/sms_autofill.dart';
 import '../../widgets/common_button.dart';
 import 'provider/auth_provider.dart';
 import 'otp_verification_page.dart';
-import '../../routes/app_routes.dart';
+
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -49,7 +51,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
     _animController.forward();
 
     // Show "verified" toast only when arriving from OTP verification
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       final args = ModalRoute.of(context)?.settings.arguments;
       if (args is Map && args['verified'] == true) {
         _showSnackBar(
@@ -58,7 +60,38 @@ class _LoginPageState extends ConsumerState<LoginPage>
           icon: Icons.check_circle,
         );
       }
+      
+      // Prompt for phone number hint ONLY ON FIRST INSTALL/RUN
+      // Otherwise, stay quiet unless user taps the phone icon manually
+      if (_phoneController.text.isEmpty) {
+        final prefs = await SharedPreferences.getInstance();
+        final bool hasBeenPrompted = prefs.getBool('phone_hint_prompted') ?? false;
+        
+        if (!hasBeenPrompted) {
+          _fillPhoneHint();
+          await prefs.setBool('phone_hint_prompted', true);
+        }
+      }
     });
+  }
+
+  Future<void> _fillPhoneHint() async {
+    try {
+      final String? hint = await SmsAutoFill().hint;
+      if (hint != null && hint.isNotEmpty) {
+        if (!mounted) return;
+        // Clean and take last 10 digits
+        final cleaned = hint.replaceAll(RegExp(r'\D'), '');
+        final last10 = cleaned.length >= 10 
+            ? cleaned.substring(cleaned.length - 10) 
+            : cleaned;
+        setState(() {
+          _phoneController.text = last10;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error getting phone hint: $e');
+    }
   }
 
   @override
@@ -165,19 +198,6 @@ class _LoginPageState extends ConsumerState<LoginPage>
 
   @override
   Widget build(BuildContext context) {
-    ref.listen<AuthState>(authProvider, (previous, next) {
-      if (!mounted) return;
-      if (next is AuthAuthenticated) {
-        if (next.user.role == 'rider') {
-          Navigator.pushNamedAndRemoveUntil(
-              context, AppRoutes.riderHome, (route) => false);
-        } else {
-          Navigator.pushNamedAndRemoveUntil(
-              context, AppRoutes.home, (route) => false);
-        }
-      }
-    });
-
     return Scaffold(
       backgroundColor: Colors.white,
       body: SingleChildScrollView(
@@ -266,6 +286,11 @@ class _LoginPageState extends ConsumerState<LoginPage>
                                 '+91 ',
                                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
                               ),
+                            ),
+                            suffixIcon: IconButton(
+                              icon: const Icon(Icons.contact_phone_outlined, color: Color(0xFF2E7D32), size: 20),
+                              onPressed: _fillPhoneHint,
+                              tooltip: 'Auto-fill phone number',
                             ),
                             prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
                             border: InputBorder.none,

@@ -1,4 +1,5 @@
 import 'package:intl/intl.dart';
+import '../../../core/utils/logger.dart';
 
 class AppDateUtils {
   /// Returns whether the current time is past the shop's cut-off (10:00 PM / 22:00)
@@ -6,7 +7,9 @@ class AppDateUtils {
   static bool isPastCutOff() {
     final now = DateTime.now();
     final cutoffTime = 20; // 8:00 PM
-    return now.hour >= cutoffTime;
+    final isPast = now.hour >= cutoffTime;
+    AppLogger.d('AppDateUtils: isPastCutOff check at ${now.hour}:${now.minute} -> $isPast (Cutoff: $cutoffTime:00)');
+    return isPast;
   }
 
   /// Returns the first allowed date for a vacation/pause based on the 8 PM rule.
@@ -35,5 +38,10 @@ class AppDateUtils {
       current = current.add(const Duration(days: 1));
     }
     return dates;
+  }
+
+  /// Checks if two dates are the same day (ignoring time).
+  static bool isSameDay(DateTime d1, DateTime d2) {
+    return d1.year == d2.year && d1.month == d2.month && d1.day == d2.day;
   }
 }

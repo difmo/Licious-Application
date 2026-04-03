@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Native splash background set to pure white to match logo background -->
+    <color name="splash_bg">#FFFFFF</color>
+</resources>

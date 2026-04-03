@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:pinput/pinput.dart';
+import 'package:sms_autofill/sms_autofill.dart';
 import '../../widgets/common_button.dart';
 import 'package:flutter/services.dart';
-import '../../../core/state/auth_store.dart' as core;
 import 'provider/auth_provider.dart';
 import '../../data/models/food_models.dart';
 import '../../data/services/db_service.dart';
@@ -18,21 +19,29 @@ class OtpVerificationPage extends ConsumerStatefulWidget {
       _OtpVerificationPageState();
 }
 
-class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
+class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage>
+    with CodeAutoFill {
   static const int _otpLength = 6;
-
-  final List<TextEditingController> _controllers =
-      List.generate(_otpLength, (_) => TextEditingController());
-  final List<FocusNode> _focusNodes =
-      List.generate(_otpLength, (_) => FocusNode());
+  final _pinController = TextEditingController();
+  final _pinFocusNode = FocusNode();
 
   bool _isSendingOtp = false;
   bool _isVerifying = false;
-  String? _localError;
+
+  @override
+  void codeUpdated() {
+    setState(() {
+      _pinController.text = code!;
+    });
+    if (code!.length == _otpLength) {
+      _verifyOtp();
+    }
+  }
 
   @override
   void initState() {
     super.initState();
+    listenForCode();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _sendOtp();
     });
@@ -40,24 +49,16 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
 
   @override
   void dispose() {
-    for (var c in _controllers) {
-      c.dispose();
-    }
-    for (var f in _focusNodes) {
-      f.dispose();
-    }
+    cancel(); 
+    _pinController.dispose();
+    _pinFocusNode.dispose();
     super.dispose();
   }
-
-  // ── Send / Resend OTP ─────────────────────────────────────────────────────
 
   Future<void> _sendOtp() async {
     setState(() {
       _isSendingOtp = true;
-      _localError = null;
-      for (var c in _controllers) {
-        c.clear();
-      }
+      _pinController.clear();
     });
 
     await ref
@@ -80,20 +81,14 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
     }
   }
 
-  // ── Verify OTP ────────────────────────────────────────────────────────────
-
   Future<void> _verifyOtp() async {
-    final otp = _controllers.map((e) => e.text).join();
+    final otp = _pinController.text;
     if (otp.length < _otpLength) {
       _showSnackBar('Please enter the complete $_otpLength-digit OTP');
       return;
     }
 
-    debugPrint('[OTP] User submitting OTP: $otp for ${widget.phoneNumber}');
-
-    // CAPTURE provider BEFORE await to avoid context issues if we navigate/unmount during verifyOtp
     final cartProvider = CartProviderScope.of(context);
-
     setState(() => _isVerifying = true);
 
     await ref.read(authProvider.notifier).verifyOtp(
@@ -107,9 +102,6 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
     final authState = ref.read(authProvider);
 
     if (authState is AuthAuthenticated) {
-      debugPrint('[OTP] Verification successful! Going to home screen.');
-
-      // Update local profile state
       try {
         cartProvider.updateUserProfile(
           UserProfile(
@@ -128,25 +120,17 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
         Navigator.pushNamedAndRemoveUntil(
             context, AppRoutes.riderHome, (route) => false);
       } else {
+        // Direct to Home. Contextual location handled later.
         Navigator.pushNamedAndRemoveUntil(
             context, AppRoutes.home, (route) => false);
       }
     } else if (authState is AuthError) {
-      debugPrint('[OTP] Verification failed: ${authState.message}');
-      
       setState(() {
-        _localError = authState.message;
         _isVerifying = false;
       });
-
-      // Clear inputs on error to make it "smooth" to retry
-      for (var c in _controllers) {
-        c.clear();
-      }
-      if (_focusNodes.isNotEmpty) _focusNodes[0].requestFocus();
-
+      _pinController.clear();
+      _pinFocusNode.requestFocus();
       _showSnackBar(authState.message, backgroundColor: Colors.red);
-      // Don't reset immediately, let the user see the error
     }
   }
 
@@ -165,20 +149,21 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
     );
   }
 
-  // ── Build ─────────────────────────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
+    // Restored UI...
+    final defaultPinTheme = PinTheme(
+      width: 50, height: 60,
+      textStyle: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87),
+      decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.black12)),
+    );
+
+    final focusedPinTheme = defaultPinTheme.copyWith(decoration: defaultPinTheme.decoration!.copyWith(border: Border.all(color: const Color(0xFF2E7D32), width: 2)));
+    final errorPinTheme = defaultPinTheme.copyWith(decoration: defaultPinTheme.decoration!.copyWith(border: Border.all(color: Colors.redAccent, width: 2)));
+
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black54),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
+      appBar: AppBar(backgroundColor: Colors.white, elevation: 0, leading: IconButton(icon: const Icon(Icons.arrow_back, color: Colors.black54), onPressed: () => Navigator.pop(context))),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 28.0),
@@ -186,199 +171,51 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 24),
-
-              const Text(
-                'OTP Verification',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF114F3B),
-                ),
-              ),
+              const Text('OTP Verification', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF114F3B))),
               const SizedBox(height: 15),
-
-              Text(
-                'We have sent the verification code to your\nphone number ${widget.phoneNumber}',
-                style: const TextStyle(
-                    fontSize: 14, color: Colors.black54, height: 1.5),
-              ),
-              const SizedBox(height: 8),
-              // ── Info Hint ───────────────────────────────────────────────
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE3F2FD),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFF64B5F6)),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.sms_outlined,
-                        size: 14, color: Color(0xFF1976D2)),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'We have sent an SMS with a 6-digit verification code to your phone. Please enter it below.',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Color(0xFF1976D2),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ],
+              Text('We have sent the verification code to your\nphone number ${widget.phoneNumber}', style: const TextStyle(fontSize: 14, color: Colors.black54, height: 1.5)),
+              const SizedBox(height: 32),
+              Center(
+                child: Pinput(
+                  length: _otpLength,
+                  controller: _pinController,
+                  focusNode: _pinFocusNode,
+                  defaultPinTheme: defaultPinTheme,
+                  focusedPinTheme: focusedPinTheme,
+                  errorPinTheme: errorPinTheme,
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  hapticFeedbackType: HapticFeedbackType.lightImpact,
+                  onCompleted: (pin) => _verifyOtp(),
+                  cursor: Column(mainAxisAlignment: MainAxisAlignment.end, children: [Container(margin: const EdgeInsets.only(bottom: 9), width: 22, height: 1, color: const Color(0xFF2E7D32))]),
                 ),
               ),
-              const SizedBox(height: 28),
-
-              // ── 6 OTP boxes ─────────────────────────────────────────────
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(_otpLength, (index) {
-                    return Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 4),
-                      width: 44,
-                      height: 54,
-                      child: KeyboardListener(
-                        focusNode: FocusNode(),
-                        onKeyEvent: (event) {
-                          if (event is KeyDownEvent &&
-                              event.logicalKey == LogicalKeyboardKey.backspace &&
-                              _controllers[index].text.isEmpty &&
-                              index > 0) {
-                            _focusNodes[index - 1].requestFocus();
-                          }
-                        },
-                        child: TextField(
-                          controller: _controllers[index],
-                          focusNode: _focusNodes[index],
-                          keyboardType: TextInputType.number,
-                          textAlign: TextAlign.center,
-                          maxLength: 1,
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                          ),
-                          decoration: InputDecoration(
-                            counterText: '',
-                            contentPadding: EdgeInsets.zero,
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide:
-                                  const BorderSide(color: Colors.black12),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(
-                                  color: Color(0xFF2E7D32), width: 2),
-                            ),
-                            fillColor: Colors.grey.shade50,
-                            filled: true,
-                          ),
-                          onChanged: (value) {
-                            if (value.isNotEmpty) {
-                              if (index < _otpLength - 1) {
-                                _focusNodes[index + 1].requestFocus();
-                              } else {
-                                _focusNodes[index].unfocus();
-                              }
-                            }
-                          },
-                        ),
-                      ),
-                    );
-                  }),
-                ),
-              ),
-
-              if (_localError != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 12),
-                  child: Center(
-                    child: Text(
-                      _localError!,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.red,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ),
-              const SizedBox(height: 15),
-
-              // ── Resend ───────────────────────────────────────────────────
+              const SizedBox(height: 24),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   if (_isSendingOtp) ...[
-                    const SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(
-                        color: Color(0xFF2E7D32),
-                        strokeWidth: 2,
-                      ),
-                    ),
+                    const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(color: Color(0xFF2E7D32), strokeWidth: 2)),
                     const SizedBox(width: 8),
-                    const Text("Requesting OTP...",
-                        style: TextStyle(
-                            color: Color(0xFF2E7D32),
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold)),
+                    const Text("Requesting OTP...", style: TextStyle(color: Color(0xFF2E7D32), fontSize: 13, fontWeight: FontWeight.bold)),
                   ] else ...[
-                    const Text("Didn't receive the code? ",
-                        style: TextStyle(color: Colors.black54, fontSize: 13)),
-                    GestureDetector(
-                      onTap: _sendOtp,
-                      child: const Text(
-                        'Resend',
-                        style: TextStyle(
-                          color: Color(0xFF2E7D32),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
+                    const Text("Didn't receive the code? ", style: TextStyle(color: Colors.black54, fontSize: 13)),
+                    GestureDetector(onTap: _sendOtp, child: const Text('Resend', style: TextStyle(color: Color(0xFF2E7D32), fontWeight: FontWeight.bold, fontSize: 13))),
                   ],
                 ],
               ),
-              const SizedBox(height: 40),
-
+              const SizedBox(height: 48),
               Consumer(
                 builder: (context, ref, child) {
-                  final authCore = ref.watch(core.authStoreProvider);
-                  // The session is ready only if we have a verificationId
-                  final isSessionReady = authCore.verificationId != null;
-                  final isBusy = _isVerifying || _isSendingOtp || (authCore.status == core.AuthStatus.loading);
-
+                  final isBusy = _isVerifying || _isSendingOtp;
                   return CommonButton(
                     text: 'Verify & Proceed',
-                    onPressed: isBusy
-                        ? null
-                        : () {
-                            if (!isSessionReady) {
-                              // If they click very fast before codeSent callback, we show it's still establishing
-                              _showSnackBar(
-                                  'Establishing secure connection... Please wait a moment.',
-                                  backgroundColor: Colors.orange.shade800);
-                              return;
-                            }
-                            _verifyOtp();
-                          },
+                    onPressed: isBusy ? null : _verifyOtp,
                     backgroundColor: const Color(0xFF2E7D32),
                     borderRadius: 28,
-                    // Show loading if we are verifying, sending, OR if we don't have a session ID yet but are NOT in error state
-                    isLoading: isBusy || (!isSessionReady && authCore.error == null),
+                    isLoading: isBusy,
                   );
                 },
               ),
-              const SizedBox(height: 24),
             ],
           ),
         ),

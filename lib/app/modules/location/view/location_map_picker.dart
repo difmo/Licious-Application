@@ -2,9 +2,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../data/services/location_service.dart';
 import '../../../data/services/geocoding_service.dart';
+import '../../../widgets/common_button.dart';
 
 class LocationMapPicker extends ConsumerStatefulWidget {
   final LatLng? initialLocation;
@@ -30,33 +32,140 @@ class _LocationMapPickerState extends ConsumerState<LocationMapPicker> {
   @override
   void initState() {
     super.initState();
+    // Default center to Lucknow while checking
+    _center = widget.initialLocation ?? const LatLng(26.8467, 80.9462);
     _initLocation();
   }
 
   Future<void> _initLocation() async {
     setState(() => _isLocating = true);
+    
     try {
       if (widget.initialLocation != null) {
         _center = widget.initialLocation;
       } else {
+        // [CONTEXTUAL FLOW] Check permission state first
+        LocationPermission permission = await Geolocator.checkPermission();
+        
+        if (permission == LocationPermission.denied) {
+          // Show our custom explanation sheet BEFORE system prompt
+          final granted = await _showPermissionExplanation();
+          if (!granted) {
+             _center = const LatLng(26.8467, 80.9462); 
+             setState(() => _isLocating = false);
+             return;
+          }
+        } else if (permission == LocationPermission.deniedForever) {
+          _showPermanentlyDeniedDialog();
+          _center = const LatLng(26.8467, 80.9462);
+          setState(() => _isLocating = false);
+          return;
+        }
+
+        // If granted/just-granted, fetch position
         final pos = await ref.read(locationServiceProvider).getCurrentLocation();
         if (pos != null) {
           _center = LatLng(pos.latitude, pos.longitude);
-        } else {
-          _center = const LatLng(26.8467, 80.9462); // Default to Lucknow
         }
       }
-      await _reverseGeocode(_center!);
+      
+      if (_center != null) await _reverseGeocode(_center!);
+      
     } catch (e) {
+      debugPrint('Location fetching error: $e');
       _center = const LatLng(26.8467, 80.9462);
-      _currentAddress = 'Location permission denied. Map centered on Lucknow.';
+      _currentAddress = 'Could not fetch location automatically.';
     } finally {
       setState(() => _isLocating = false);
       if (_center != null) {
-        final controller = await _mapController.future;
-        controller.animateCamera(CameraUpdate.newLatLngZoom(_center!, 17));
+        try {
+          final controller = await _mapController.future;
+          controller.animateCamera(CameraUpdate.newLatLngZoom(_center!, 17));
+        } catch (e) {
+          debugPrint('Map controller not ready: $e');
+        }
       }
     }
+  }
+
+  Future<bool> _showPermissionExplanation() async {
+    final result = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(28.0),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: const BoxDecoration(
+                color: Color(0xFFE8F5E9),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.location_on_rounded, size: 40, color: Color(0xFF2E7D32)),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Allow Location Access',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Color(0xFF2E7D32)),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'We use your location to accurately find your address for faster delivery and store discovery.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, color: Colors.black54, height: 1.5),
+            ),
+            const SizedBox(height: 32),
+            CommonButton(
+              text: 'CONTINUE',
+              backgroundColor: const Color(0xFF2E7D32),
+              onPressed: () => Navigator.pop(context, true),
+            ),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text('Enter Address Manually', style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.w600)),
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+
+    if (result == true) {
+       final status = await Geolocator.requestPermission();
+       return status == LocationPermission.always || status == LocationPermission.whileInUse;
+    }
+    return false;
+  }
+
+  void _showPermanentlyDeniedDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Location Access'),
+        content: const Text(
+          'Location access is permanently disabled for this app. Please enable it in Settings to detect your location automatically.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('CANCEL')),
+          TextButton(
+            onPressed: () {
+              Geolocator.openAppSettings();
+              Navigator.pop(context);
+            },
+            child: const Text('SETTINGS'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _reverseGeocode(LatLng location) async {
@@ -106,7 +215,6 @@ class _LocationMapPickerState extends ConsumerState<LocationMapPicker> {
       ),
       body: Stack(
         children: [
-          // The Map
           GoogleMap(
             initialCameraPosition: CameraPosition(
               target: _center ?? const LatLng(26.8467, 80.9462),
@@ -120,9 +228,10 @@ class _LocationMapPickerState extends ConsumerState<LocationMapPicker> {
             zoomControlsEnabled: false,
             compassEnabled: false,
             mapToolbarEnabled: false,
+            onTap: (latLng) {
+               // Optional: allow tapping to place pin
+            },
           ),
-
-          // Central Pin
           Center(
             child: Padding(
               padding: const EdgeInsets.only(bottom: 35),
@@ -246,7 +355,6 @@ class _LocationMapPickerState extends ConsumerState<LocationMapPicker> {
                         if (widget.onLocationSelected != null && _center != null) {
                           widget.onLocationSelected!(_center!, _currentAddress);
                         } else {
-                          // Default manual navigation if callback not provided
                            Navigator.pop(context, {'lat': _center!.latitude, 'lng': _center!.longitude, 'address': _currentAddress});
                         }
                       },

@@ -108,12 +108,14 @@ class OrderItem {
   final String name;
   final int quantity;
   final double price;
+  final String weightLabel;
 
   const OrderItem({
     required this.productId,
     required this.name,
     required this.quantity,
     required this.price,
+    this.weightLabel = '',
   });
 
   factory OrderItem.fromJson(Map<String, dynamic> json) {
@@ -123,11 +125,12 @@ class OrderItem {
       name: (product['name'] ?? 'Product').toString(),
       quantity: (json['quantity'] as num?)?.toInt() ?? 1,
       price: (json['price'] as num?)?.toDouble() ?? 0.0,
+      weightLabel: (json['weightLabel'] ?? '').toString(),
     );
   }
 
   @override
-  String toString() => '${quantity}x $name';
+  String toString() => '${quantity}x $name${weightLabel.isNotEmpty ? " ($weightLabel)" : ""}';
 }
 
 class UserAddress {
@@ -202,12 +205,15 @@ class Product {
   final String image;
   final double price;
   final String weight;
+  final List<ProductVariant> variants;
   final String category;
   final String badgeText;
   final bool isFavorite;
   final String description;
   final List<String> whyChoose;
   final bool isShopActive;
+  final String? shopId;
+  final String? shopName;
 
   const Product({
     required this.id,
@@ -215,21 +221,28 @@ class Product {
     required this.image,
     required this.price,
     required this.weight,
+    this.variants = const [],
     required this.category,
     this.badgeText = '',
     this.isFavorite = false,
     this.description = '',
     this.whyChoose = const [],
     this.isShopActive = true,
+    this.shopId,
+    this.shopName,
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
     return Product(
-      id: json['id']?.toString() ?? '',
+      id: (json['_id'] ?? json['id'] ?? '').toString(),
       name: json['name']?.toString() ?? '',
       image: json['image']?.toString() ?? '',
       price: double.tryParse(json['price']?.toString() ?? '0') ?? 0.0,
       weight: json['weight']?.toString() ?? '',
+      variants: (json['variants'] as List<dynamic>?)
+              ?.map((v) => ProductVariant.fromJson(v))
+              .toList() ??
+          const [],
       category: json['category']?.toString() ?? '',
       badgeText: json['badgeText']?.toString() ?? '',
       isFavorite: json['isFavorite'] == true || json['isFavorite'] == 'true',
@@ -239,47 +252,82 @@ class Product {
               .toList() ??
           const [],
       isShopActive: json['isShopActive'] ?? json['isActive'] ?? true,
+      shopId: (json['retailer'] ?? json['retailerId'] ?? json['shopId'])?.toString(),
+      shopName: (json['retailerName'] ?? json['shopName'])?.toString(),
     );
   }
+}
+
+class ProductVariant {
+  final String id;
+  final String label;
+  final double weightInKg;
+  final double price;
+  final int stock;
+  final double weightValue;
+  final String weightUnit;
+
+  const ProductVariant({
+    required this.id,
+    required this.label,
+    required this.weightInKg,
+    required this.price,
+    required this.stock,
+    required this.weightValue,
+    required this.weightUnit,
+  });
+
+  factory ProductVariant.fromJson(Map<String, dynamic> json) {
+    return ProductVariant(
+      id: (json['_id'] ?? json['id'] ?? '').toString(),
+      label: (json['label'] ?? json['weightLabel'] ?? '').toString(),
+      weightInKg: (json['weightInKg'] as num?)?.toDouble() ?? 0.0,
+      price: (json['price'] as num?)?.toDouble() ?? 0.0,
+      stock: (json['stock'] as num?)?.toInt() ?? 0,
+      weightValue: (json['weightValue'] as num?)?.toDouble() ?? 0.0,
+      weightUnit: (json['weightUnit'] ?? '').toString(),
+    );
+  }
+
+  // Helper getter to match what some components expect
+  String get weightLabel => label;
 }
 
 class WalletTransaction {
   final String id;
   final String orderId;
-  final String type; // 'Credit' or 'Debit'
-  final String category; // 'Payment', 'Top-up', 'Refund'
   final double amount;
-  final double balanceAfter;
-  final String description;
-  final String status; // 'Success', 'Failed', 'Pending'
+  final String type;
+  final String status;
   final DateTime createdAt;
+  final String category;
+  final double balanceAfter;
 
-  const WalletTransaction({
+  WalletTransaction({
     required this.id,
     required this.orderId,
-    required this.type,
-    required this.category,
     required this.amount,
-    required this.balanceAfter,
-    required this.description,
+    required this.type,
     required this.status,
     required this.createdAt,
+    required this.category,
+    this.balanceAfter = 0.0,
   });
 
   factory WalletTransaction.fromJson(Map<String, dynamic> json) {
     return WalletTransaction(
-      id: json['transactionId']?.toString() ?? json['_id']?.toString() ?? '',
-      orderId: json['orderId']?.toString() ?? '',
-      type: json['type']?.toString() ?? 'Debit',
-      category: json['category']?.toString() ?? 'Payment',
-      amount: double.tryParse(json['amount']?.toString() ?? '0') ?? 0.0,
-      balanceAfter:
-          double.tryParse(json['balanceAfter']?.toString() ?? '0') ?? 0.0,
-      description: json['description']?.toString() ?? '',
-      status: json['status']?.toString() ?? 'Success',
+      id: (json['_id'] ?? json['id'] ?? '').toString(),
+      orderId: (json['orderId'] ?? json['referenceId'] ?? '').toString(),
+      amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
+      type: json['type'] ?? 'Debit',
+      status: json['status'] ?? 'Success',
       createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'].toString().endsWith('Z') ? json['createdAt'].toString() : '${json['createdAt']}Z').toLocal()
+          ? DateTime.parse(json['createdAt'].toString().endsWith('Z')
+              ? json['createdAt'].toString()
+              : '${json['createdAt']}Z')
           : DateTime.now(),
+      category: json['category'] ?? 'Transaction',
+      balanceAfter: (json['balanceAfter'] as num?)?.toDouble() ?? 0.0,
     );
   }
 }
@@ -289,33 +337,33 @@ class Review {
   final String userId;
   final String userName;
   final String userImage;
-  final String productId;
   final double rating;
   final String comment;
   final DateTime createdAt;
 
-  const Review({
+  Review({
     required this.id,
     required this.userId,
     required this.userName,
     required this.userImage,
-    required this.productId,
     required this.rating,
     required this.comment,
     required this.createdAt,
   });
 
   factory Review.fromJson(Map<String, dynamic> json) {
+    final user = json['user'] is Map ? json['user'] : {};
     return Review(
-      id: json['_id']?.toString() ?? json['id']?.toString() ?? '',
-      userId: json['user']?['_id']?.toString() ?? '',
-      userName: json['user']?['fullName']?.toString() ?? 'User',
-      userImage: json['user']?['avatar']?.toString() ?? '',
-      productId: json['product']?.toString() ?? '',
-      rating: double.tryParse(json['rating']?.toString() ?? '5') ?? 5.0,
-      comment: json['comment']?.toString() ?? '',
+      id: (json['_id'] ?? json['id'] ?? '').toString(),
+      userId: (user['_id'] ?? user['id'] ?? '').toString(),
+      userName: (user['name'] ?? 'Guest User').toString(),
+      userImage: (user['image'] ?? user['profileImage'] ?? '').toString(),
+      rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
+      comment: (json['comment'] ?? '').toString(),
       createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'])
+          ? DateTime.parse(json['createdAt'].toString().endsWith('Z')
+              ? json['createdAt'].toString()
+              : '${json['createdAt']}Z')
           : DateTime.now(),
     );
   }

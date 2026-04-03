@@ -1,3 +1,5 @@
+import 'food_models.dart';
+
 /// Model for an API-fetched product category (embedded inside a product).
 class ShopProductCategory {
   final String id;
@@ -25,6 +27,7 @@ class ShopProduct {
   final String stockStatus; // "In Stock" | "Out of Stock"
   final String retailerId;
   final String status; // "Published" | "Draft"
+  final List<ProductVariant> variants;
   final DateTime createdAt;
   final double rating;
   final int ratingsCount;
@@ -40,6 +43,7 @@ class ShopProduct {
     required this.stockStatus,
     required this.retailerId,
     required this.status,
+    this.variants = const [],
     required this.createdAt,
     this.rating = 0.0,
     this.ratingsCount = 0,
@@ -104,6 +108,10 @@ class ShopProduct {
       stockStatus: (json['stockStatus'] ?? 'Out of Stock').toString(),
       retailerId: (json['retailer'] ?? '').toString(),
       status: (json['status'] ?? 'Draft').toString(),
+      variants: (json['variants'] as List<dynamic>?)
+              ?.map((v) => ProductVariant.fromJson(v))
+              .toList() ??
+          const [],
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
           : DateTime.now(),

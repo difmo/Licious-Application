@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:dio/dio.dart';
+import '../../../core/utils/logger.dart';
 import '../../../core/api/api_provider.dart';
 import '../../../core/storage/secure_storage_service.dart';
 
@@ -73,25 +74,25 @@ class SocketService {
     );
 
     _socket!.on('connecting',
-        (_) => debugPrint('🔄 SocketService connecting to $baseUrl...'));
+        (_) => AppLogger.d('🔄 SocketService connecting to $baseUrl...'));
     _socket!.onConnect((_) {
-      debugPrint('✅ SocketService connected to $baseUrl');
+      AppLogger.i('✅ SocketService connected to $baseUrl');
       _flushQueue();
     });
-    _socket!.onDisconnect((_) => debugPrint('🔌 SocketService disconnected'));
+    _socket!.onDisconnect((_) => AppLogger.w('🔌 SocketService disconnected'));
     _socket!.onConnectError((err) {
-      debugPrint('⚠️ SocketService connect error: $err');
+      AppLogger.e('⚠️ SocketService connect error: $err');
     });
-    _socket!.onError((err) => debugPrint('💥 SocketService error: $err'));
+    _socket!.onError((err) => AppLogger.e('💥 SocketService error: $err'));
 
     // Reconnection logs
-    _socket!.onReconnect((_) => debugPrint('♻️ SocketService reconnected'));
+    _socket!.onReconnect((_) => AppLogger.i('♻️ SocketService reconnected'));
     _socket!.onReconnectAttempt(
-        (count) => debugPrint('🔄 SocketService reconnection attempt: $count'));
+        (count) => AppLogger.d('🔄 SocketService reconnection attempt: $count'));
     _socket!.onReconnectError(
-        (err) => debugPrint('❌ SocketService reconnection error: $err'));
+        (err) => AppLogger.e('❌ SocketService reconnection error: $err'));
     _socket!.onReconnectFailed(
-        (_) => debugPrint('🛑 SocketService reconnection failed'));
+        (_) => AppLogger.f('🛑 SocketService reconnection failed'));
 
     _initialized = true;
   }

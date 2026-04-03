@@ -18,7 +18,6 @@ import '../../../data/services/fcm_service.dart';
 import '../widgets/cart_summary_bar.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:async';
-import '../../location/widgets/location_permission_sheet.dart';
 
 class MainPage extends ConsumerStatefulWidget {
   const MainPage({super.key});
@@ -60,14 +59,8 @@ class _MainPageState extends ConsumerState<MainPage> {
 
       // Sync wallet so cron job deductions accurately show on app launch
       await cart.syncWallet();
-      if (!mounted) return;
-
-      _initSocketListeners();
       
-      // If no address exists, show the Zepto-style permission sheet
-      if (cart.addresses.isEmpty) {
-        LocationPermissionSheet.show(context);
-      }
+      _initSocketListeners();
     });
   }
 

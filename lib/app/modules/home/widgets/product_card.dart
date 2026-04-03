@@ -7,31 +7,41 @@ import '../../../data/models/product_model.dart';
 import '../../../data/services/favorites_service.dart';
 import '../view/product_details_page.dart';
 import '../widgets/quantity_selector.dart';
+import '../widgets/variant_selector_sheet.dart';
 import '../../../widgets/bounce_widget.dart';
 
 class ProductCard extends ConsumerWidget {
   final Product product;
   final VoidCallback onAdd;
+  final String? shopId;
+  final String? shopName;
 
   const ProductCard({
     super.key,
     required this.product,
     required this.onAdd,
+    this.shopId,
+    this.shopName,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cart = CartProviderScope.of(context);
 
+    // For simple card, we use the first variant if available, or stay standard
+    final selectedVariant = product.variants.isNotEmpty ? product.variants[0] : null;
+
     final cartItem = cart.items.firstWhere(
-      (item) => item.title == product.name,
+      (item) => item.id == product.id && item.variantId == selectedVariant?.id,
       orElse: () => CartItem(
         id: product.id,
         title: product.name,
-        unitPrice: product.price,
-        subtitle: product.weight,
+        unitPrice: selectedVariant?.price ?? product.price,
+        subtitle: selectedVariant?.weightLabel ?? product.weight,
         image: product.image,
         category: product.category,
+        variantId: selectedVariant?.id,
+        weightLabel: selectedVariant?.weightLabel,
         quantity: 0,
       ),
     );
@@ -128,7 +138,7 @@ class ProductCard extends ConsumerWidget {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                '₹${product.price.toStringAsFixed(0)}',
+                                '₹${(selectedVariant?.price ?? product.price).toStringAsFixed(0)}',
                                 style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w800,
@@ -138,7 +148,27 @@ class ProductCard extends ConsumerWidget {
                               // Dynamic Cart Controls
                               if (!isInCart)
                                 BounceWidget(
-                                  onTap: product.isShopActive ? onAdd : () {},
+                                  onTap: product.isShopActive 
+                                      ? () {
+                                          final effectiveShopId = shopId ?? product.shopId;
+                                          final effectiveShopName = shopName ?? product.shopName;
+                                          
+                                          if (product.variants.isNotEmpty && effectiveShopId != null) {
+                                            showModalBottomSheet(
+                                              context: context,
+                                              isScrollControlled: true,
+                                              backgroundColor: Colors.transparent,
+                                              builder: (context) => VariantSelectorSheet(
+                                                product: product,
+                                                shopId: effectiveShopId,
+                                                shopName: effectiveShopName ?? 'Shop',
+                                              ),
+                                            );
+                                          } else {
+                                            onAdd();
+                                          }
+                                        }
+                                      : () {},
                                   scaleFactor: 0.9,
                                   child: Container(
                                     padding: const EdgeInsets.all(6),
@@ -159,10 +189,12 @@ class ProductCard extends ConsumerWidget {
                                 QuantitySelector(
                                   quantity: cartItem.quantity,
                                   onIncrement: product.isShopActive
-                                      ? () => cart.increment(product.name)
+                                      ? () => cart.increment(product.id,
+                                          variantId: selectedVariant?.id)
                                       : () {},
                                   onDecrement: product.isShopActive
-                                      ? () => cart.decrement(product.name)
+                                      ? () => cart.decrement(product.id,
+                                          variantId: selectedVariant?.id)
                                       : () {},
                                   size: 32, // Compact size for grid card
                                 ),

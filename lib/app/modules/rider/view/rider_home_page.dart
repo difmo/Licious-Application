@@ -1078,48 +1078,34 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
             if (isPending)
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: isProcessing
-                            ? null
-                            : () =>
-                                _handleResponse(order['orderId'], 'Accepted'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: isProcessing
-                              ? Colors.grey
-                              : const Color(0xFF68B92E),
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        child: const Text('Accept Order',
-                            style: TextStyle(fontWeight: FontWeight.bold)),
-                      ),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: isProcessing
+                        ? null
+                        : () =>
+                            _handleResponse(order['orderId'], 'Accepted'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isProcessing
+                          ? Colors.grey
+                          : const Color(0xFF68B92E),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: isProcessing
-                            ? null
-                            : () =>
-                                _handleResponse(order['orderId'], 'Rejected'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor:
-                              isProcessing ? Colors.grey : Colors.red,
-                          side: BorderSide(
-                              color: isProcessing ? Colors.grey : Colors.red),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        child: const Text('Reject'),
-                      ),
-                    ),
-                  ],
+                    child: isProcessing
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Text('Accept Order',
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 15)),
+                  ),
                 ),
               )
             else if (isAccepted && !isDelivered)

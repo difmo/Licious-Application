@@ -3,7 +3,9 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/shop_product_model.dart';
 import '../../../data/models/product_model.dart';
+import '../../../data/models/food_models.dart';
 import '../../../data/services/db_service.dart';
+import '../widgets/variant_selector_sheet.dart';
 import '../../../data/services/favorites_service.dart';
 import '../provider/shop_provider.dart';
 import '../widgets/cart_summary_bar.dart';
@@ -395,6 +397,8 @@ class _ProductCard extends ConsumerStatefulWidget {
 }
 
 class _ProductCardState extends ConsumerState<_ProductCard> {
+  int _selectedVariantIndex = 0;
+
   @override
   Widget build(BuildContext context) {
     final cart = CartProviderScope.of(context);
@@ -513,6 +517,47 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
+                
+                // ── Variant Selection ──────────────────────────────────────
+                if (p.variants.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    height: 24,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: p.variants.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 6),
+                      itemBuilder: (ctx, idx) {
+                        final v = p.variants[idx];
+                        final isSelected = _selectedVariantIndex == idx;
+                        return GestureDetector(
+                          onTap: () => setState(() => _selectedVariantIndex = idx),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            decoration: BoxDecoration(
+                              color: isSelected ? const Color(0xFF68B92E).withValues(alpha: 0.1) : Colors.transparent,
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(
+                                color: isSelected ? const Color(0xFF68B92E) : Colors.grey.shade300,
+                                width: 1,
+                              ),
+                            ),
+                            child: Center(
+                              child: Text(
+                                v.weightLabel,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                  color: isSelected ? const Color(0xFF68B92E) : Colors.grey.shade600,
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -526,7 +571,7 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  '₹${p.price.toStringAsFixed(0)}',
+                  '₹${(p.variants.isNotEmpty ? p.variants[_selectedVariantIndex].price : p.price).toStringAsFixed(0)}',
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w900,
@@ -553,23 +598,53 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
       ),
     )
         .animate(delay: (60 * widget.index).ms)
-        .fadeIn(duration: 350.ms)
         .slideY(begin: 0.08, end: 0, duration: 350.ms, curve: Curves.easeOut);
   }
 
+  void _showVariantSheet(BuildContext context, ShopProduct p, String shopName) {
+    // Convert ShopProduct to Product for the sheet
+    final product = Product(
+      id: p.id,
+      name: p.name,
+      image: p.primaryImage,
+      price: p.price,
+      weight: p.variants.isNotEmpty ? p.variants[0].label : (p.category?.name ?? ''),
+      variants: p.variants,
+      category: p.category?.name ?? 'Shrimp',
+      description: p.description,
+      whyChoose: [],
+    );
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => VariantSelectorSheet(
+        product: product,
+        shopId: widget.shopId,
+        shopName: shopName,
+      ),
+    );
+  }
+
+
   Widget _buildCartControls(
       BuildContext context, CartProvider cart, ShopProduct p, String shopName) {
+    final selectedVariant = p.variants.isNotEmpty ? p.variants[_selectedVariantIndex] : null;
+    
     final cartItem = cart.items.firstWhere(
-      (item) => item.id == p.id,
+      (item) => item.id == p.id && item.variantId == selectedVariant?.id,
       orElse: () => CartItem(
         id: p.id,
         title: p.name,
-        unitPrice: p.price,
-        subtitle: p.category?.name ?? 'Shrimp',
+        unitPrice: selectedVariant?.price ?? p.price,
+        subtitle: selectedVariant?.weightLabel ?? p.category?.name ?? 'Shrimp',
         image: p.primaryImage,
         category: 'restaurant',
         shopId: widget.shopId,
         shopName: shopName,
+        variantId: selectedVariant?.id,
+        weightLabel: selectedVariant?.weightLabel,
         quantity: 0,
       ),
     );
@@ -589,6 +664,10 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
     if (cartItem.quantity == 0) {
       return GestureDetector(
         onTap: () {
+          if (p.variants.isNotEmpty) {
+            _showVariantSheet(context, p, shopName);
+            return;
+          }
           if (cart.isSameShop(widget.shopId)) {
             cart.addToCart(CartItem(
               id: p.id,
@@ -628,14 +707,15 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
 
     return QuantitySelector(
       quantity: cartItem.quantity,
-      onIncrement: () => cart.increment(p.name),
-      onDecrement: () => cart.decrement(p.name),
+      onIncrement: () => cart.increment(p.id, variantId: selectedVariant?.id),
+      onDecrement: () => cart.decrement(p.id, variantId: selectedVariant?.id),
       size: 32, // Compact size for grid card
     );
   }
 
   void _showReplaceCartDialog(BuildContext context, CartProvider cart,
       ShopProduct p, String newShopName) {
+    final selectedVariant = p.variants.isNotEmpty ? p.variants[_selectedVariantIndex] : null;
     final oldShopName = cart.cartShopName ?? 'another shop';
 
     showDialog(
@@ -676,16 +756,18 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
                 child: ElevatedButton(
                   onPressed: () {
                     cart.clearCart();
-                    cart.addToCart(CartItem(
-                      id: p.id,
-                      title: p.name,
-                      unitPrice: p.price,
-                      subtitle: p.category?.name ?? 'Shrimp',
-                      image: p.primaryImage,
-                      category: 'restaurant',
-                      shopId: widget.shopId,
-                      shopName: newShopName,
-                    ));
+                      cart.addToCart(CartItem(
+                        id: p.id,
+                        title: p.name,
+                        unitPrice: selectedVariant?.price ?? p.price,
+                        subtitle: selectedVariant?.weightLabel ?? p.category?.name ?? 'Shrimp',
+                        image: p.primaryImage,
+                        category: 'restaurant',
+                        shopId: widget.shopId,
+                        shopName: newShopName,
+                        variantId: selectedVariant?.id,
+                        weightLabel: selectedVariant?.weightLabel,
+                      ));
                     Navigator.pop(ctx);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(

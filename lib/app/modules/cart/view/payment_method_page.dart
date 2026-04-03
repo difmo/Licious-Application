@@ -436,6 +436,8 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
                                 productId: item.id,
                                 frequency: _frequency,
                                 quantity: item.quantity,
+                                variantId: item.variantId,
+                                weightLabel: item.weightLabel ?? item.subtitle,
                                 customDays:
                                     _frequency == 'Weekly' ? _selectedDays : [],
                                 startDate: _startDate,

@@ -6,6 +6,8 @@ import '../../../data/services/db_service.dart';
 import '../../../data/models/product_model.dart';
 import '../controller/main_controller.dart';
 import '../widgets/quantity_selector.dart';
+import '../widgets/variant_selector_sheet.dart';
+import '../../../data/models/food_models.dart';
 
 class FavoritesPage extends ConsumerWidget {
   const FavoritesPage({super.key});
@@ -160,15 +162,44 @@ class _FavProductCard extends ConsumerWidget {
           orElse: () => true,
         );
 
+    void showVariantSheet(BuildContext context, ShopProduct p) {
+      final product = Product(
+        id: p.id,
+        name: p.name,
+        image: p.primaryImage,
+        price: p.price,
+        weight: p.variants.isNotEmpty ? p.variants[0].label : (p.category?.name ?? ''),
+        variants: p.variants,
+        category: p.category?.name ?? 'Shrimp',
+        description: p.description,
+        whyChoose: [],
+      );
+
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) => VariantSelectorSheet(
+          product: product,
+          shopId: p.retailerId,
+          shopName: 'Licious Shop', // Fallback name
+        ),
+      );
+    }
+
+    final selectedVariant = p.variants.isNotEmpty ? p.variants[0] : null;
+
     final cartItem = cart.items.firstWhere(
-      (item) => item.id == p.id,
+      (item) => item.id == p.id && item.variantId == selectedVariant?.id,
       orElse: () => CartItem(
           id: p.id,
           title: p.name,
-          unitPrice: p.price,
-          subtitle: p.category?.name ?? '',
+          unitPrice: selectedVariant?.price ?? p.price,
+          subtitle: selectedVariant?.weightLabel ?? p.category?.name ?? '',
           image: p.primaryImage,
           category: 'restaurant',
+          variantId: selectedVariant?.id,
+          weightLabel: selectedVariant?.weightLabel,
           quantity: 0),
     );
 
@@ -278,7 +309,7 @@ class _FavProductCard extends ConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  '₹${p.price.toStringAsFixed(0)}',
+                  '₹${(selectedVariant?.price ?? p.price).toStringAsFixed(0)}',
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w900,
@@ -288,13 +319,21 @@ class _FavProductCard extends ConsumerWidget {
                 if (cartItem.quantity == 0)
                   GestureDetector(
                     onTap: () {
+                      if (p.variants.isNotEmpty) {
+                        showVariantSheet(context, p);
+                        return;
+                      }
                       cart.addToCart(CartItem(
                         id: p.id,
                         title: p.name,
-                        unitPrice: p.price,
-                        subtitle: p.category?.name ?? 'Shrimp',
+                        unitPrice: selectedVariant?.price ?? p.price,
+                        subtitle: selectedVariant?.weightLabel ?? p.category?.name ?? 'Shrimp',
                         image: p.primaryImage,
                         category: 'restaurant',
+                        variantId: selectedVariant?.id,
+                        weightLabel: selectedVariant?.weightLabel,
+                        shopId: p.retailerId,
+                        shopName: 'Licious Shop',
                       ));
                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                         content: Text('${p.name} added to cart!'),
@@ -319,8 +358,8 @@ class _FavProductCard extends ConsumerWidget {
                 else
                   QuantitySelector(
                     quantity: cartItem.quantity,
-                    onIncrement: () => cart.increment(p.name),
-                    onDecrement: () => cart.decrement(p.name),
+                    onIncrement: () => cart.increment(p.id, variantId: selectedVariant?.id),
+                    onDecrement: () => cart.decrement(p.id, variantId: selectedVariant?.id),
                     size: 30,
                   ),
               ],

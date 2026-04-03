@@ -7,6 +7,9 @@ import '../../data/services/order_service.dart';
 import '../../data/services/db_service.dart';
 import '../../core/utils/date_utils.dart';
 import '../orders/view/order_tracking_page.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
+import '../../routes/app_routes.dart';
+import '../../../../core/utils/logger.dart';
 
 class SubscriptionPage extends ConsumerStatefulWidget {
   const SubscriptionPage({super.key});
@@ -17,12 +20,12 @@ class SubscriptionPage extends ConsumerStatefulWidget {
 
 class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
   DateTime _selectedDate = DateTime.now();
-  late final DateTime _startDate;
+  late DateTime _startDate;
+  bool? _optimisticVacationState;
 
   @override
   void initState() {
     super.initState();
-    // Show 3 days in the past and scroll forward from there
     _startDate = DateTime.now().subtract(const Duration(days: 3));
   }
 
@@ -91,24 +94,37 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildHeader(balance),
-              _buildHorizontalCalendar(subscriptionsAsync),
+              // Header with vacation toggle embedded
+              subscriptionsAsync.when(
+                data: (subs) => Column(
+                  children: [
+                    _buildHeader(balance, subs),
+                    _buildHorizontalCalendar(subs),
+                  ],
+                ),
+                loading: () => Column(
+                  children: [
+                    _buildHeader(balance, []),
+                    _buildHorizontalCalendar([]),
+                  ],
+                ),
+                error: (e, _) => Center(child: Text('Error: $e')),
+              ),
               Expanded(
                 child: subscriptionsAsync.when(
                   data: (subs) => ordersAsync.when(
                     data: (orders) => SingleChildScrollView(
                       physics: const AlwaysScrollableScrollPhysics(),
                       padding: const EdgeInsets.all(20),
-                        child: Column(
-                          children: [
-                            _buildStatusCard(subs, orders),
-                            const SizedBox(height: 20),
-                            _buildYourPlans(subs),
-                            const SizedBox(height: 30),
-                            _buildQuickActions(subs),
-                            _buildVacationNote(),
-                          ],
-                        ),
+                      child: Column(
+                        children: [
+                          _buildVacationBanner(subs),
+                          _buildStatusCard(subs, orders),
+                          const SizedBox(height: 20),
+                          _buildYourPlans(subs),
+                          const SizedBox(height: 20),
+                        ],
+                      ),
                     ),
                     loading: () => const Center(
                         child: CircularProgressIndicator(
@@ -129,150 +145,229 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
     );
   }
 
-  Widget _buildHeader(double balance) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
-      child: Row(
+  Widget _buildVacationToggle(List<UserSubscription> subs, bool isVacationOn) {
+    return GestureDetector(
+      onTap: subs.isEmpty ? null : () => _toggleVacationMode(subs, isVacationOn),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: isVacationOn ? Colors.orange.shade50 : const Color(0xFFEBFFD7),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+              color: isVacationOn
+                  ? Colors.orange.shade300
+                  : const Color(0xFF68B92E).withValues(alpha: 0.4)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isVacationOn ? Icons.flight_takeoff : Icons.flight_land,
+              size: 14,
+              color: isVacationOn ? Colors.orange.shade700 : const Color(0xFF68B92E),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              isVacationOn ? '🏖️ Vacation' : 'Vacation',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 11,
+                color: isVacationOn ? Colors.orange.shade800 : const Color(0xFF2E7D32),
+              ),
+            ),
+            const SizedBox(width: 6),
+            SizedBox(
+              height: 18,
+              width: 30,
+              child: FittedBox(
+                fit: BoxFit.contain,
+                child: Switch.adaptive(
+                  value: isVacationOn,
+                  activeTrackColor: Colors.orange.shade300,
+                  activeThumbColor: Colors.orange.shade700,
+                  inactiveTrackColor: const Color(0xFF68B92E).withValues(alpha: 0.2),
+                  onChanged: subs.isEmpty ? null : (v) => _toggleVacationMode(subs, isVacationOn),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  Widget _buildHeader(double balance, List<UserSubscription> subs) {
+    // 0. Filter to only active/paused for vacation logic
+    final activeOrPausedSubs = subs.where((s) {
+      final st = s.status.toLowerCase();
+      return st == 'active' || st == 'paused';
+    }).toList();
+
+    // Vacation is considered ON if there are subs that COULD be active, but NONE are
+    final anyActive = activeOrPausedSubs.any((s) => s.status.toLowerCase() == 'active');
+    final actualVacationOn = activeOrPausedSubs.isNotEmpty && !anyActive;
+    final isVacationOn = _optimisticVacationState ?? actualVacationOn;
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Daily Deliveries',
-                    style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900,
-                        color: Color(0xFF1A1A1A))),
-                Text(DateFormat('MMMM yyyy').format(_selectedDate),
-                    style: const TextStyle(color: Colors.grey, fontSize: 16)),
-              ],
-            ),
+          // Row 1: Title + Wallet Balance
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Daily Deliveries',
+                        style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFF1A1A1A))),
+                    Text(DateFormat('MMMM yyyy').format(_selectedDate),
+                        style: const TextStyle(color: Colors.grey, fontSize: 14)),
+                  ],
+                ),
+              ),
+              // Wallet balance pill
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF68B92E).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                      color: const Color(0xFF68B92E).withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.account_balance_wallet,
+                        color: Color(0xFF68B92E), size: 16),
+                    const SizedBox(width: 6),
+                    Text('₹${balance.toStringAsFixed(0)}',
+                        style: const TextStyle(
+                            color: Color(0xFF2E7D32),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14)),
+                  ],
+                ),
+              ),
+            ],
           ),
-          // Wallet balance pill
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: const Color(0xFF68B92E).withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                  color: const Color(0xFF68B92E).withValues(alpha: 0.3)),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.account_balance_wallet,
-                    color: Color(0xFF68B92E), size: 16),
-                const SizedBox(width: 6),
-                Text('₹${balance.toStringAsFixed(0)}',
-                    style: const TextStyle(
-                        color: Color(0xFF2E7D32),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14)),
-              ],
-            ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              // Vacation Mode pill toggle
+              _buildVacationToggle(activeOrPausedSubs, isVacationOn),
+              const SizedBox(width: 8),
+              // Pause Tomorrow side-by-side
+              if (activeOrPausedSubs.isNotEmpty && !isVacationOn)
+                _buildPauseTomorrowButton(activeOrPausedSubs),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildHorizontalCalendar(
-      AsyncValue<List<UserSubscription>> subsAsync) {
-    return SizedBox(
+  Widget _buildHorizontalCalendar(List<UserSubscription> subs) {
+    return Container(
       height: 90,
+      color: Colors.white,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        itemCount: 30,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: 14,
         itemBuilder: (context, index) {
           final date = _startDate.add(Duration(days: index));
-          final ymd = AppDateUtils.formatDate(date);
-          final isSelected = date.year == _selectedDate.year &&
-              date.month == _selectedDate.month &&
-              date.day == _selectedDate.day;
-          final isToday = date.day == DateTime.now().day &&
-              date.month == DateTime.now().month;
-
-          // Determine if date is in the past
-          final now = DateTime.now();
-          final today = DateTime(now.year, now.month, now.day);
-          final isPast = date.isBefore(today);
-
-          // Logic: Only show vacation/pause icons for Today or Future dates
-          final isVacation = !isPast && 
-            subsAsync.maybeWhen(
-              data: (subs) {
-                final deliverableOnThisDay =
-                    subs.where((s) => _deliversOn(s, date)).toList();
-                if (deliverableOnThisDay.isEmpty) return false;
-                
-                // It's a "Vacation" day if every sub that is supposed to deliver is either:
-                // 1. Individually paused (status == 'Paused')
-                // 2. On a specific vacation date
-                return deliverableOnThisDay.every((s) =>
-                    s.status == 'Paused' ||
-                    s.vacationDates.any((vd) => AppDateUtils.formatDate(vd) == ymd));
-              },
-              orElse: () => false,
-            );
-
-          // Show dot if any ACTIVE subscriptions deliver that day (and not currently paused)
-          final hasSub = subsAsync.maybeWhen(
-            data: (subs) =>
-                subs.any((s) => s.status == 'Active' && _deliversOn(s, date)),
-            orElse: () => false,
-          );
-
+          final isToday = DateUtils.isSameDay(date, DateTime.now());
+          final isSelected = DateUtils.isSameDay(date, _selectedDate);
+          
+          final activeOrPausedSubsDay = subs.where((s) {
+            final st = s.status.toLowerCase();
+            return st == 'active' || st == 'paused';
+          }).toList();
+          
+          final hasDelivery = activeOrPausedSubsDay.any((s) => s.status.toLowerCase() == 'active' && _deliversOn(s, date));
+          // Calculate state for this specific day
+          final isGlobalVacation = activeOrPausedSubsDay.isNotEmpty && !activeOrPausedSubsDay.any((s) => s.status.toLowerCase() == 'active');
+          final isOptimisticVacation = _optimisticVacationState ?? isGlobalVacation;
+          
           return GestureDetector(
             onTap: () => setState(() => _selectedDate = date),
             child: Container(
-              width: 60,
-              margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+              width: 55,
+              margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
               decoration: BoxDecoration(
-                // Task 2: Gray background for vacation dates
-                color: isSelected
-                    ? const Color(0xFF68B92E)
-                    : (isVacation ? Colors.grey.shade200 : Colors.transparent),
+                color: isSelected ? const Color(0xFF68B92E) : Colors.transparent,
                 borderRadius: BorderRadius.circular(16),
                 border: isToday && !isSelected
-                    ? Border.all(
-                        color: const Color(0xFF68B92E).withValues(alpha: 0.4))
+                    ? Border.all(color: const Color(0xFF68B92E), width: 2)
                     : null,
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(DateFormat('E').format(date).toUpperCase(),
-                      style: TextStyle(
-                          color: isSelected ? Colors.white70 : Colors.grey,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 3),
-                  Text(date.day.toString(),
-                      style: TextStyle(
-                          color: isSelected 
-                              ? Colors.white 
-                              : (isVacation ? Colors.grey : Colors.black),
-                          fontSize: 17,
-                          fontWeight: FontWeight.w900)),
-                  if (isVacation)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: Icon(Icons.pause_circle_outline,
-                          size: 14, color: (isSelected ? Colors.white70 : Colors.grey)),
+                  Text(
+                    DateFormat('EEE').format(date).toUpperCase(),
+                    style: TextStyle(
+                      color: isSelected ? Colors.white : Colors.grey,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
                     ),
-                  // Dot logic: Hide dot if it's a vacation date
-                  if (hasSub && !isVacation)
-                    Container(
-                      margin: const EdgeInsets.only(top: 3),
-                      width: 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color:
-                            isSelected ? Colors.white : const Color(0xFF68B92E),
-                      ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    date.day.toString(),
+                    style: TextStyle(
+                      color: isSelected ? Colors.white : Colors.black,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
                     ),
+                  ),
+                  // Showing Green Dot for delivery OR Umbrella icon for vacation
+                  Builder(builder: (context) {
+                    final nowStr = AppDateUtils.formatDate(DateTime.now());
+                    final dateStr = AppDateUtils.formatDate(date);
+                    final isPastDate = date.isBefore(DateTime.now()) && nowStr != dateStr;
+
+                    if (isPastDate) return const SizedBox(height: 12);
+
+                    final deliversToday = subs.any((s) => s.status.toLowerCase() == 'active' && _deliversOn(s, date));
+                    final isSkipped = subs.any((s) => 
+                        s.vacationDates.any((vd) => AppDateUtils.isSameDay(vd, date)));
+                    final globallyPaused = subs.isNotEmpty && subs.every((s) => s.status.toLowerCase() == 'paused');
+
+                    // Creative State: Paused or Skipped (Hard Pause Icon)
+                    if (isSkipped || globallyPaused) {
+                      return const Padding(
+                        padding: EdgeInsets.only(top: 2),
+                        child: Icon(
+                          Icons.pause_circle_filled,
+                          size: 10,
+                          color: Colors.amber,
+                        ),
+                      );
+                    } 
+                    
+                    // Standard State: Active Delivery
+                    if (deliversToday && !isOptimisticVacation) {
+                      return Container(
+                        margin: const EdgeInsets.only(top: 4),
+                        width: 4,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF68B92E),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(color: const Color(0xFF68B92E).withValues(alpha: 0.4), blurRadius: 2, offset: const Offset(0, 1))
+                          ],
+                        ),
+                      );
+                    }
+                    return const SizedBox(height: 12);
+                  }),
                 ],
               ),
             ),
@@ -282,11 +377,68 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
     );
   }
 
+  /// Orange warning banner shown when Vacation Mode is active
+  Widget _buildVacationBanner(List<UserSubscription> subs) {
+    final activeOrPausedSubs = subs.where((s) {
+      final st = s.status.toLowerCase();
+      return st == 'active' || st == 'paused';
+    }).toList();
+    final isVacationOn = activeOrPausedSubs.isNotEmpty && activeOrPausedSubs.every((s) => s.status.toLowerCase() == 'paused');
+    if (!isVacationOn) return const SizedBox.shrink();
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.orange.shade50,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.orange.shade200),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.warning_amber_rounded, color: Colors.orange.shade700, size: 22),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Vacation Mode is ON',
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.orange.shade800,
+                        fontSize: 13)),
+                const SizedBox(height: 2),
+                Text(
+                  'All your daily deliveries are paused. No orders will be placed until you turn off Vacation Mode.',
+                  style: TextStyle(color: Colors.orange.shade700, fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+
   Widget _buildStatusCard(List<UserSubscription> subs, List<dynamic> orders) {
     // 1. Find subscriptions that should deliver on this date
-    final deliveringSubs = subs
-        .where((s) => s.status == 'Active' && _deliversOn(s, _selectedDate))
-        .toList();
+    // Rule: Only show as 'Scheduled' if the date is effective (Next allowed date after resume/pause)
+    final firstAllowed = AppDateUtils.getFirstAllowedDate();
+    final isEffectiveDate = _selectedDate.isAtSameMomentAs(firstAllowed) || 
+                            _selectedDate.isAfter(firstAllowed);
+
+    final deliveringSubs = subs.where((s) {
+      final deliversOnDay = s.status == 'Active' && _deliversOn(s, _selectedDate);
+      // Logic: Only show the "Plan" as active if we are past the cut-off for today
+      // This prevents "Today" showing as Scheduled immediately after resuming Vacation at 10 AM.
+      return deliversOnDay && isEffectiveDate;
+    }).toList();
+
+    // 1.5 Find subscriptions specifically SKIPPED for this date (Vacation)
+    final skippedSubs = subs.where((s) => 
+        s.status.toLowerCase() == 'paused' || 
+        s.vacationDates.any((vd) => AppDateUtils.isSameDay(vd, _selectedDate))).toList();
 
     // 2. Find real orders created for this date
     // We assume the order's createdAt or custom field matches the date
@@ -338,55 +490,82 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
                 ),
               ),
               if (ordersForDate.isNotEmpty) ...[
-                const SizedBox(width: 16),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'CURRENT STATUS',
-                      style: TextStyle(
-                        color: Color(0xFF8E99AF),
-                        fontSize: 9,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.8,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEBFFD7),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: const Color(0xFF68B92E).withValues(alpha: 0.2),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'CURRENT STATUS',
+                        style: TextStyle(
+                          color: Color(0xFF8E99AF),
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.8,
                         ),
                       ),
-                      child: Text(
-                        (ordersForDate.isNotEmpty &&
-                                    ordersForDate.first['status'] != null
-                                ? ordersForDate.first['status'].toString()
-                                : 'PENDING')
-                            .toUpperCase(),
-                        style: const TextStyle(
-                          color: Color(0xFF439462),
-                          fontSize: 10,
-                          fontWeight: FontWeight.w900,
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEBFFD7),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: const Color(0xFF68B92E).withValues(alpha: 0.2),
+                          ),
+                        ),
+                        child: Text(
+                          (ordersForDate.isNotEmpty &&
+                                      ordersForDate.first['status'] != null
+                                  ? ordersForDate.first['status'].toString()
+                                  : 'PENDING')
+                              .toUpperCase(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Color(0xFF439462),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
-              const Spacer(),
+              const SizedBox(width: 8),
               if (hasDelivery)
-                Text('${deliveringSubs.length + ordersForDate.length} item(s)',
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, color: Color(0xFF1A1A1A))),
+                Text(
+                  '${deliveringSubs.length + ordersForDate.length} item(s)',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1A1A1A),
+                    fontSize: 12,
+                  ),
+                ),
             ],
           ),
           const SizedBox(height: 16),
-          if (!hasDelivery)
+          if (deliveringSubs.isEmpty && ordersForDate.isEmpty && skippedSubs.isNotEmpty)
+            Column(
+              children: [
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  child: Row(
+                    children: [
+                      Icon(Icons.pause_circle_filled, color: Colors.amber, size: 16),
+                      SizedBox(width: 8),
+                      Text('DELIVERIES PAUSED', style: TextStyle(color: Colors.amber, fontWeight: FontWeight.w900, fontSize: 10, letterSpacing: 0.5)),
+                    ],
+                  ),
+                ),
+                ...skippedSubs.map((sub) => _buildDeliveryItem(sub, isPaused: true)),
+              ],
+            ),
+          
+          if (!hasDelivery && skippedSubs.isEmpty)
             const Center(
               child: Padding(
                 padding: EdgeInsets.symmetric(vertical: 12),
@@ -432,6 +611,9 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
     final status = order['status']?.toString() ?? 'Pending';
     final isDelivered = status.toLowerCase() == 'delivered';
 
+    final weightLabel = (item['weightLabel'] ?? item['weight_label'] ?? '').toString();
+    final displayName = '$name${weightLabel.isNotEmpty ? " ($weightLabel)" : ""}';
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -451,7 +633,7 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text(displayName, style: const TextStyle(fontWeight: FontWeight.bold)),
                 Text('Qty $qty • Real-time Status: $status',
                     style: TextStyle(color: Colors.grey[600], fontSize: 12)),
               ],
@@ -492,7 +674,7 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
     );
   }
 
-  Widget _buildDeliveryItem(UserSubscription sub) {
+  Widget _buildDeliveryItem(UserSubscription sub, {bool isPaused = false}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -512,8 +694,10 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(sub.productName,
-                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text(
+                  '${sub.productName}${sub.weightLabel != null && sub.weightLabel!.isNotEmpty ? " (${sub.weightLabel})" : ""}',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
                 if (sub.retailerName.isNotEmpty)
                   Text(sub.retailerName,
                       style: TextStyle(
@@ -525,90 +709,24 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
               ],
             ),
           ),
-          GestureDetector(
-            onTap: () => _openTrackingForSubscription(sub),
-            child: const Row(
-              children: [
-                Icon(Icons.location_on_outlined,
-                    color: Color(0xFF68B92E), size: 16),
-                SizedBox(width: 4),
-                Text(
-                  'Track',
-                  style: TextStyle(
-                    color: Color(0xFF68B92E),
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                    decoration: TextDecoration.underline,
-                    decorationColor: Color(0xFF68B92E),
-                  ),
-                ),
-              ],
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: Text(
+              isPaused ? 'PAUSED' : 'PENDING',
+              style: TextStyle(
+                  color: isPaused ? Colors.amber : Colors.grey,
+                  fontSize: 9,
+                  fontWeight: FontWeight.bold),
             ),
           ),
-          const SizedBox(width: 12),
-          const Icon(Icons.check_circle, color: Color(0xFF68B92E)),
         ],
       ),
     );
-  }
-
-  /// Fetches the latest order for [sub] from the backend and navigates
-  /// to [OrderTrackingPage] with the real order data.
-  Future<void> _openTrackingForSubscription(UserSubscription sub) async {
-    if (!mounted) return;
-    
-    // Show a loading dialog instead of snackbar (which causes deactivated widget state crashes)
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator(color: Color(0xFF68B92E))),
-    );
-
-    try {
-      final orderService = ref.read(orderServiceProvider);
-      Map<String, dynamic> order = await orderService.getOrderBySubscriptionId(sub.id);
-
-      // If no backend order found, use a sensible stub so the page still opens
-      if (order.isEmpty) {
-        order = {
-          '_id': sub.id,
-          'orderId': sub.id,
-          'status': 'Processing',
-          'orderType': 'Subscription',
-          'frequency': sub.frequency,
-          'customDays': sub.customDays,
-          'items': [
-            {
-              'quantity': sub.quantity,
-              'price': 0,
-              'product': {
-                'name': sub.productName,
-                'images': [sub.productImage],
-              },
-            }
-          ],
-        };
-      }
-
-      if (!mounted) return;
-      Navigator.pop(context); // Close loading dialog
-
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => OrderTrackingPage(order: order),
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      Navigator.pop(context); // Close loading dialog
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Could not load order: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
   }
 
   Widget get _imagePlaceholder => Container(
@@ -619,196 +737,340 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
       );
 
   Widget _buildYourPlans(List<UserSubscription> subs) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('Your Plans',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 15),
-        if (subs.isEmpty)
-          const Text('No active plans. Subscribe to a product to get started!',
-              style: TextStyle(color: Colors.grey))
-        else
-          ...subs.map((sub) => _PlanItemWidget(sub: sub)),
-      ],
-    );
-  }
-
-  Widget _buildQuickActions(List<UserSubscription> subs) {
-    final isVacationOn = subs.isNotEmpty && subs.every((s) => s.status == 'Paused');
-
-    return Row(
-      children: [
-        Expanded(
-          child: _ActionButton(
-            icon: Icons.flight_takeoff,
-            label: isVacationOn ? 'Vacation: ON' : 'Vacation: OFF',
-            color: isVacationOn ? Colors.orange : Colors.grey.shade700,
-            onTap: subs.isEmpty
-                ? null
-                : () => _toggleVacationMode(subs, isVacationOn),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildVacationNote() {
-    return Container(
-      margin: const EdgeInsets.only(top: 15),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.blue.shade50.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.blue.shade100),
-      ),
-      child: Row(
+    if (subs.isEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.info_outline, size: 16, color: Colors.blue.shade800),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              'Note: Vacations for tomorrow must be set before 8:00 PM. '
-              'Changes after 8:00 PM will apply from the day after tomorrow.',
-              style: TextStyle(
-                fontSize: 10,
-                color: Colors.blue.shade900,
-                fontWeight: FontWeight.w500,
-              ),
+          const Text('Your Plans', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 15),
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey.shade200),
+            ),
+            child: const Center(
+              child: Text('No active plans yet. Start a delivery today!', 
+                style: TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.w500)),
             ),
           ),
         ],
+      );
+    }
+
+    // Only show Active and Paused in the main "Your Plans" list
+    final activeOrPausedSubs = subs.where((s) {
+      final st = s.status.toLowerCase();
+      return st == 'active' || st == 'paused';
+    }).toList();
+    
+    // Globally determine if vacation is ON for the purpose of blocking individual switches
+    final isVacationOn = activeOrPausedSubs.isNotEmpty && activeOrPausedSubs.every((s) => s.status.toLowerCase() == 'paused');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('Your Plans',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            GestureDetector(
+              onTap: () => Navigator.pushNamed(context, AppRoutes.mySubscriptions),
+              child: const Text('View All →',
+                  style: TextStyle(
+                      color: Color(0xFF68B92E),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 15),
+        // Group Active & Paused first
+        ...activeOrPausedSubs.map((sub) => _PlanItemWidget(sub: sub, isVacationOn: isVacationOn)),
+      ],
+    );
+  }
+
+
+
+  void _toggleVacationMode(List<UserSubscription> subs, bool wasOn) async {
+    final subService = ref.read(subscriptionServiceProvider);
+    final isPast8PM = AppDateUtils.isPastCutOff();
+    
+    AppLogger.i('--- Vacation Mode Toggle Triggered ---');
+    AppLogger.d('Current Visual State (wasOn): $wasOn');
+    AppLogger.d('Total Subscriptions: ${subs.length}');
+    AppLogger.d('Current Hour: ${DateTime.now().hour}, isPast8PM: $isPast8PM');
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('${wasOn ? 'Resume' : 'Pause'} Deliveries?', style: const TextStyle(fontWeight: FontWeight.bold)),
+        content: Text(wasOn
+            ? 'All your paused subscriptions will be resumed starting from tomorrow.'
+            : isPast8PM
+                ? 'It\'s past 8:00 PM (retailer cut-off). Tomorrow\'s orders are already processing.\n\nActivate Vacation Mode starting from the DAY AFTER TOMORROW?'
+                : 'This will pause all your deliveries indefinitely starting from tomorrow.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(wasOn ? 'Resume Now' : 'Pause All',
+                style: TextStyle(color: wasOn ? const Color(0xFF68B92E) : Colors.orange, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true || !mounted) return;
+    
+    // Optimistic Update: Change toggle immediately
+    setState(() => _optimisticVacationState = !wasOn);
+    
+    showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator(color: Color(0xFF68B92E))));
+    
+    try {
+      final targetStatus = wasOn ? 'Active' : 'Paused';
+      
+      final success = await subService.updateAllStatus(targetStatus);
+      AppLogger.i('API Call Success: $success');
+
+      if (!success) {
+         throw Exception('Bulk update failed on server');
+      }
+      
+      ref.invalidate(mySubscriptionsProvider);
+      await ref.read(mySubscriptionsProvider.future);
+      AppLogger.d('Provider Invalidation Complete');
+
+      if (mounted) {
+        setState(() => _optimisticVacationState = null);
+        Navigator.pop(context); // Close loading
+      }
+    } catch (e) {
+      AppLogger.e('Vacation Toggle Failed: $e');
+      if (mounted) {
+        setState(() => _optimisticVacationState = null);
+        Navigator.pop(context); // Close loading
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+      }
+    }
+  }
+
+  Widget _buildPauseTomorrowButton(List<UserSubscription> subs) {
+    if (subs.isEmpty) return const SizedBox.shrink();
+
+    final now = DateTime.now();
+    final tomorrow = now.add(const Duration(days: 1));
+    final tomorrowStr = AppDateUtils.formatDate(tomorrow);
+    final isPast8PM = AppDateUtils.isPastCutOff();
+
+    // Check if everything is already paused (Global Vacation) or if tomorrow is already skipped
+    final isTomorrowAlreadyPaused = subs.every((s) =>
+        s.status.toLowerCase() == 'paused' ||
+        s.vacationDates.any((d) => AppDateUtils.formatDate(d) == tomorrowStr));
+
+    // State: Already Paused or Generally Vacation is ON (Allows UNDO/RESUME)
+    if (isTomorrowAlreadyPaused) {
+      return GestureDetector(
+        onTap: () => _resumeTomorrowBulkSkip(subs),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFF3E0), // Light Amber
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.orange.withValues(alpha: 0.4)),
+          ),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.play_circle_fill, size: 14, color: Colors.orange),
+              SizedBox(width: 8),
+              Text(
+                'Resume Tomorrow',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 11,
+                  color: Color(0xFFE65100), // Dark Orange
+                ),
+              ),
+              SizedBox(width: 4),
+              Icon(Icons.undo, size: 10, color: Colors.orange),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return GestureDetector(
+      onTap: () {
+        if (isPast8PM) {
+          _showPast8PMAlert(context);
+          return;
+        }
+        _pauseTomorrowBulkSkip(subs);
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: isPast8PM ? Colors.grey.shade100 : const Color(0xFFEBFFD7),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+              color: isPast8PM
+                  ? Colors.grey.shade300
+                  : const Color(0xFF68B92E).withValues(alpha: 0.4)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.pause_circle_filled,
+              size: 14,
+              color: isPast8PM ? Colors.grey : const Color(0xFF68B92E),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              'Pause Tomorrow',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 11,
+                color: isPast8PM ? Colors.grey : const Color(0xFF2E7D32),
+              ),
+            ),
+            if (!isPast8PM) ...[
+              const SizedBox(width: 4),
+              Icon(
+                Icons.arrow_forward_ios,
+                size: 10,
+                color: const Color(0xFF68B92E),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
 
-  void _showCutOffAlert() {
-    if (!mounted) return;
+  void _showPast8PMAlert(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Too Late to Pause'),
-        content: const Text(
-          'Orders for tomorrow are already being processed (Cut-off was 8:00 PM). '
-          'You can only set vacations for the day after tomorrow.',
-        ),
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('🕗 Past 8:00 PM', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: const Text('It is too late to pause deliveries for tomorrow. Please use Vacation Mode to pause from the day after tomorrow.'),
         actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context), child: const Text('OK')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK', style: TextStyle(color: Color(0xFF68B92E), fontWeight: FontWeight.bold))),
         ],
       ),
     );
   }
 
-  void _toggleVacationMode(List<UserSubscription> subs, bool wasOn) async {
-    final subService = ref.read(subscriptionServiceProvider);
+  Future<void> _pauseTomorrowBulkSkip(List<UserSubscription> subs) async {
+    final tomorrow = DateTime.now().add(const Duration(days: 1));
+    final tomorrowStr = AppDateUtils.formatDate(tomorrow);
 
-    if (wasOn) {
-      // Resume logic
-      final confirm = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Resume Deliveries?'),
-          content: const Text('All your paused subscriptions will be resumed starting from tomorrow.'),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-            TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Resume Now', style: TextStyle(color: Color(0xFF68B92E)))),
-          ],
-        ),
-      );
-      if (confirm != true) return;
-
-      if (!mounted) return;
-      showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator(color: Color(0xFF68B92E))));
-      
-      try {
-        final pausedSubs = subs.where((s) => s.status == 'Paused').toList();
-        await Future.wait(pausedSubs.map((s) => subService.updateStatus(s.id, 'Active')));
-        ref.invalidate(mySubscriptionsProvider);
-        await ref.read(mySubscriptionsProvider.future);
-        if (mounted) Navigator.pop(context);
-      } catch (_) { if (mounted) Navigator.pop(context); }
-
-    } else {
-      // Pause logic with cut-off check
-      if (AppDateUtils.isPastCutOff()) {
-        _showCutOffAlert();
-        return;
-      }
-
-      final confirm = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Activate Vacation Mode?'),
-          content: const Text('This will pause all your deliveries indefinitely starting from tomorrow.'),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-            TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Pause All', style: TextStyle(color: Colors.orange))),
-          ],
-        ),
-      );
-      if (confirm != true) return;
-
-      if (!mounted) return;
-      showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator(color: Color(0xFF68B92E))));
-      
-      try {
-        final activeSubs = subs.where((s) => s.status == 'Active').toList();
-        await Future.wait(activeSubs.map((s) => subService.updateStatus(s.id, 'Paused')));
-        ref.invalidate(mySubscriptionsProvider);
-        await ref.read(mySubscriptionsProvider.future);
-        if (mounted) Navigator.pop(context);
-      } catch (_) { if (mounted) Navigator.pop(context); }
-    }
-  }
-}
-
-// ── Helpers ────────────────────────────────────────────────────────────────────
-
-class _ActionButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback? onTap;
-
-  const _ActionButton({
-    required this.icon,
-    required this.label,
-    required this.color,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: onTap == null ? Colors.grey : color, size: 24),
-            const SizedBox(height: 8),
-            Text(label,
-                style: TextStyle(
-                    color: onTap == null ? Colors.grey : color,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12)),
-          ],
-        ),
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Skip Tomorrow?', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Text('This will skip ALL your deliveries for ${DateFormat('EEEE, MMM d').format(tomorrow)}. They will automatically resume the day after.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Skip Tomorrow', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold)),
+          ),
+        ],
       ),
     );
+
+    if (confirm != true || !mounted) return;
+
+    showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(child: CircularProgressIndicator(color: Color(0xFF68B92E))));
+
+    try {
+      final success = await ref.read(subscriptionServiceProvider).updateAllVacationDate(tomorrowStr, 'add');
+      if (mounted) Navigator.pop(context); // Close loading
+
+      if (success) {
+        ref.invalidate(mySubscriptionsProvider);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Successfully skipped tomorrow\'s deliveries.'), backgroundColor: Color(0xFF114F3B)),
+        );
+      } else {
+        throw Exception('Server returned failure');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error skipping tomorrow: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Future<void> _resumeTomorrowBulkSkip(List<UserSubscription> subs) async {
+    final tomorrow = DateTime.now().add(const Duration(days: 1));
+    final tomorrowStr = AppDateUtils.formatDate(tomorrow);
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Resume Tomorrow?', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Text('Deliveries for ${DateFormat('EEEE, MMM d').format(tomorrow)} will be resumed. Continue?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Yes, Resume', style: TextStyle(color: Color(0xFF68B92E), fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true || !mounted) return;
+
+    showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(child: CircularProgressIndicator(color: Color(0xFF68B92E))));
+
+    try {
+      final success = await ref.read(subscriptionServiceProvider).updateAllVacationDate(tomorrowStr, 'remove');
+      if (mounted) Navigator.pop(context); // Close loading
+
+      if (success) {
+        ref.invalidate(mySubscriptionsProvider);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Successfully resumed tomorrow\'s deliveries.'), backgroundColor: Color(0xFF114F3B)),
+        );
+      } else {
+        throw Exception('Server returned failure');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error resuming tomorrow: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 }
 
 class _PlanItemWidget extends ConsumerStatefulWidget {
   final UserSubscription sub;
+  final bool isVacationOn;
 
-  const _PlanItemWidget({required this.sub});
+  const _PlanItemWidget({required this.sub, this.isVacationOn = false});
 
   @override
   ConsumerState<_PlanItemWidget> createState() => _PlanItemWidgetState();
@@ -816,6 +1078,7 @@ class _PlanItemWidget extends ConsumerStatefulWidget {
 
 class _PlanItemWidgetState extends ConsumerState<_PlanItemWidget> {
   bool? _optimisticIsActive;
+  bool _isCancelled = false; // Controls optimistic removal from list
 
   @override
   void didUpdateWidget(covariant _PlanItemWidget oldWidget) {
@@ -828,74 +1091,247 @@ class _PlanItemWidgetState extends ConsumerState<_PlanItemWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final isActive = _optimisticIsActive ?? (widget.sub.status == 'Active');
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade300, width: 1),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 8,
-              offset: const Offset(0, 2))
-        ],
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            backgroundColor: (isActive ? const Color(0xFF68B92E) : Colors.grey)
-                .withValues(alpha: 0.12),
-            child: Icon(isActive ? Icons.check : Icons.pause,
-                color: isActive ? const Color(0xFF68B92E) : Colors.grey),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(widget.sub.productName,
-                    style: const TextStyle(fontWeight: FontWeight.bold)),
-                Text(widget.sub.frequency,
-                    style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-              ],
-            ),
-          ),
-          // Pause / Resume toggle
-          Switch(
-            value: isActive,
-            activeThumbColor: const Color(0xFF68B92E),
-            onChanged: (val) async {
-              // Optimistic UI update
-              setState(() {
-                _optimisticIsActive = val;
-              });
+    final status = widget.sub.status;
+    final isCancelled = status == 'Cancelled';
+    final isActive = _optimisticIsActive ?? (status == 'Active');
+    final accentColor = isActive ? const Color(0xFF68B92E) : isCancelled ? Colors.red : Colors.orange;
 
-              final messenger = ScaffoldMessenger.of(context);
-              final newStatus = val ? 'Active' : 'Paused';
-              final ok = await ref
-                  .read(subscriptionServiceProvider)
-                  .updateStatus(widget.sub.id, newStatus);
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+      child: _isCancelled
+          ? const SizedBox.shrink()
+          : Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              child: Slidable(
+                key: ValueKey(widget.sub.id),
+                endActionPane: isCancelled ? null : ActionPane(
+                  motion: const ScrollMotion(),
+                  extentRatio: 0.25,
+                  children: [
+                    SlidableAction(
+                      onPressed: (slideContext) async {
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                            title: const Text('Cancel Subscription?', style: TextStyle(fontWeight: FontWeight.bold)),
+                            content: const Text('Are you sure you want to completely cancel this subscription? This action cannot be undone.'),
+                            actions: [
+                              TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('No')),
+                              TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Yes, Cancel', style: TextStyle(color: Colors.red))),
+                            ],
+                          ),
+                        );
 
-              if (ok) {
-                ref.invalidate(mySubscriptionsProvider);
-              } else {
-                // Revert optimistic update on failure
-                if (mounted) {
-                  setState(() {
-                    _optimisticIsActive = null;
-                  });
-                  messenger.showSnackBar(
-                    const SnackBar(
-                      content: Text('Failed to update plan status'),
-                      backgroundColor: Colors.red,
+                        if (confirm != true) return;
+                        if (!mounted) return;
+                        showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (_) => const Center(child: CircularProgressIndicator(color: Color(0xFF68B92E))),
+                        );
+
+                        final success = await ref.read(subscriptionServiceProvider).cancelSubscription(widget.sub.id);
+                        if (!mounted) return;
+                        Navigator.pop(context);
+
+                        if (success) {
+                          setState(() => _isCancelled = true);
+                          ref.invalidate(mySubscriptionsProvider);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Subscription cancelled successfully.'), backgroundColor: Color(0xFF114F3B)),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Failed to cancel subscription.'), backgroundColor: Colors.red),
+                          );
+                        }
+                      },
+                      backgroundColor: const Color(0xFFFE4A49),
+                      foregroundColor: Colors.white,
+                      icon: Icons.delete_outline,
+                      label: 'Cancel',
+                      borderRadius: const BorderRadius.only(topRight: Radius.circular(20), bottomRight: Radius.circular(20)),
                     ),
-                  );
-                }
-              }
-            },
+                  ],
+                ),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: isActive ? const Color(0xFF68B92E).withValues(alpha: 0.15) : Colors.grey.shade200,
+                      width: 1.5,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      )
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      // Product Thumbnail
+                      Container(
+                        width: 60,
+                        height: 60,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        clipBehavior: Clip.antiAlias,
+                        child: widget.sub.productImage.isNotEmpty
+                            ? Image.network(
+                                widget.sub.productImage,
+                                fit: BoxFit.cover,
+                                errorBuilder: (c, e, s) => const Icon(Icons.set_meal, color: Color(0xFF68B92E)),
+                              )
+                            : const Icon(Icons.set_meal, color: Color(0xFF68B92E)),
+                      ),
+                      const SizedBox(width: 16),
+                      // Info
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                             Row(
+                               children: [
+                                 Container(
+                                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                   decoration: BoxDecoration(
+                                     color: const Color(0xFF68B92E).withValues(alpha: 0.1),
+                                     borderRadius: BorderRadius.circular(6),
+                                   ),
+                                   child: Text('${widget.sub.quantity}x', 
+                                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Color(0xFF68B92E))),
+                                 ),
+                                 const SizedBox(width: 8),
+                                 Expanded(
+                                   child: Text(
+                                     '${widget.sub.productName}${widget.sub.weightLabel != null && widget.sub.weightLabel!.isNotEmpty ? " (${widget.sub.weightLabel})" : ""}',
+                                     style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: Color(0xFF2C3E50)),
+                                     maxLines: 1,
+                                     overflow: TextOverflow.ellipsis,
+                                   ),
+                                 ),
+                               ],
+                             ),
+                            const SizedBox(height: 4),
+                            if (widget.sub.retailerName.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 4),
+                                child: Text(
+                                  'By ${widget.sub.retailerName}',
+                                  style: TextStyle(color: Colors.grey.shade400, fontSize: 10, fontWeight: FontWeight.w500),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            Row(
+                              children: [
+                                Icon(Icons.repeat, size: 12, color: Colors.grey.shade500),
+                                const SizedBox(width: 4),
+                                Text(
+                                  widget.sub.frequency,
+                                  style: TextStyle(color: Colors.grey.shade500, fontSize: 12, fontWeight: FontWeight.w600),
+                                ),
+                                const SizedBox(width: 10),
+                                Text(
+                                  '₹${widget.sub.productPrice}',
+                                  style: const TextStyle(color: Color(0xFF114F3B), fontSize: 13, fontWeight: FontWeight.w900),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            // Status Badge
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: accentColor.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                status.toUpperCase(),
+                                style: TextStyle(
+                                  color: accentColor,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Actions
+                      if (!isCancelled)
+                        Column(
+                          children: [
+                            Switch(
+                              value: isActive,
+                              activeColor: const Color(0xFF68B92E),
+                              activeTrackColor: const Color(0xFF68B92E).withValues(alpha: 0.3),
+                              inactiveThumbColor: Colors.grey.shade400,
+                              inactiveTrackColor: Colors.grey.shade200,
+                              onChanged: (val) async {
+                                if (widget.isVacationOn && val) {
+                                  _showVacationBlocker(context);
+                                  return;
+                                }
+
+                                setState(() {
+                                  _optimisticIsActive = val;
+                                });
+
+                                final messenger = ScaffoldMessenger.of(context);
+                                final newStatus = val ? 'Active' : 'Paused';
+                                final ok = await ref.read(subscriptionServiceProvider).updateStatus(widget.sub.id, newStatus);
+
+                                if (ok) {
+                                  ref.invalidate(mySubscriptionsProvider);
+                                } else {
+                                  if (mounted) {
+                                    setState(() {
+                                      _optimisticIsActive = null;
+                                    });
+                                    messenger.showSnackBar(
+                                      const SnackBar(content: Text('Failed to update plan status'), backgroundColor: Colors.red),
+                                    );
+                                  }
+                                }
+                              },
+                            ),
+                            const Text('ENABLED', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Colors.grey)),
+                          ],
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+    );
+  }
+
+  void _showVacationBlocker(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Text('🏖️ ', style: TextStyle(fontSize: 24)),
+            Text('Vacation Mode', style: TextStyle(fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: const Text('Please turn off Vacation Mode first to re-activate individual subscriptions.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('OK', style: TextStyle(color: Color(0xFF68B92E), fontWeight: FontWeight.bold)),
           ),
         ],
       ),
