@@ -165,12 +165,12 @@ class SubscriptionService {
     }
   }
 
-  /// Add or remove a specific vacation date for ALL active subscriptions (Bulk Skip).
-  Future<bool> updateAllVacationDate(String date, String action) async {
+  /// Add or remove vacation dates for ALL active subscriptions (Bulk Skip).
+  Future<bool> updateAllVacationDate(List<String> dates, String action) async {
     try {
       final json = await _client.patch(
         '${ApiClient.subscriptionBaseUrl}/vacation-all-date',
-        data: {'date': date, 'action': action},
+        data: {'dates': dates, 'action': action},
         requiresAuth: true,
       );
       return json['success'] as bool? ?? false;

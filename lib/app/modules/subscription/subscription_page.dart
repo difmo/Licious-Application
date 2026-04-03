@@ -118,7 +118,14 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
                       padding: const EdgeInsets.all(20),
                       child: Column(
                         children: [
-                          _buildVacationBanner(subs),
+                          Row(
+                            children: [
+                              _buildVacationButton(subs),
+                              const SizedBox(width: 10),
+                              _buildPauseTomorrowButton(subs),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
                           _buildStatusCard(subs, orders),
                           const SizedBox(height: 20),
                           _buildYourPlans(subs),
@@ -145,68 +152,7 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
     );
   }
 
-  Widget _buildVacationToggle(List<UserSubscription> subs, bool isVacationOn) {
-    return GestureDetector(
-      onTap: subs.isEmpty ? null : () => _toggleVacationMode(subs, isVacationOn),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: isVacationOn ? Colors.orange.shade50 : const Color(0xFFEBFFD7),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-              color: isVacationOn
-                  ? Colors.orange.shade300
-                  : const Color(0xFF68B92E).withValues(alpha: 0.4)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              isVacationOn ? Icons.flight_takeoff : Icons.flight_land,
-              size: 14,
-              color: isVacationOn ? Colors.orange.shade700 : const Color(0xFF68B92E),
-            ),
-            const SizedBox(width: 6),
-            Text(
-              isVacationOn ? '🏖️ Vacation' : 'Vacation',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 11,
-                color: isVacationOn ? Colors.orange.shade800 : const Color(0xFF2E7D32),
-              ),
-            ),
-            const SizedBox(width: 6),
-            SizedBox(
-              height: 18,
-              width: 30,
-              child: FittedBox(
-                fit: BoxFit.contain,
-                child: Switch.adaptive(
-                  value: isVacationOn,
-                  activeTrackColor: Colors.orange.shade300,
-                  activeThumbColor: Colors.orange.shade700,
-                  inactiveTrackColor: const Color(0xFF68B92E).withValues(alpha: 0.2),
-                  onChanged: subs.isEmpty ? null : (v) => _toggleVacationMode(subs, isVacationOn),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
   Widget _buildHeader(double balance, List<UserSubscription> subs) {
-    // 0. Filter to only active/paused for vacation logic
-    final activeOrPausedSubs = subs.where((s) {
-      final st = s.status.toLowerCase();
-      return st == 'active' || st == 'paused';
-    }).toList();
-
-    // Vacation is considered ON if there are subs that COULD be active, but NONE are
-    final anyActive = activeOrPausedSubs.any((s) => s.status.toLowerCase() == 'active');
-    final actualVacationOn = activeOrPausedSubs.isNotEmpty && !anyActive;
-    final isVacationOn = _optimisticVacationState ?? actualVacationOn;
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
@@ -256,16 +202,6 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
             ],
           ),
           const SizedBox(height: 14),
-          Row(
-            children: [
-              // Vacation Mode pill toggle
-              _buildVacationToggle(activeOrPausedSubs, isVacationOn),
-              const SizedBox(width: 8),
-              // Pause Tomorrow side-by-side
-              if (activeOrPausedSubs.isNotEmpty && !isVacationOn)
-                _buildPauseTomorrowButton(activeOrPausedSubs),
-            ],
-          ),
         ],
       ),
     );
@@ -339,14 +275,15 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
                         s.vacationDates.any((vd) => AppDateUtils.isSameDay(vd, date)));
                     final globallyPaused = subs.isNotEmpty && subs.every((s) => s.status.toLowerCase() == 'paused');
 
-                    // Creative State: Paused or Skipped (Hard Pause Icon)
+                    // Creative State: Paused or Skipped (Vacation Theme)
                     if (isSkipped || globallyPaused) {
                       return const Padding(
                         padding: EdgeInsets.only(top: 2),
-                        child: Icon(
-                          Icons.pause_circle_filled,
-                          size: 10,
-                          color: Colors.amber,
+                        child: Text(
+                          '🏖️', 
+                          style: TextStyle(fontSize: 10, shadows: [
+                            Shadow(color: Colors.amber, blurRadius: 4, offset: Offset(0, 1))
+                          ]),
                         ),
                       );
                     } 
@@ -376,50 +313,6 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
       ),
     );
   }
-
-  /// Orange warning banner shown when Vacation Mode is active
-  Widget _buildVacationBanner(List<UserSubscription> subs) {
-    final activeOrPausedSubs = subs.where((s) {
-      final st = s.status.toLowerCase();
-      return st == 'active' || st == 'paused';
-    }).toList();
-    final isVacationOn = activeOrPausedSubs.isNotEmpty && activeOrPausedSubs.every((s) => s.status.toLowerCase() == 'paused');
-    if (!isVacationOn) return const SizedBox.shrink();
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.orange.shade50,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.orange.shade200),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.warning_amber_rounded, color: Colors.orange.shade700, size: 22),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Vacation Mode is ON',
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.orange.shade800,
-                        fontSize: 13)),
-                const SizedBox(height: 2),
-                Text(
-                  'All your daily deliveries are paused. No orders will be placed until you turn off Vacation Mode.',
-                  style: TextStyle(color: Colors.orange.shade700, fontSize: 11),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
 
   Widget _buildStatusCard(List<UserSubscription> subs, List<dynamic> orders) {
     // 1. Find subscriptions that should deliver on this date
@@ -555,9 +448,9 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
                   padding: EdgeInsets.symmetric(vertical: 8),
                   child: Row(
                     children: [
-                      Icon(Icons.pause_circle_filled, color: Colors.amber, size: 16),
+                      Text('🏖️', style: TextStyle(fontSize: 14)),
                       SizedBox(width: 8),
-                      Text('DELIVERIES PAUSED', style: TextStyle(color: Colors.amber, fontWeight: FontWeight.w900, fontSize: 10, letterSpacing: 0.5)),
+                      Text('ON VACATION', style: TextStyle(color: Colors.amber, fontWeight: FontWeight.w900, fontSize: 10, letterSpacing: 0.5)),
                     ],
                   ),
                 ),
@@ -717,7 +610,7 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
               border: Border.all(color: Colors.grey.shade300),
             ),
             child: Text(
-              isPaused ? 'PAUSED' : 'PENDING',
+              isPaused ? 'VACATION' : 'PENDING',
               style: TextStyle(
                   color: isPaused ? Colors.amber : Colors.grey,
                   fontSize: 9,
@@ -863,7 +756,12 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
   Widget _buildPauseTomorrowButton(List<UserSubscription> subs) {
     if (subs.isEmpty) return const SizedBox.shrink();
 
+    // Hide this button if a VACATION range is active (to keep UI independent as requested)
     final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final isVacationActive = subs.any((s) => s.vacationDates.any((d) => !d.isBefore(today)));
+    if (isVacationActive) return const SizedBox.shrink();
+
     final tomorrow = now.add(const Duration(days: 1));
     final tomorrowStr = AppDateUtils.formatDate(tomorrow);
     final isPast8PM = AppDateUtils.isPastCutOff();
@@ -871,7 +769,7 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
     // Check if everything is already paused (Global Vacation) or if tomorrow is already skipped
     final isTomorrowAlreadyPaused = subs.every((s) =>
         s.status.toLowerCase() == 'paused' ||
-        s.vacationDates.any((d) => AppDateUtils.formatDate(d) == tomorrowStr));
+        s.vacationDates.any((d) => AppDateUtils.isSameDay(d, tomorrow)));
 
     // State: Already Paused or Generally Vacation is ON (Allows UNDO/RESUME)
     if (isTomorrowAlreadyPaused) {
@@ -997,7 +895,7 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
         builder: (_) => const Center(child: CircularProgressIndicator(color: Color(0xFF68B92E))));
 
     try {
-      final success = await ref.read(subscriptionServiceProvider).updateAllVacationDate(tomorrowStr, 'add');
+      final success = await ref.read(subscriptionServiceProvider).updateAllVacationDate([tomorrowStr], 'add');
       if (mounted) Navigator.pop(context); // Close loading
 
       if (success) {
@@ -1045,7 +943,7 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
         builder: (_) => const Center(child: CircularProgressIndicator(color: Color(0xFF68B92E))));
 
     try {
-      final success = await ref.read(subscriptionServiceProvider).updateAllVacationDate(tomorrowStr, 'remove');
+      final success = await ref.read(subscriptionServiceProvider).updateAllVacationDate([tomorrowStr], 'remove');
       if (mounted) Navigator.pop(context); // Close loading
 
       if (success) {
@@ -1061,6 +959,177 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error resuming tomorrow: $e'), backgroundColor: Colors.red),
         );
+      }
+    }
+  }
+
+  Widget _buildVacationButton(List<UserSubscription> subs) {
+    // Check if there are any vacation dates in the future
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final hasFutureVacation = subs.any((s) => s.vacationDates.any((d) => !d.isBefore(today)));
+
+    return GestureDetector(
+      onTap: () => hasFutureVacation ? _handleStopVacation(subs) : _handleVacationSelection(subs),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: hasFutureVacation ? const Color(0xFFFFF3E0) : const Color(0xFFE8F5E9),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: hasFutureVacation ? Colors.orange.withValues(alpha: 0.4) : const Color(0xFF68B92E).withValues(alpha: 0.4)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(hasFutureVacation ? '🏝️ ' : '🏖️ ', style: const TextStyle(fontSize: 12)),
+            Text(
+              hasFutureVacation ? 'Stop Vacation' : 'Set Vacation',
+              style: TextStyle(
+                color: hasFutureVacation ? const Color(0xFFE65100) : const Color(0xFF114F3B),
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleStopVacation(List<UserSubscription> subs) async {
+    final firstAllowed = AppDateUtils.getFirstAllowedDate();
+    
+    // Find all future vacation dates that we can actually resume (must be >= firstAllowed)
+    final allVacationDates = <DateTime>{};
+    for (var s in subs) {
+      allVacationDates.addAll(s.vacationDates);
+    }
+    
+    final resumableDates = allVacationDates.where((d) => !d.isBefore(firstAllowed)).toList();
+    
+    if (resumableDates.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No future vacation dates to stop. Any dates for tomorrow are already locked (Past 8 PM).')),
+      );
+      return;
+    }
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Stop Vacation?', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Text('This will resume your deliveries from ${AppDateUtils.formatDate(firstAllowed)}. Continue?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Resume Orders', style: TextStyle(color: Color(0xFF68B92E), fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && mounted) {
+      showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => const Center(child: CircularProgressIndicator(color: Color(0xFF68B92E))));
+
+      try {
+        final dateStrings = resumableDates.map((d) => AppDateUtils.formatDate(d)).toList();
+        final ok = await ref.read(subscriptionServiceProvider).updateAllVacationDate(dateStrings, 'remove');
+
+        if (mounted) {
+          Navigator.pop(context); 
+          ref.invalidate(mySubscriptionsProvider);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Vacation stopped. Deliveries will resume as scheduled.'), backgroundColor: Color(0xFF114F3B)),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          Navigator.pop(context); 
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error stopping vacation: $e'), backgroundColor: Colors.red),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _handleVacationSelection(List<UserSubscription> subs) async {
+    final now = DateTime.now();
+    final firstAllowed = AppDateUtils.getFirstAllowedDate();
+    
+    final range = await showDateRangePicker(
+      context: context,
+      initialDateRange: DateTimeRange(start: firstAllowed, end: firstAllowed.add(const Duration(days: 3))),
+      firstDate: firstAllowed,
+      lastDate: now.add(const Duration(days: 365)),
+      helpText: 'Select Vacation Dates',
+      builder: (context, child) => Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: const ColorScheme.light(
+            primary: Color(0xFF68B92E),
+            onPrimary: Colors.white,
+            onSurface: Colors.black,
+          ),
+        ),
+        child: child!,
+      ),
+    );
+
+    if (range != null && mounted) {
+      // Calculate all dates between start and end
+      final List<String> dates = [];
+      DateTime current = range.start;
+      while (!current.isAfter(range.end)) {
+        dates.add(AppDateUtils.formatDate(current));
+        current = current.add(const Duration(days: 1));
+      }
+
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Confirm Vacation', style: TextStyle(fontWeight: FontWeight.bold)),
+          content: Text('You are setting vacation for ${dates.length} days (${AppDateUtils.formatDate(range.start)} to ${AppDateUtils.formatDate(range.end)}). Deliveries will be skipped.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Confirm', style: TextStyle(color: Color(0xFF68B92E), fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed == true && mounted) {
+        showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (_) => const Center(child: CircularProgressIndicator(color: Color(0xFF68B92E))));
+
+        try {
+          final ok = await ref.read(subscriptionServiceProvider).updateAllVacationDate(dates, 'add');
+
+          if (mounted) {
+            Navigator.pop(context); 
+            ref.invalidate(mySubscriptionsProvider);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Successfully set vacation for ${dates.length} dates.'), backgroundColor: const Color(0xFF114F3B)),
+            );
+          }
+        } catch (e) {
+          if (mounted) {
+            Navigator.pop(context); 
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Error setting vacation: $e'), backgroundColor: Colors.red),
+            );
+          }
+        }
       }
     }
   }
