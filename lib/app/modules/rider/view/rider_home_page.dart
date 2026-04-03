@@ -215,9 +215,10 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
         'New Customer';
 
     final addressRaw = order?['deliveryAddress'] ?? order?['address'];
-    final address = (addressRaw is Map)
+    final addressRawStr = (addressRaw is Map)
         ? addressRaw['address']?.toString() ?? ''
         : addressRaw?.toString() ?? '';
+    final address = _cleanAddress(addressRawStr);
 
     _messenger?.clearSnackBars();
     _messenger?.showSnackBar(
@@ -500,11 +501,25 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
           // Refresh assigned orders (removes this order) AND history tab
           ref.invalidate(riderOrdersProvider);
           ref.invalidate(deliveryHistoryProvider);
+          ref.invalidate(riderStatsProvider);
         }
       }
     } finally {
       if (mounted) setState(() => _processingIds.remove(orderId));
     }
+  }
+
+  String _cleanAddress(String address) {
+    if (address.isEmpty) return '';
+    String cleaned = address
+        .replaceAll(RegExp(r'Name:\s*[^,]+,?\s*', caseSensitive: false), '')
+        .replaceAll(RegExp(r'Phone:\s*[^,]+,?\s*', caseSensitive: false), '');
+    cleaned = cleaned.replaceAll(RegExp(r',\s*,'), ',').trim();
+    if (cleaned.startsWith(',')) cleaned = cleaned.substring(1).trim();
+    if (cleaned.endsWith(',')) {
+      cleaned = cleaned.substring(0, cleaned.length - 1).trim();
+    }
+    return cleaned;
   }
 
   @override
@@ -689,9 +704,16 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
                                 else
                                   Switch.adaptive(
                                     value: _isOnline,
-                                    activeTrackColor: AppColors.accentGreen
-                                        .withValues(alpha: 0.5),
+                                    activeTrackColor: AppColors.accentGreen.withValues(alpha: 0.5),
                                     activeThumbColor: AppColors.accentGreen,
+                                    inactiveThumbColor: Colors.grey.shade400,
+                                    inactiveTrackColor: Colors.grey.shade200,
+                                    trackOutlineColor: WidgetStateProperty.resolveWith<Color?>((states) {
+                                      if (states.contains(WidgetState.selected)) {
+                                        return AppColors.accentGreen.withValues(alpha: 0.5);
+                                      }
+                                      return Colors.grey.shade300;
+                                    }),
                                     onChanged: _isTogglingStatus
                                         ? null
                                         : _toggleOnline,
@@ -1025,7 +1047,8 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
                   _buildOrderInfoRow(
                     Icons.location_on_rounded,
                     'Delivery Address',
-                    (order['deliveryAddress'] == null)
+                    (() {
+                      final raw = (order['deliveryAddress'] == null)
                         ? 'No address provided'
                         : (order['deliveryAddress'] is Map)
                             ? (order['deliveryAddress']['fullAddress'] ??
@@ -1033,7 +1056,9 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
                                     order['deliveryAddress']['street'] ??
                                     'No address provided')
                                 .toString()
-                            : order['deliveryAddress'].toString(),
+                            : order['deliveryAddress'].toString();
+                      return _cleanAddress(raw);
+                    })(),
                   ),
                   const SizedBox(height: 12),
                   _buildOrderInfoRow(

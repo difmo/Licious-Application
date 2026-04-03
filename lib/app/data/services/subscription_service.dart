@@ -74,8 +74,8 @@ class SubscriptionService {
         'productId': productId,
         'frequency': frequency,
         'quantity': quantity,
-        'variantId': variantId,
-        'weightLabel': weightLabel,
+        if (variantId != null) 'variantId': variantId,
+        if (weightLabel != null) 'weightLabel': weightLabel,
         'customDays': customDays,
         'startDate': startDate?.toIso8601String(),
       };

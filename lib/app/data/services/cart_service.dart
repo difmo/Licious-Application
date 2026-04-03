@@ -70,7 +70,7 @@ class CartService {
   // ── Update Cart Item ─────────────────────────────────────────────────────
   /// PUT /api/app/cart/update (requires auth token)
   Future<void> updateQuantity(String productId, int quantity,
-      {String? variantId}) async {
+      {String? variantId, String? weightLabel}) async {
     try {
       await _client.put(
         '${ApiClient.baseUrl}/cart/update',
@@ -78,6 +78,7 @@ class CartService {
           'productId': productId,
           'quantity': quantity,
           if (variantId != null) 'variantId': variantId,
+          if (weightLabel != null) 'weightLabel': weightLabel,
         },
         requiresAuth: true,
       );

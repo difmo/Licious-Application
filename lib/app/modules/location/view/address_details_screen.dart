@@ -246,6 +246,14 @@ class _AddressDetailsScreenState extends ConsumerState<AddressDetailsScreen> {
                  trailing: Switch.adaptive(
                     value: _isDefault, 
                     activeColor: AppColors.accentGreen,
+                    activeTrackColor: AppColors.accentGreen.withValues(alpha: 0.3),
+                    inactiveThumbColor: Colors.grey.shade400,
+                    inactiveTrackColor: Colors.grey.shade200,
+                    trackOutlineColor: WidgetStateProperty.resolveWith<Color?>((states) {
+                      return states.contains(WidgetState.selected) 
+                        ? AppColors.accentGreen.withValues(alpha: 0.5) 
+                        : Colors.grey.shade300;
+                    }),
                     onChanged: (v) => setState(() => _isDefault = v),
                  ),
               ),

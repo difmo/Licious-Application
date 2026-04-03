@@ -110,6 +110,7 @@ class _RiderOrderDetailsPageState extends ConsumerState<RiderOrderDetailsPage> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ));
       ref.invalidate(riderOrdersProvider);
+      ref.invalidate(riderStatsProvider);
       if (isSuccess && (status == 'Delivered' || status == 'Rejected')) {
         Navigator.pop(context);
       }
@@ -131,6 +132,22 @@ class _RiderOrderDetailsPageState extends ConsumerState<RiderOrderDetailsPage> {
     }
   }
 
+  String _cleanAddress(String address) {
+    if (address.isEmpty) return '';
+    
+    // Remove Name: ... and Phone: ... prefixes
+    String cleaned = address
+        .replaceAll(RegExp(r'Name:\s*[^,]+,?\s*', caseSensitive: false), '')
+        .replaceAll(RegExp(r'Phone:\s*[^,]+,?\s*', caseSensitive: false), '');
+    
+    // Clean up any double commas or leading/trailing commas left behind
+    cleaned = cleaned.replaceAll(RegExp(r',\s*,'), ',').trim();
+    if (cleaned.startsWith(',')) cleaned = cleaned.substring(1).trim();
+    if (cleaned.endsWith(',')) cleaned = cleaned.substring(0, cleaned.length - 1).trim();
+    
+    return cleaned;
+  }
+
   Future<void> _openMaps(dynamic addressData) async {
     String destination = '';
     if (addressData is Map) {
@@ -139,10 +156,11 @@ class _RiderOrderDetailsPageState extends ConsumerState<RiderOrderDetailsPage> {
       if (lat != null && lng != null) {
         destination = '$lat,$lng';
       } else {
-        destination = addressData['fullAddress'] ?? addressData['address'] ?? addressData['street'] ?? '';
+        final rawAddress = addressData['fullAddress'] ?? addressData['address'] ?? addressData['street'] ?? '';
+        destination = _cleanAddress(rawAddress.toString());
       }
     } else if (addressData is String) {
-      destination = addressData;
+      destination = _cleanAddress(addressData);
     }
 
     if (destination.isEmpty || destination == 'N/A') {
@@ -172,7 +190,7 @@ class _RiderOrderDetailsPageState extends ConsumerState<RiderOrderDetailsPage> {
         ? (user['phoneNumber']?.toString() ?? user['phone']?.toString() ?? '')
         : '';
     final deliveryAddressMap = order['deliveryAddress'];
-    final deliveryAddress = (deliveryAddressMap == null)
+    final deliveryAddressRaw = (deliveryAddressMap == null)
         ? 'N/A'
         : (deliveryAddressMap is Map)
             ? (deliveryAddressMap['fullAddress'] ??
@@ -181,6 +199,7 @@ class _RiderOrderDetailsPageState extends ConsumerState<RiderOrderDetailsPage> {
                     'N/A')
                 .toString()
             : deliveryAddressMap.toString();
+    final deliveryAddress = _cleanAddress(deliveryAddressRaw);
 
     // Use live status from socket, falls back to initial order status
     final status = _liveStatus.isNotEmpty

@@ -67,18 +67,10 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage>
 
     if (!mounted) return;
     setState(() => _isSendingOtp = false);
-
-    final authState = ref.read(authProvider);
-
-    if (authState is AuthSuccess) {
-      _showSnackBar('OTP has been sent to your phone via SMS',
-          backgroundColor: Colors.green);
-      ref.read(authProvider.notifier).reset();
-    } else if (authState is AuthError) {
-      debugPrint('[OTP ERROR] ${authState.message}');
-      _showSnackBar(authState.message, backgroundColor: Colors.red);
-      ref.read(authProvider.notifier).reset();
-    }
+    
+    // Note: We don't check authState here because sendOtp completes 
+    // when the request starts, not when the code is actually sent.
+    // The UI will react via ref.listen in build().
   }
 
   Future<void> _verifyOtp() async {
@@ -130,7 +122,6 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage>
       });
       _pinController.clear();
       _pinFocusNode.requestFocus();
-      _showSnackBar(authState.message, backgroundColor: Colors.red);
     }
   }
 
@@ -151,7 +142,15 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage>
 
   @override
   Widget build(BuildContext context) {
-    // Restored UI...
+    // Listen for auth state changes to show feedback
+    ref.listen<AuthState>(authProvider, (previous, next) {
+      if (next is AuthSuccess) {
+        _showSnackBar(next.message, backgroundColor: Colors.green);
+      } else if (next is AuthError) {
+        _showSnackBar(next.message, backgroundColor: Colors.red);
+      }
+    });
+
     final defaultPinTheme = PinTheme(
       width: 50, height: 60,
       textStyle: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87),

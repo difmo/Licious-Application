@@ -754,7 +754,7 @@ class CartProvider extends ChangeNotifier {
       _items[idx].quantity += cartItem.quantity;
       if (_service != null) {
         _service!.updateQuantity(_items[idx].id, _items[idx].quantity,
-            variantId: _items[idx].variantId);
+            variantId: _items[idx].variantId, weightLabel: _items[idx].weightLabel);
       }
     } else {
       _items.add(cartItem);
@@ -774,7 +774,7 @@ class CartProvider extends ChangeNotifier {
       _items[idx].quantity++;
       if (_service != null) {
         _service!.updateQuantity(productId, _items[idx].quantity,
-            variantId: variantId);
+            variantId: variantId, weightLabel: _items[idx].weightLabel);
       }
       notifyListeners();
     }
@@ -793,7 +793,7 @@ class CartProvider extends ChangeNotifier {
         _items[idx].quantity--;
         if (_service != null) {
           _service!.updateQuantity(productId, _items[idx].quantity,
-              variantId: variantId);
+              variantId: variantId, weightLabel: _items[idx].weightLabel);
         }
       } else {
         _items.removeAt(idx);

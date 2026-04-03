@@ -889,9 +889,16 @@ class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
                 children: [
                   Switch(
                     value: _makeDefaultCard,
+                    activeColor: const Color(0xFF68B92E),
+                    activeTrackColor: const Color(0xFF68B92E).withValues(alpha: 0.3),
+                    inactiveThumbColor: Colors.grey.shade400,
+                    inactiveTrackColor: Colors.grey.shade200,
+                    trackOutlineColor: WidgetStateProperty.resolveWith<Color?>((states) {
+                      return states.contains(WidgetState.selected) 
+                        ? const Color(0xFF68B92E).withValues(alpha: 0.5) 
+                        : Colors.grey.shade300;
+                    }),
                     onChanged: (v) => setState(() => _makeDefaultCard = v),
-                    activeThumbColor: const Color(0xFF68B92E),
-                    activeTrackColor: const Color(0xFFEBFFD7),
                   ),
                   const Text(
                     'Make default',

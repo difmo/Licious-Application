@@ -11,6 +11,19 @@ final deliveryHistoryProvider =
   return all;
 });
 
+String _cleanAddress(String address) {
+  if (address.isEmpty) return '';
+  String cleaned = address
+      .replaceAll(RegExp(r'Name:\s*[^,]+,?\s*', caseSensitive: false), '')
+      .replaceAll(RegExp(r'Phone:\s*[^,]+,?\s*', caseSensitive: false), '');
+  cleaned = cleaned.replaceAll(RegExp(r',\s*,'), ',').trim();
+  if (cleaned.startsWith(',')) cleaned = cleaned.substring(1).trim();
+  if (cleaned.endsWith(',')) {
+    cleaned = cleaned.substring(0, cleaned.length - 1).trim();
+  }
+  return cleaned;
+}
+
 class RiderHistoryPage extends ConsumerWidget {
   const RiderHistoryPage({super.key});
 
@@ -156,6 +169,7 @@ class _DeliveryHistoryCard extends StatelessWidget {
     } else if (addrRaw is String && addrRaw.isNotEmpty) {
       addressStr = addrRaw;
     }
+    addressStr = _cleanAddress(addressStr);
 
     // ── Items ────────────────────────────────────────────────────────────────
     final itemsList = item['items'] as List<dynamic>? ?? [];

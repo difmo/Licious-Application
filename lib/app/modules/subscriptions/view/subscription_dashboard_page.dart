@@ -315,7 +315,15 @@ class _SubscriptionCardState extends ConsumerState<_SubscriptionCard> {
                     ),
                     Switch(
                       value: isActive,
-                      activeThumbColor: AppColors.accentGreen,
+                      activeColor: AppColors.accentGreen,
+                      activeTrackColor: AppColors.accentGreen.withValues(alpha: 0.3),
+                      inactiveThumbColor: Colors.grey.shade400,
+                      inactiveTrackColor: Colors.grey.shade200,
+                      trackOutlineColor: WidgetStateProperty.resolveWith<Color?>((states) {
+                        return states.contains(WidgetState.selected) 
+                          ? AppColors.accentGreen.withValues(alpha: 0.5) 
+                          : Colors.grey.shade300;
+                      }),
                       onChanged: (val) async {
                         if (!val && AppDateUtils.isPastCutOff()) {
                           _showCutOffAlert(context);

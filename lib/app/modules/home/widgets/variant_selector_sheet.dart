@@ -261,7 +261,7 @@ class _VariantSelectorSheetState extends State<VariantSelectorSheet> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('CALCEL', style: TextStyle(color: Colors.grey)),
+            child: const Text('CANCEL', style: TextStyle(color: Colors.grey)),
           ),
           TextButton(
             onPressed: () {
