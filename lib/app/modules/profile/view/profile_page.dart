@@ -121,7 +121,9 @@ class _ProfileHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Hello, ${name.split(' ').first}!',
+                name.toLowerCase() == 'shrimpbite user'
+                    ? 'Hello, Shrimpbite User'
+                    : 'Hello, ${name.split(' ').first}!',
                 style: const TextStyle(
                   color: Color(0xFF114F3B),
                   fontSize: 28,

@@ -53,35 +53,36 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
 
     try {
       final response = await ref.read(authServiceProvider).updateName(
-        fullName: _nameController.text.trim(),
-      );
+            fullName: _nameController.text.trim(),
+          );
 
       if (!mounted) return;
 
       if (response.success) {
         final currentProfile = ref.read(userProfileProvider).value;
         if (currentProfile != null) {
-          final updatedUser = currentProfile.copyWith(fullName: _nameController.text.trim());
+          final updatedUser =
+              currentProfile.copyWith(fullName: _nameController.text.trim());
           // Update the global auth store immediately for instant UI response
           await ref.read(authStoreProvider.notifier).updateUser(updatedUser);
         }
-        
+
         // Refresh the profile provider to stay in sync with server
         ref.invalidate(userProfileProvider);
-        
+
         if (mounted) {
           // Capture messenger BEFORE popping
           final messenger = ScaffoldMessenger.of(context);
-          
+
           messenger.showSnackBar(
             SnackBar(
-              content: Text(response.message.isNotEmpty 
-                  ? response.message 
+              content: Text(response.message.isNotEmpty
+                  ? response.message
                   : 'Profile updated successfully!'),
               backgroundColor: const Color(0xFF68B92E),
             ),
           );
-          
+
           Navigator.pop(context);
         }
       } else {
@@ -125,107 +126,90 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
           icon: const Icon(Icons.arrow_back, color: Color(0xFF1A1A1A)),
           onPressed: () => Navigator.pop(context),
         ),
-        actions: [
-          if (profileAsync.hasValue)
-            TextButton(
-              onPressed: _isSaving ? null : _saveProfile,
-              child: _isSaving
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Color(0xFF68B92E)),
-                    )
-                  : const Text(
-                      'SAVE',
-                      style: TextStyle(
-                        color: Color(0xFF68B92E),
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-            ),
-        ],
       ),
       body: profileAsync.when(
         data: (user) {
           _populateControllers(user);
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              children: [
-                // Profile Image Section
-                Center(
-                  child: Stack(
-                    children: [
-                      CircleAvatar(
-                        radius: 60,
-                        backgroundColor: const Color(0xFFEBFFD7),
-                        child: Text(
-                          _nameController.text.isNotEmpty
-                              ? _nameController.text[0].toUpperCase()
-                              : 'U',
-                          style: const TextStyle(
-                            fontSize: 48,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF114F3B),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+              ),
+                children: [
+                  // Profile Image Section
+                  Center(
+                    child: Stack(
+                      children: [
+                        CircleAvatar(
+                          radius: 60,
+                          backgroundColor: const Color(0xFFEBFFD7),
+                          child: Text(
+                            _nameController.text.isNotEmpty
+                                ? _nameController.text[0].toUpperCase()
+                                : 'U',
+                            style: const TextStyle(
+                              fontSize: 48,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF114F3B),
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 32),
-                // Form Fields
-                _buildTextField(
-                  controller: _nameController,
-                  label: 'Full Name',
-                  hint: 'Enter your name',
-                  icon: Icons.person_outline,
-                  enabled: !_isSaving,
-                ),
-                const SizedBox(height: 20),
-                _buildTextField(
-                  controller: _emailController,
-                  label: 'Email Address',
-                  hint: 'Enter your email',
-                  icon: Icons.email_outlined,
-                  keyboardType: TextInputType.emailAddress,
-                  enabled: false, // Usually email/phone aren't editable here
-                ),
-                const SizedBox(height: 20),
-                _buildTextField(
-                  controller: _phoneController,
-                  label: 'Phone Number',
-                  hint: 'Enter your phone number',
-                  icon: Icons.phone_android_outlined,
-                  keyboardType: TextInputType.phone,
-                  enabled: false,
-                ),
-                const SizedBox(height: 40),
-                // Save Button
-                SizedBox(
-                  width: double.infinity,
-                  height: 54,
-                  child: ElevatedButton(
-                    onPressed: _isSaving ? null : _saveProfile,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF439462),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      elevation: 0,
+                      ],
                     ),
-                    child: _isSaving
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : const Text(
-                            'Save Changes',
-                            style: TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.bold),
-                          ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 32),
+                  // Form Fields
+                  _buildTextField(
+                    controller: _nameController,
+                    label: 'Full Name',
+                    hint: 'Enter your name',
+                    icon: Icons.person_outline,
+                    enabled: !_isSaving,
+                  ),
+                  const SizedBox(height: 20),
+                  _buildTextField(
+                    controller: _emailController,
+                    label: 'Email Address',
+                    hint: 'Enter your email',
+                    icon: Icons.email_outlined,
+                    keyboardType: TextInputType.emailAddress,
+                    enabled: false, // Usually email/phone aren't editable here
+                  ),
+                  const SizedBox(height: 20),
+                  _buildTextField(
+                    controller: _phoneController,
+                    label: 'Phone Number',
+                    hint: 'Enter your phone number',
+                    icon: Icons.phone_android_outlined,
+                    keyboardType: TextInputType.phone,
+                    enabled: false,
+                  ),
+                  const SizedBox(height: 40),
+                  // Save Button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 54,
+                    child: ElevatedButton(
+                      onPressed: _isSaving ? null : _saveProfile,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF439462),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: _isSaving
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : const Text(
+                              'Save Changes',
+                              style: TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.bold),
+                            ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           );
         },
@@ -272,28 +256,30 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
           controller: controller,
           keyboardType: keyboardType,
           enabled: enabled,
-            decoration: InputDecoration(
-              hintText: hint,
-              prefixIcon: Icon(icon, color: const Color(0xFF68B92E), size: 20),
-              filled: true,
-              fillColor: enabled ? Colors.grey.shade50 : Colors.grey.shade100,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFF68B92E), width: 1.5),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFF68B92E), width: 1.5),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: Color(0xFF68B92E), width: 2),
-              ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 16,
-              ),
+          decoration: InputDecoration(
+            hintText: hint,
+            prefixIcon: Icon(icon, color: const Color(0xFF68B92E), size: 20),
+            filled: true,
+            fillColor: enabled ? Colors.grey.shade50 : Colors.grey.shade100,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide:
+                  const BorderSide(color: Color(0xFF68B92E), width: 1.5),
             ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide:
+                  const BorderSide(color: Color(0xFF68B92E), width: 1.5),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFF68B92E), width: 2),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 16,
+            ),
+          ),
         ),
       ],
     );

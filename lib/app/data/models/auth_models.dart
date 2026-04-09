@@ -21,7 +21,7 @@ class UserModel {
     final String name = json['fullName'] ?? json['name'] ?? '';
     return UserModel(
       id: json['_id'] ?? json['id'] ?? '',
-      fullName: name.isEmpty ? 'shrimpbite user' : name,
+      fullName: name.isEmpty ? 'Shrimpbite User' : name,
       email: json['email'] ?? '',
       phoneNumber: json['phoneNumber'] ?? json['phone'] ?? '',
       role: json['role'] ?? 'customer',
@@ -33,7 +33,7 @@ class UserModel {
   factory UserModel.placeholder(String phone) {
     return UserModel(
       id: 'placeholder',
-      fullName: 'shrimpbite user',
+      fullName: 'Shrimpbite User',
       email: '',
       phoneNumber: phone,
       role: 'user',

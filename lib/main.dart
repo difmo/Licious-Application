@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app/routes/app_routes.dart';
@@ -9,7 +10,6 @@ import 'app/data/services/wallet_service.dart';
 import 'app/data/services/address_service.dart';
 import 'app/data/services/auth_service.dart';
 import 'app/core/theme/app_theme.dart';
-import 'app/data/services/location_tracking_service.dart';
 import 'app/data/services/notification_service.dart';
 import 'app/data/services/fcm_service.dart';
 
@@ -20,6 +20,18 @@ import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Enable Edge-to-Edge display for Android 15+
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      systemNavigationBarColor: Colors.transparent,
+      statusBarColor: Colors.transparent,
+      systemNavigationBarIconBrightness: Brightness.dark,
+      statusBarIconBrightness: Brightness.dark,
+    ),
+  );
+
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
@@ -31,7 +43,6 @@ void main() async {
     appleProvider: kDebugMode ? AppleProvider.debug : AppleProvider.deviceCheck,
   );
   await dotenv.load(fileName: ".env");
-  LocationTrackingService.init();
   NotificationService.init();
   await FCMService.init();
   FCMService.listenToTokenRefresh();

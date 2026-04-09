@@ -59,7 +59,7 @@ class _ShopsList extends StatelessWidget {
           child: Row(
             children: [
               const Text(
-                'Restaurants Near You',
+                'Retailers Near You',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
@@ -476,7 +476,7 @@ class _ShopsLoadingState extends StatelessWidget {
         const Padding(
           padding: EdgeInsets.fromLTRB(16, 20, 16, 12),
           child: Text(
-            'Restaurants Near You',
+            'Retailers Near You',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w800,

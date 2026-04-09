@@ -63,10 +63,10 @@ android {
         applicationId = "com.shrimpbite.app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = 25
-        targetSdk = 36
-        versionCode = 13
-        versionName = "1.0.12"
+        minSdk = flutter.minSdkVersion
+        targetSdk = 35
+        versionCode = 15
+        versionName = "1.0.14+15"
 
         // Inject Maps API key into AndroidManifest.xml as ${MAPS_API_KEY}
         manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey

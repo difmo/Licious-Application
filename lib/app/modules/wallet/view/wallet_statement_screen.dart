@@ -33,13 +33,6 @@ class _WalletStatementScreenState extends ConsumerState<WalletStatementScreen> {
         backgroundColor: Colors.white,
         elevation: 0.5,
         foregroundColor: Colors.black,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.download_rounded),
-            onPressed: () => _showDownloadOptions(context),
-            tooltip: 'Download Statement',
-          ),
-        ],
       ),
       body: Column(
         children: [

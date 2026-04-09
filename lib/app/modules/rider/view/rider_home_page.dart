@@ -108,6 +108,15 @@ final riderStatsProvider = FutureProvider.autoDispose<_RiderStats>((ref) async {
   // ── Fallback Calculation from History ──────────────────────────────────────
   // If backend returns zeros (common with cold starts or unlinked tables),
   // we try to calculate them from the delivery history.
+  if (orders == 0) {
+    try {
+      final history = await ref.read(deliveryHistoryProvider.future);
+      orders = history.length;
+    } catch (e) {
+      debugPrint('Error fetching history fallback: $e');
+    }
+  }
+
   return _RiderStats(
     orders: orders,
     rating: rating,
@@ -248,21 +257,6 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
     super.dispose();
   }
 
-  /*  ── Location helpers (re-enable for production) ──────────────────────────
-  Future<bool> _ensureLocationPermission() async {
-    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) { ... }
-    ...
-    return true;
-  }
-  bool _hasActiveDelivery(List<dynamic> orders) {
-    return orders.any((o) {
-      final status = (o['status']?.toString() ?? '').toLowerCase();
-      return _activeStatuses.contains(status);
-    });
-  }
-  */
-
   Future<void> _toggleOnline(bool value) async {
     if (_isTogglingStatus) return;
     setState(() => _isTogglingStatus = true);
@@ -287,8 +281,7 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
           return;
         }
 
-        // NOTE: LocationTracking disabled for testing — re-enable in production
-        // await LocationTrackingService.start();
+        // Call backend PATCH /rider/status { status: 'online' }
         if (mounted) {
           setState(() => _isOnline = true);
           _showSnack('You are now ONLINE ✅');
@@ -325,8 +318,7 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
           return;
         }
 
-        // NOTE: LocationTracking disabled for testing — re-enable in production
-        // await LocationTrackingService.stop();
+        // Call backend PATCH /rider/status { status: 'offline' }
         if (mounted) {
           setState(() => _isOnline = false);
           _showSnack('You are now OFFLINE');
@@ -618,7 +610,11 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
         ),
         body: RefreshIndicator(
           color: AppColors.accentGreen,
-          onRefresh: () async => ref.invalidate(riderOrdersProvider),
+          onRefresh: () async {
+            ref.invalidate(riderOrdersProvider);
+            ref.invalidate(riderStatsProvider);
+            ref.invalidate(deliveryHistoryProvider);
+          },
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             child: Column(
@@ -799,29 +795,6 @@ class _RiderHomePageState extends ConsumerState<RiderHomePage> {
                               fontWeight: FontWeight.w800,
                               color: Color(0xFF1B2D1F)),
                         ),
-                        Text(
-                          'Live Tracking Active',
-                          style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.accentGreen),
-                        )
-                            .animate(
-                                onPlay: (controller) => controller.repeat())
-                            .shimmer(
-                                duration: 2.seconds,
-                                color: Colors.white.withValues(alpha: 0.5))
-                            .scale(
-                                begin: const Offset(1, 1),
-                                end: const Offset(1.05, 1.05),
-                                duration: 1.seconds,
-                                curve: Curves.easeInOut)
-                            .then()
-                            .scale(
-                                begin: const Offset(1.05, 1.05),
-                                end: const Offset(1, 1),
-                                duration: 1.seconds,
-                                curve: Curves.easeInOut),
                       ],
                     ),
                   ),

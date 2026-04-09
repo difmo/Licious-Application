@@ -27,10 +27,6 @@ class _ModernFilterBottomSheetState
     extends ConsumerState<ModernFilterBottomSheet> {
   // Local state for filters
   RangeValues _priceRange = const RangeValues(0, 1000);
-  int? _selectedRating;
-  bool _discount = false;
-  bool _freeShipping = false;
-  bool _sameDayDelivery = false;
 
   int _totalCount = 0;
   bool _isLoadingCount = false;
@@ -49,10 +45,6 @@ class _ModernFilterBottomSheetState
           currentFilter.minPrice ?? 0,
           currentFilter.maxPrice ?? 1000,
         );
-        _selectedRating = currentFilter.minRating?.toInt();
-        _discount = currentFilter.hasDiscount ?? false;
-        _freeShipping = currentFilter.freeShipping ?? false;
-        _sameDayDelivery = currentFilter.sameDayDelivery ?? false;
 
         _minController.text = _priceRange.start.round().toString();
         _maxController.text = _priceRange.end.round().toString();
@@ -97,10 +89,6 @@ class _ModernFilterBottomSheetState
       final result = await service.getFilteredProducts(
         minPrice: _priceRange.start,
         maxPrice: _priceRange.end,
-        minRating: _selectedRating?.toDouble(),
-        hasDiscount: _discount,
-        freeShipping: _freeShipping,
-        sameDayDelivery: _sameDayDelivery,
       );
 
       if (mounted) {
@@ -119,10 +107,6 @@ class _ModernFilterBottomSheetState
   void _resetFilters() {
     setState(() {
       _priceRange = const RangeValues(0, 1000);
-      _selectedRating = null;
-      _discount = false;
-      _freeShipping = false;
-      _sameDayDelivery = false;
       _minController.text = '0';
       _maxController.text = '1000';
     });
@@ -133,10 +117,6 @@ class _ModernFilterBottomSheetState
     ref.read(productFilterProvider.notifier).update(ProductFilter(
           minPrice: _priceRange.start,
           maxPrice: _priceRange.end,
-          minRating: _selectedRating?.toDouble(),
-          hasDiscount: _discount,
-          freeShipping: _freeShipping,
-          sameDayDelivery: _sameDayDelivery,
         ));
 
     Navigator.pop(context);
@@ -160,7 +140,7 @@ class _ModernFilterBottomSheetState
     final screenHeight = MediaQuery.of(context).size.height;
 
     return Container(
-      height: screenHeight * 0.9,
+      height: screenHeight * 0.5,
       decoration: const BoxDecoration(
         color: AppColors.scaffoldBg,
         borderRadius: BorderRadius.only(
@@ -183,14 +163,6 @@ class _ModernFilterBottomSheetState
                     _buildSectionTitle('Price Range'),
                     const SizedBox(height: 16),
                     _buildPriceRangeSection(),
-                    const SizedBox(height: 32),
-                    _buildSectionTitle('Rating'),
-                    const SizedBox(height: 16),
-                    _buildRatingSection(),
-                    const SizedBox(height: 32),
-                    _buildSectionTitle('Delivery Options'),
-                    const SizedBox(height: 16),
-                    _buildDeliveryOptionsSection(),
                     const SizedBox(
                         height: 120), // Padding for sticky bottom button
                   ],
@@ -384,122 +356,6 @@ class _ModernFilterBottomSheetState
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildRatingSection() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        _buildRatingChip(4, '★ 4+'),
-        _buildRatingChip(3, '★ 3+'),
-        _buildRatingChip(2, '★ 2+'),
-      ],
-    );
-  }
-
-  Widget _buildRatingChip(int rating, String label) {
-    final isSelected = _selectedRating == rating;
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedRating = isSelected ? null : rating;
-        });
-        _fetchCount();
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary : AppColors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            if (!isSelected)
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.03),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-          ],
-          border: Border.all(
-            color: isSelected ? AppColors.primary : Colors.grey.shade300,
-            width: 1,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? AppColors.white : AppColors.textDark,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-            fontSize: 15,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDeliveryOptionsSection() {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
-          ),
-        ],
-        border: Border.all(color: Colors.grey.shade300, width: 1),
-      ),
-      child: Column(
-        children: [
-          _buildToggleRow('Discount', _discount, (val) {
-            setState(() => _discount = val);
-            _fetchCount();
-          }),
-          const Divider(
-              height: 1, indent: 20, endIndent: 20, color: Color(0xFFEEEEEE)),
-          _buildToggleRow('Free Shipping', _freeShipping, (val) {
-            setState(() => _freeShipping = val);
-            _fetchCount();
-          }),
-          const Divider(
-              height: 1, indent: 20, endIndent: 20, color: Color(0xFFEEEEEE)),
-          _buildToggleRow('Same Day Delivery', _sameDayDelivery, (val) {
-            setState(() => _sameDayDelivery = val);
-            _fetchCount();
-          }),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildToggleRow(
-      String title, bool value, ValueChanged<bool> onChanged) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textDark,
-            ),
-          ),
-          Switch(
-            value: value,
-            onChanged: onChanged,
-            activeThumbColor: AppColors.white,
-            activeTrackColor: AppColors.primary,
-            inactiveTrackColor: Colors.grey.withValues(alpha: 0.2),
-            inactiveThumbColor: AppColors.white,
-          ),
-        ],
       ),
     );
   }
