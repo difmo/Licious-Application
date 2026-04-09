@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -28,7 +29,7 @@ class SelectDeliveryAddressScreen extends ConsumerStatefulWidget {
 class _SelectDeliveryAddressScreenState
     extends ConsumerState<SelectDeliveryAddressScreen> {
   final Completer<GoogleMapController> _mapController = Completer();
-  LatLng? _center;
+  LatLng _center = const LatLng(26.8467, 80.9462); // Default to Lucknow center
   String _currentAddress = 'Locating...';
   String _locality = 'Fetching area...';
   String _city = 'Lucknow';
@@ -40,6 +41,8 @@ class _SelectDeliveryAddressScreenState
   bool _isSaving = false;
   bool _isEnteringDetails = false;
   bool _useProfileDetails = false;
+  bool _isLoadingLocation = false;
+  bool _isSearching = false;
 
   // Phase 3 Form Field controllers
   final _formKey = GlobalKey<FormState>();
@@ -60,16 +63,19 @@ class _SelectDeliveryAddressScreenState
     super.initState();
     if (widget.addressToEdit != null) {
       _parseEditAddress(widget.addressToEdit!);
-    } else {
-      _handleCurrentLocation();
     }
+    
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && widget.addressToEdit == null) {
-        final profile = CartProviderScope.read(context).userProfile;
-        if (profile.name != 'Guest User') {
-          _nameCtrl.text = profile.name;
+      if (mounted) {
+        if (widget.addressToEdit == null) {
+          _handleCurrentLocation();
+          
+          final profile = CartProviderScope.read(context).userProfile;
+          if (profile.name != 'Guest User') {
+            _nameCtrl.text = profile.name;
+          }
+          _pincodeCtrl.text = _postalCode;
         }
-        _pincodeCtrl.text = _postalCode;
       }
     });
   }
@@ -149,12 +155,17 @@ class _SelectDeliveryAddressScreenState
     }
 
     _debounce = Timer(const Duration(milliseconds: 500), () async {
-      final geoService = ref.read(geocodingServiceProvider);
-      final results = await geoService.getPlacePredictions(query);
-      if (mounted) {
-        setState(() {
-          _predictions = results;
-        });
+      setState(() => _isSearching = true);
+      try {
+        final geoService = ref.read(geocodingServiceProvider);
+        final results = await geoService.getPlacePredictions(query);
+        if (mounted) {
+          setState(() {
+            _predictions = results;
+          });
+        }
+      } finally {
+        if (mounted) setState(() => _isSearching = false);
       }
     });
   }
@@ -171,40 +182,62 @@ class _SelectDeliveryAddressScreenState
     final details = await geoService.getPlaceDetails(prediction['placeId']);
 
     if (details != null && mounted) {
-      final lat = details['latitude'];
-      final lng = details['longitude'];
-      if (lat != null && lng != null) {
-        _center = LatLng(lat, lng);
-        final controller = await _mapController.future;
-        if (!mounted) return;
-        controller.animateCamera(CameraUpdate.newLatLngZoom(_center!, 17));
-        _reverseGeocode(_center!);
-      }
+      final double lat = (details['latitude'] as num).toDouble();
+      final double lng = (details['longitude'] as num).toDouble();
+      if (!mounted) return;
+      _center = LatLng(lat, lng);
+      final controller = await _mapController.future;
+      if (!mounted) return;
+      controller.animateCamera(CameraUpdate.newLatLngZoom(_center, 17));
+      _reverseGeocode(_center);
     }
   }
 
   Future<void> _handleCurrentLocation() async {
+    setState(() => _isLoadingLocation = true);
     try {
       final pos = await ref.read(locationServiceProvider).getCurrentLocation();
       if (pos != null) {
         _center = LatLng(pos.latitude, pos.longitude);
         final controller = await _mapController.future;
         if (!mounted) return;
-        // moveCamera forces the jump instantly without waiting for animation frames
-        controller.moveCamera(CameraUpdate.newLatLngZoom(_center!, 17));
-        _reverseGeocode(_center!);
+        
+        // Use animateCamera for smooth visual feedback
+        controller.animateCamera(CameraUpdate.newLatLngZoom(_center, 17));
+        await _reverseGeocode(_center);
       }
     } catch (e) {
       debugPrint('Error getting location: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content:
-                Text('Please enable GPS/Location in your device settings.'),
-            backgroundColor: Colors.red,
-          ),
-        );
+      if (!mounted) return;
+
+      String message = 'Could not detect location automatically.';
+      bool showSettingsBtn = false;
+
+      if (e.toString().contains('GPS_DISABLED')) {
+        message = 'Please enable GPS/Location to detect your location.';
+        showSettingsBtn = true;
+      } else if (e.toString().contains('PERMISSION')) {
+        message = 'Location permission is required to find your address.';
+        showSettingsBtn = true;
       }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.red.shade800,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 4),
+          action: showSettingsBtn
+              ? SnackBarAction(
+                  label: 'SETTINGS',
+                  textColor: Colors.white,
+                  onPressed: () => Geolocator.openLocationSettings(),
+                )
+              : null,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoadingLocation = false);
     }
   }
 
@@ -237,15 +270,21 @@ class _SelectDeliveryAddressScreenState
 
   void _onCameraMove(CameraPosition position) {
     _center = position.target;
+    // Provide visual feedback that address is being updated
+    if (_locality != 'Locating...') {
+       setState(() {
+         _locality = 'Locating...';
+         _currentAddress = 'Placing pin...';
+       });
+    }
   }
 
   void _onCameraIdle() {
-    if (_center != null) _reverseGeocode(_center!);
+    _reverseGeocode(_center);
   }
 
   void _onConfirm() {
-    if (_center == null) return;
-    if (_currentAddress == 'Locating...') {
+    if (_currentAddress == 'Locating...' || _currentAddress == 'Placing pin...') {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
             content: Text('Please wait for the exact address to load'),
@@ -377,15 +416,25 @@ class _SelectDeliveryAddressScreenState
                 decoration: InputDecoration(
                   hintText: 'Search for apartment, street name...',
                   prefixIcon: const Icon(Icons.search, size: 20),
-                  suffixIcon: _searchController.text.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear, size: 16),
-                          onPressed: () {
-                            _searchController.clear();
-                            _onSearchChanged('');
-                          },
+                  suffixIcon: _isSearching
+                      ? const Padding(
+                          padding: EdgeInsets.all(12),
+                          child: SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.grey),
+                          ),
                         )
-                      : null,
+                      : _searchController.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear, size: 16),
+                              onPressed: () {
+                                _searchController.clear();
+                                _onSearchChanged('');
+                              },
+                            )
+                          : null,
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(vertical: 14),
                 ),
@@ -520,9 +569,16 @@ class _SelectDeliveryAddressScreenState
           child: FloatingActionButton(
             heroTag: 'select_loc_fab',
             backgroundColor: Colors.white,
-            onPressed: _handleCurrentLocation,
-            child: const Icon(Icons.my_location,
-                color: Colors.blueAccent, size: 28),
+            onPressed: _isLoadingLocation ? null : _handleCurrentLocation,
+            child: _isLoadingLocation
+                ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                        color: Colors.blueAccent, strokeWidth: 3),
+                  )
+                : const Icon(Icons.my_location,
+                    color: Colors.blueAccent, size: 28),
           ),
         ),
 
@@ -580,7 +636,7 @@ class _SelectDeliveryAddressScreenState
             children: [
               GoogleMap(
                 initialCameraPosition: CameraPosition(
-                  target: _center ?? const LatLng(26.8467, 80.9462),
+                  target: _center,
                   zoom: 17,
                 ),
                 myLocationEnabled: false,
@@ -591,13 +647,12 @@ class _SelectDeliveryAddressScreenState
                 zoomGesturesEnabled: false,
                 tiltGesturesEnabled: false,
                 markers: {
-                  if (_center != null)
-                    Marker(
-                      markerId: const MarkerId('pinned'),
-                      position: _center!,
-                      icon: BitmapDescriptor.defaultMarkerWithHue(
-                          BitmapDescriptor.hueGreen),
-                    ),
+                  Marker(
+                    markerId: const MarkerId('pinned'),
+                    position: _center,
+                    icon: BitmapDescriptor.defaultMarkerWithHue(
+                        BitmapDescriptor.hueGreen),
+                  ),
                 },
               ),
               Positioned(

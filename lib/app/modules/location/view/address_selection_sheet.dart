@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/constants/app_colors.dart';
-import '../../../data/services/address_service.dart';
+import 'package:licius_application/app/core/constants/app_colors.dart';
+import 'package:licius_application/app/data/services/address_service.dart';
 import 'location_map_picker.dart';
 import 'address_details_screen.dart';
 
@@ -98,7 +98,7 @@ class _AddressSelectionSheetState extends ConsumerState<AddressSelectionSheet> {
 
           Expanded(
             child: _isLoading 
-              ? const Center(child: CircularProgressIndicator(color: AppColors.accentGreen))
+              ? Center(child: CircularProgressIndicator(color: AppColors.accentGreen))
               : _addresses.isEmpty
                 ? _buildEmptyState()
                 : _buildAddressList(),

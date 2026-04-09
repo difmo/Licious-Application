@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../data/models/subscription_model.dart';
-import '../../../data/services/subscription_service.dart';
-import '../../../data/services/order_service.dart';
+import 'package:licius_application/app/data/models/subscription_model.dart';
+import 'package:licius_application/app/data/services/subscription_service.dart';
+import 'package:licius_application/app/data/services/order_service.dart';
 import '../../orders/view/order_tracking_page.dart';
-import '../../../core/constants/app_colors.dart';
-import '../../../core/utils/date_utils.dart';
+import 'package:licius_application/app/core/constants/app_colors.dart';
+import 'package:licius_application/app/core/utils/date_utils.dart';
 
 import 'package:flutter_slidable/flutter_slidable.dart';
 
@@ -42,8 +42,7 @@ class SubscriptionDashboardPage extends ConsumerWidget {
                   ],
                 )
               : _buildSubscriptionList(context, ref, subscriptions),
-          loading: () => const Center(
-              child: CircularProgressIndicator(color: AppColors.accentGreen)),
+          loading: () => Center(child: CircularProgressIndicator(color: AppColors.accentGreen)),
           error: (err, stack) => Stack(
             children: [
               ListView(physics: const AlwaysScrollableScrollPhysics()),
@@ -232,7 +231,7 @@ class _SubscriptionCardState extends ConsumerState<_SubscriptionCard> {
                   showDialog(
                     context: context,
                     barrierDismissible: false,
-                    builder: (_) => const Center(child: CircularProgressIndicator(color: AppColors.accentGreen)),
+                    builder: (_) => Center(child: CircularProgressIndicator(color: AppColors.accentGreen)),
                   );
                   
                   final success = await ref.read(subscriptionServiceProvider).cancelSubscription(sub.id);
@@ -378,7 +377,7 @@ class _SubscriptionCardState extends ConsumerState<_SubscriptionCard> {
                                 fontWeight: FontWeight.bold)),
                         const SizedBox(height: 2),
                         Text(
-                          isActive ? 'Tomorrow, 7:00 AM' : 'Paused',
+                          isActive ? 'Tomorrow' : 'Paused',
                           style: TextStyle(
                             color: isActive ? AppColors.accentGreen : Colors.red,
                             fontWeight: FontWeight.bold,
@@ -469,3 +468,4 @@ class _TrackDeliveryButton extends ConsumerWidget {
     );
   }
 }
+

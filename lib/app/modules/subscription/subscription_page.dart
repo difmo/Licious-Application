@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import '../../data/models/subscription_model.dart';
-import '../../data/services/subscription_service.dart';
-import '../../data/services/order_service.dart';
-import '../../data/services/db_service.dart';
-import '../../core/utils/date_utils.dart';
-import '../orders/view/order_tracking_page.dart';
-import '../../routes/app_routes.dart';
+import 'package:licius_application/app/data/models/subscription_model.dart';
+import 'package:licius_application/app/data/services/subscription_service.dart';
+import 'package:licius_application/app/data/services/order_service.dart';
+import 'package:licius_application/app/data/services/db_service.dart';
+import 'package:licius_application/app/core/utils/date_utils.dart';
+import 'package:licius_application/app/modules/orders/view/order_tracking_page.dart';
+import 'package:licius_application/app/routes/app_routes.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
+import 'package:licius_application/app/core/constants/app_colors.dart';
 
 class SubscriptionPage extends ConsumerStatefulWidget {
   const SubscriptionPage({super.key});
@@ -800,78 +802,124 @@ class _PlanItemWidgetState extends ConsumerState<_PlanItemWidget> {
     final isActive = _optimisticIsActive ?? (status == 'Active');
     final accentColor = isActive ? const Color(0xFF68B92E) : Colors.orange;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-              color: isActive
-                  ? const Color(0xFF68B92E).withValues(alpha: 0.15)
-                  : Colors.grey.shade200,
-              width: 1.5)),
-      child: Row(
+    return Slidable(
+      key: ValueKey(widget.sub.id),
+      endActionPane: ActionPane(
+        motion: const ScrollMotion(),
         children: [
-          Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                  color: Colors.grey.shade50,
-                  borderRadius: BorderRadius.circular(15)),
-              clipBehavior: Clip.antiAlias,
-              child: widget.sub.productImage.isNotEmpty
-                  ? Image.network(widget.sub.productImage, fit: BoxFit.cover)
-                  : const Icon(Icons.set_meal, color: Color(0xFF68B92E))),
-          const SizedBox(width: 16),
-          Expanded(
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                Text(widget.sub.productName,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w900, fontSize: 15)),
-                Text(widget.sub.frequency,
-                    style:
-                        TextStyle(color: Colors.grey.shade500, fontSize: 12)),
-                const SizedBox(height: 8),
-                Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                        color: accentColor.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8)),
-                    child: Text(status.toUpperCase(),
-                        style: TextStyle(
-                            color: accentColor,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 0.5)))
-              ])),
-          Switch(
-            value: isActive,
-            activeColor: const Color(0xFF68B92E),
-            activeTrackColor: const Color(0xFF68B92E).withValues(alpha: 0.3),
-            inactiveThumbColor: Colors.grey.shade400,
-            inactiveTrackColor: Colors.grey.shade200,
-            trackOutlineColor: WidgetStateProperty.resolveWith<Color?>((states) {
-              if (states.contains(WidgetState.selected)) {
-                return const Color(0xFF68B92E).withValues(alpha: 0.5);
+          SlidableAction(
+            onPressed: (context) async {
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Cancel Subscription?'),
+                  content: const Text('Are you sure you want to completely cancel this subscription?'),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('No')),
+                    TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Yes, Cancel', style: TextStyle(color: Colors.red))),
+                  ],
+                ),
+              );
+
+              if (confirm == true) {
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (_) => Center(child: CircularProgressIndicator(color: AppColors.accentGreen)),
+                );
+                
+                final success = await ref.read(subscriptionServiceProvider).cancelSubscription(widget.sub.id);
+                if (mounted) Navigator.pop(context); // Remove loader
+
+                if (success) {
+                  ref.invalidate(mySubscriptionsProvider);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Subscription cancelled successfully'), backgroundColor: Colors.redAccent),
+                  );
+                }
               }
-              return Colors.grey.shade300;
-            }),
-            onChanged: (val) async {
-              setState(() => _optimisticIsActive = val);
-              final ok = await ref
-                  .read(subscriptionServiceProvider)
-                  .updateStatus(widget.sub.id, val ? 'Active' : 'Paused');
-              if (ok)
-                ref.invalidate(mySubscriptionsProvider);
-              else
-                setState(() => _optimisticIsActive = null);
             },
+            backgroundColor: const Color(0xFFFE4A49),
+            foregroundColor: Colors.white,
+            icon: Icons.delete,
+            label: 'Cancel',
+            borderRadius: BorderRadius.circular(20),
           ),
         ],
+      ),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+                color: isActive
+                    ? const Color(0xFF68B92E).withValues(alpha: 0.15)
+                    : Colors.grey.shade200,
+                width: 1.5)),
+        child: Row(
+          children: [
+            Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(15)),
+                clipBehavior: Clip.antiAlias,
+                child: widget.sub.productImage.isNotEmpty
+                    ? Image.network(widget.sub.productImage, fit: BoxFit.cover)
+                    : const Icon(Icons.set_meal, color: Color(0xFF68B92E))),
+            const SizedBox(width: 16),
+            Expanded(
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                  Text(widget.sub.productName,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w900, fontSize: 15)),
+                  Text(widget.sub.frequency,
+                      style:
+                          TextStyle(color: Colors.grey.shade500, fontSize: 12)),
+                  const SizedBox(height: 8),
+                  Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                          color: accentColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8)),
+                      child: Text(status.toUpperCase(),
+                          style: TextStyle(
+                              color: accentColor,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.5)))
+                ])),
+            Switch(
+              value: isActive,
+              activeColor: const Color(0xFF68B92E),
+              activeTrackColor: const Color(0xFF68B92E).withValues(alpha: 0.3),
+              inactiveThumbColor: Colors.grey.shade400,
+              inactiveTrackColor: Colors.grey.shade200,
+              trackOutlineColor: WidgetStateProperty.resolveWith<Color?>((states) {
+                if (states.contains(WidgetState.selected)) {
+                  return const Color(0xFF68B92E).withValues(alpha: 0.5);
+                }
+                return Colors.grey.shade300;
+              }),
+              onChanged: (val) async {
+                setState(() => _optimisticIsActive = val);
+                final ok = await ref
+                    .read(subscriptionServiceProvider)
+                    .updateStatus(widget.sub.id, val ? 'Active' : 'Paused');
+                if (ok)
+                  ref.invalidate(mySubscriptionsProvider);
+                else
+                  setState(() => _optimisticIsActive = null);
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

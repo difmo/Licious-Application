@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/constants/app_colors.dart';
+import 'package:licius_application/app/core/constants/app_colors.dart';
 import '../../../data/services/rider_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
@@ -62,8 +62,7 @@ class RiderHistoryPage extends ConsumerWidget {
             ),
           );
         },
-        loading: () => const Center(
-            child: CircularProgressIndicator(color: AppColors.accentGreen)),
+        loading: () => Center(child: CircularProgressIndicator(color: AppColors.accentGreen)),
         error: (err, _) => Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -407,3 +406,4 @@ class _Row extends StatelessWidget {
     );
   }
 }
+

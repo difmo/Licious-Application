@@ -323,8 +323,9 @@ class WalletTransaction {
       status: json['status'] ?? 'Success',
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'].toString().endsWith('Z')
-              ? json['createdAt'].toString()
-              : '${json['createdAt']}Z')
+                  ? json['createdAt'].toString()
+                  : '${json['createdAt']}Z')
+              .toLocal()
           : DateTime.now(),
       category: json['category'] ?? 'Transaction',
       balanceAfter: (json['balanceAfter'] as num?)?.toDouble() ?? 0.0,
@@ -362,8 +363,9 @@ class Review {
       comment: (json['comment'] ?? '').toString(),
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'].toString().endsWith('Z')
-              ? json['createdAt'].toString()
-              : '${json['createdAt']}Z')
+                  ? json['createdAt'].toString()
+                  : '${json['createdAt']}Z')
+              .toLocal()
           : DateTime.now(),
     );
   }

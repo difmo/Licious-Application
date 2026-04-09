@@ -515,16 +515,44 @@ class CartProvider extends ChangeNotifier {
     }
   }
 
+  bool _isCartLoading = false;
+  bool get isCartLoading => _isCartLoading;
+
   /// Syncs the local cart with the backend.
   Future<void> loadCartFromApi() async {
-    if (_service == null) return;
+    if (_service == null || _isCartLoading) return;
+    
+    _isCartLoading = true;
+    notifyListeners();
+
     try {
       final remoteItems = await _service!.getCart();
       _items.clear();
       _items.addAll(remoteItems);
-      notifyListeners();
     } catch (e) {
       debugPrint('Error loading cart from API: $e');
+    } finally {
+      _isCartLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Pushes all local items to the server to ensure backend cart is not empty.
+  /// This is used before checkout to fix "Cart is empty" errors.
+  Future<void> syncLocalCartToServer() async {
+    if (_service == null || _items.isEmpty) return;
+    try {
+      // CLEAR the remote cart first to ensure a clean sync 
+      // (prevents quantity doubling if the server increments items).
+      await _service!.clearCart();
+      
+      for (final item in _items) {
+        await _service!.addToCart(item.id, item.quantity,
+            variantId: item.variantId, weightLabel: item.weightLabel);
+      }
+      debugPrint('CartProvider: Local cart synced to server successfully.');
+    } catch (e) {
+      debugPrint('CartProvider: Error syncing local cart to server: $e');
     }
   }
 

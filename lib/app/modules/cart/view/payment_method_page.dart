@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:licius_application/app/data/services/db_service.dart';
+import 'package:razorpay_flutter/razorpay_flutter.dart';
+import '../../../data/services/payment_service.dart';
 import '../../../data/services/order_service.dart';
 import '../../../data/services/subscription_service.dart';
 import 'order_success_page.dart';
@@ -18,6 +20,8 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
   String _frequency = 'Daily';
   List<String> _selectedDays = [];
   late DateTime _startDate;
+  String _selectedPaymentMethod = 'Wallet'; // 'Wallet' or 'Razorpay'
+  late PaymentService _paymentService;
   final List<String> _frequencies = [
     'Daily',
     'Alternate Days',
@@ -45,10 +49,65 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
         CartProviderScope.of(context).syncWallet();
       }
     });
+
+    _paymentService = ref.read(paymentServiceProvider);
+    _paymentService.init(
+      onSuccess: _handlePaymentSuccess,
+      onFailure: _handlePaymentFailure,
+      onExternalWallet: _handleExternalWallet,
+    );
+  }
+
+  void _handlePaymentSuccess(PaymentSuccessResponse response) async {
+    // This is called when Direct Pay (Razorpay) succeeds
+    setState(() => _isLoading = true);
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    final cartProvider = CartProviderScope.of(context);
+
+    try {
+      // TODO: Tell backend to verify the order payment
+      // For now, we assume the backend handles the status update via webhook or 
+      // we need a verify endpoint as suggested to the user.
+      
+      // Since this is a UI change and backend isn't ready yet,
+      // we'll show success and redirect.
+      await Future.delayed(const Duration(milliseconds: 1000));
+      await cartProvider.syncWallet();
+      cartProvider.clearCart();
+      ref.invalidate(activeOrdersProvider);
+      
+      navigator.pushAndRemoveUntil(
+          MaterialPageRoute(
+              builder: (_) => const OrderSuccessPage()),
+          (route) => route.isFirst);
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Payment Verification Error: $e')));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _handlePaymentFailure(PaymentFailureResponse response) {
+    if (response.code == Razorpay.PAYMENT_CANCELLED) return;
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Payment Failed: ${response.message}')),
+      );
+    }
+  }
+
+  void _handleExternalWallet(ExternalWalletResponse response) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('External Wallet: ${response.walletName}')),
+      );
+    }
   }
 
   @override
   void dispose() {
+    _paymentService.dispose();
     super.dispose();
   }
 
@@ -107,72 +166,116 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
                   Row(
                     children: [
                       _PaymentMethodTile(
-                        index: 3,
-                        selected: true,
-                        onTap: () {
-                          Navigator.pushNamed(context, '/wallet').then((_) {
-                            if (mounted) {
-                              cartProvider.syncWallet();
-                            }
-                          });
-                        },
+                        index: 0,
+                        selected: _selectedPaymentMethod == 'Wallet',
+                        onTap: () => setState(() => _selectedPaymentMethod = 'Wallet'),
                         label: 'Wallet',
-                        child: const Icon(Icons.account_balance_wallet_rounded,
-                            size: 28, color: Color(0xFF439462)),
+                        child: Icon(Icons.account_balance_wallet_rounded,
+                            size: 28, 
+                            color: _selectedPaymentMethod == 'Wallet' ? const Color(0xFF439462) : Colors.grey),
                       ),
+                      if (_orderType == 0) ...[
+                        const SizedBox(width: 12),
+                        _PaymentMethodTile(
+                          index: 1,
+                          selected: _selectedPaymentMethod == 'Razorpay',
+                          onTap: () => setState(() => _selectedPaymentMethod = 'Razorpay'),
+                          label: 'Direct Pay',
+                          child: Icon(Icons.payment_rounded,
+                              size: 28, 
+                              color: _selectedPaymentMethod == 'Razorpay' ? const Color(0xFF439462) : Colors.grey),
+                        ),
+                      ],
                     ],
                   ),
                   const SizedBox(height: 24),
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.pushNamed(context, '/wallet').then((_) {
-                        if (mounted) {
-                          cartProvider.syncWallet();
-                        }
-                      });
-                    },
-                    child: Container(
+                  if (_selectedPaymentMethod == 'Wallet')
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.pushNamed(context, '/wallet').then((_) {
+                          if (mounted) {
+                            cartProvider.syncWallet();
+                          }
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF439462).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                              color:
+                                  const Color(0xFF439462).withValues(alpha: 0.3)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.account_balance_wallet_rounded,
+                                color: Color(0xFF439462), size: 32),
+                            const SizedBox(width: 16),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Wallet Balance',
+                                    style: TextStyle(
+                                        fontSize: 13, color: Colors.grey)),
+                                Text(
+                                  '₹${cartProvider.walletBalance.toStringAsFixed(2)}',
+                                  style: const TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF439462)),
+                                ),
+                              ],
+                            ),
+                            const Spacer(),
+                            if (cartProvider.walletBalance < cartProvider.total)
+                              const Text('Insufficient',
+                                  style: TextStyle(
+                                      color: Colors.red,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12)),
+                            const Icon(Icons.arrow_forward_ios,
+                                size: 16, color: Color(0xFF439462)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  if (_selectedPaymentMethod == 'Razorpay')
+                    Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF439462).withValues(alpha: 0.1),
+                        color: Colors.blue.withValues(alpha: 0.05),
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                            color:
-                                const Color(0xFF439462).withValues(alpha: 0.3)),
+                        border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
                       ),
-                      child: Row(
+                      child: const Row(
                         children: [
-                          const Icon(Icons.account_balance_wallet_rounded,
-                              color: Color(0xFF439462), size: 32),
-                          const SizedBox(width: 16),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('Wallet Balance',
-                                  style: TextStyle(
-                                      fontSize: 13, color: Colors.grey)),
-                              Text(
-                                '₹${cartProvider.walletBalance.toStringAsFixed(2)}',
-                                style: const TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF439462)),
-                              ),
-                            ],
+                          Icon(Icons.security_rounded, color: Colors.blue, size: 32),
+                          SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Secured by Razorpay',
+                                    style: TextStyle(
+                                        fontSize: 14, fontWeight: FontWeight.bold, color: Colors.blue)),
+                                Text('Pay via UPI, Cards, or Net Banking',
+                                    style: TextStyle(
+                                        fontSize: 12, color: Colors.grey)),
+                              ],
+                            ),
                           ),
-                          const Spacer(),
-                          if (cartProvider.walletBalance < cartProvider.total)
-                            const Text('Insufficient',
-                                style: TextStyle(
-                                    color: Colors.red,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12)),
-                          const Icon(Icons.arrow_forward_ios,
-                              size: 16, color: Color(0xFF439462)),
                         ],
                       ),
                     ),
-                  ),
+                  if (_orderType == 1 && _selectedPaymentMethod == 'Wallet')
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        'Note: Subscriptions are prepaid from your wallet daily.',
+                        style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontStyle: FontStyle.italic),
+                      ),
+                    ),
                   const SizedBox(height: 24),
                   const Text('Order Summary',
                       style: TextStyle(
@@ -257,7 +360,10 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
                       _TypeButton(
                         label: 'Daily Deliveries',
                         selected: _orderType == 1,
-                        onTap: () => setState(() => _orderType = 1),
+                        onTap: () => setState(() {
+                          _orderType = 1;
+                          _selectedPaymentMethod = 'Wallet'; // Auto-reset to wallet for subscriptions
+                        }),
                         icon: Icons.calendar_today_outlined,
                       ),
                     ],
@@ -408,7 +514,9 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
                             throw Exception('Please select a delivery address');
                           }
 
-                          if (cartProvider.walletBalance < cartProvider.total) {
+                          // Wallet balance check for Scheduled or Wallet-based one-time orders
+                          final isWalletPay = _selectedPaymentMethod == 'Wallet' || _orderType == 1;
+                          if (isWalletPay && cartProvider.walletBalance < cartProvider.total) {
                             throw Exception(
                                 'Insufficient wallet balance. Please top up.');
                           }
@@ -458,27 +566,64 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
                           } else {
                             // ONE-TIME ORDER
                             final orderService = ref.read(orderServiceProvider);
+                            
+                            // 1. Force sync local cart to server (FIX for "Cart is empty" server error)
+                            // Even if it takes a moment, it's better than a failed order.
+                            await cartProvider.syncLocalCartToServer();
+
+                            // 2. Map items for redundancy
+                            final itemsList = cartProvider.items.map((item) => {
+                              'productId': item.id,
+                              'quantity': item.quantity,
+                              'variantId': item.variantId,
+                              'weightLabel': item.weightLabel,
+                            }).toList();
+
+                            // 3. Place Order
                             final response = await orderService.placeOrder(
                                 deliveryAddress: deliveryAddressMap,
-                                paymentMethod: 'Wallet');
+                                paymentMethod: _selectedPaymentMethod,
+                                items: itemsList);
+
                             if (response['success'] == true) {
-                              await Future.delayed(const Duration(milliseconds: 1500));
-                              await cartProvider.syncWallet();
-                              cartProvider.clearCart();
-                              ref.invalidate(activeOrdersProvider);
-                              navigator.pushAndRemoveUntil(
-                                  MaterialPageRoute(
-                                      builder: (_) => OrderSuccessPage(
-                                          order: response['order'])),
-                                  (route) => route.isFirst);
+                              if (_selectedPaymentMethod == 'Razorpay') {
+                                // DIRECT PAY FLOW
+                                final razorpayOrderId = response['razorpayOrderId'] ?? response['orderId'];
+                                if (razorpayOrderId == null) {
+                                  throw Exception('Failed to initialize Direct Payment. No order ID returned.');
+                                }
+                                
+                                final profile = cartProvider.userProfile;
+                                await _paymentService.openCheckout(
+                                  amount: cartProvider.total,
+                                  contact: profile.phone,
+                                  email: profile.email,
+                                  razorpayOrderId: razorpayOrderId,
+                                  description: 'One-time Order Payment',
+                                );
+                                // The rest is handled by _handlePaymentSuccess
+                              } else {
+                                // WALLET SUCCESS FLOW
+                                await Future.delayed(const Duration(milliseconds: 1500));
+                                await cartProvider.syncWallet();
+                                cartProvider.clearCart();
+                                ref.invalidate(activeOrdersProvider);
+                                navigator.pushAndRemoveUntil(
+                                    MaterialPageRoute(
+                                        builder: (_) => OrderSuccessPage(
+                                            order: response['order'])),
+                                    (route) => route.isFirst);
+                              }
                             } else {
                               throw Exception(response['message'] ??
                                   'Failed to place order');
                             }
                           }
                         } catch (e) {
-                          messenger.showSnackBar(
-                              SnackBar(content: Text('Error: $e')));
+                          if (mounted) {
+                            messenger.showSnackBar(
+                                SnackBar(content: Text('Error: $e')));
+                          }
                         } finally {
                           if (mounted) setState(() => _isLoading = false);
                         }

@@ -81,16 +81,30 @@ class SocketService {
     });
     _socket!.onDisconnect((_) => AppLogger.w('🔌 SocketService disconnected'));
     _socket!.onConnectError((err) {
-      AppLogger.e('⚠️ SocketService connect error: $err');
+      if (err.toString().contains('SocketException')) {
+        AppLogger.e('⚠️ Socket DNS/Network error: Ensure device is online.');
+      } else {
+        AppLogger.e('⚠️ SocketService connect error: $err');
+      }
     });
-    _socket!.onError((err) => AppLogger.e('💥 SocketService error: $err'));
+    _socket!.onError((err) {
+      if (!err.toString().contains('SocketException')) {
+        AppLogger.e('💥 SocketService error: $err');
+      }
+    });
 
     // Reconnection logs
     _socket!.onReconnect((_) => AppLogger.i('♻️ SocketService reconnected'));
-    _socket!.onReconnectAttempt(
-        (count) => AppLogger.d('🔄 SocketService reconnection attempt: $count'));
-    _socket!.onReconnectError(
-        (err) => AppLogger.e('❌ SocketService reconnection error: $err'));
+    _socket!.onReconnectAttempt((count) {
+      if (count % 5 == 0) { // Log only every 5th attempt to keep the console clean
+        AppLogger.d('🔄 SocketService reconnection attempt: $count');
+      }
+    });
+    _socket!.onReconnectError((err) {
+      if (!err.toString().contains('SocketException')) {
+        AppLogger.e('❌ SocketService reconnection error: $err');
+      }
+    });
     _socket!.onReconnectFailed(
         (_) => AppLogger.f('🛑 SocketService reconnection failed'));
 

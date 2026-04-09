@@ -6,6 +6,7 @@ import '../../../data/services/wallet_service.dart';
 import '../../../data/services/db_service.dart';
 import '../../../core/constants/app_colors.dart';
 import './wallet_page.dart';
+import '../provider/wallet_provider.dart';
 
 class TopUpPage extends ConsumerStatefulWidget {
   const TopUpPage({super.key});
@@ -34,10 +35,11 @@ class _TopUpPageState extends ConsumerState<TopUpPage> {
 
   void _handlePaymentSuccess(PaymentSuccessResponse response) async {
     setState(() => _isLoading = true);
-    final amount = double.tryParse(_amountController.text) ?? 0.0;
+    final amount = _pendingAmount ?? double.tryParse(_amountController.text) ?? 0.0;
+    _pendingAmount = null; // Consume the pending amount immediately
 
     final result = await ref.read(walletServiceProvider).topUpSuccess(
-          amount: _pendingAmount ?? amount,
+          amount: amount,
           razorpayOrderId: response.orderId!,
           razorpayPaymentId: response.paymentId!,
           razorpaySignature: response.signature!,
@@ -50,6 +52,7 @@ class _TopUpPageState extends ConsumerState<TopUpPage> {
         // and invalidate the Riverpod providers (used in WalletPage)
         CartProviderScope.read(context).syncWallet();
         ref.invalidate(walletHistoryProvider);
+        ref.invalidate(walletTransactionsProvider);
         
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -70,7 +73,15 @@ class _TopUpPageState extends ConsumerState<TopUpPage> {
   }
 
   void _handlePaymentFailure(PaymentFailureResponse response) {
+    // Reset pending amount so no stale data can be reused
+    _pendingAmount = null;
     if (!mounted) return;
+
+    // Razorpay error code 0 means the user dismissed/cancelled the payment sheet.
+    // Don't treat that as an "error" — just silently dismiss.
+    final isCancelled = response.code == Razorpay.PAYMENT_CANCELLED;
+    if (isCancelled) return;
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
           content: Text('Payment Failed: ${response.message}'),
@@ -151,9 +162,7 @@ class _TopUpPageState extends ConsumerState<TopUpPage> {
             ),
             const SizedBox(height: 48),
             _isLoading
-                ? const Center(
-                    child:
-                        CircularProgressIndicator(color: AppColors.accentGreen))
+                ? Center(child: CircularProgressIndicator(color: AppColors.accentGreen))
                 : ElevatedButton(
                     onPressed: () async {
                       final amountText = _amountController.text.trim();
@@ -200,3 +209,4 @@ class _TopUpPageState extends ConsumerState<TopUpPage> {
     );
   }
 }
+

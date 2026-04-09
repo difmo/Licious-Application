@@ -11,6 +11,7 @@ class OrderService {
   Future<Map<String, dynamic>> placeOrder({
     required Map<String, dynamic> deliveryAddress,
     required String paymentMethod,
+    List<Map<String, dynamic>>? items,
   }) async {
     try {
       final response = await _apiClient.post(
@@ -19,15 +20,18 @@ class OrderService {
           'deliveryAddress': deliveryAddress,
           'paymentMethod': paymentMethod,
           'orderType': 'One-time',
+          if (items != null) 'items': items,
         },
         requiresAuth: true,
       );
 
-      // ApiClient returns the response body as a Map.gterg
+      // ApiClient returns the response body as a Map.
       // If paymentStatus is Paid, or success is true, we consider it successful.
       return {
         'success': response['success'] ?? true,
         'order': response['order'] ?? response['data'],
+        'orderId': response['orderId'],
+        'razorpayOrderId': response['razorpayOrderId'],
         'message': response['message'],
       };
     } catch (e) {
@@ -101,6 +105,7 @@ class OrderService {
   Future<Map<String, dynamic>> placeSpotOrder({
     required Map<String, dynamic> deliveryAddress,
     required String paymentMethod,
+    List<Map<String, dynamic>>? items,
   }) async {
     try {
       final response = await _apiClient.post(
@@ -109,6 +114,7 @@ class OrderService {
           'deliveryAddress': deliveryAddress,
           'paymentMethod': paymentMethod,
           'orderType': 'One-time',
+          if (items != null) 'items': items,
         },
         requiresAuth: true,
       );
@@ -116,6 +122,8 @@ class OrderService {
       return {
         'success': response['success'] ?? true,
         'order': response['order'] ?? response['data'],
+        'orderId': response['orderId'],
+        'razorpayOrderId': response['razorpayOrderId'],
         'message': response['message'],
       };
     } catch (e) {

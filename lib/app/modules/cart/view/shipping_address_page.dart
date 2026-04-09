@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -77,10 +78,41 @@ class _ShippingAddressPageState extends ConsumerState<ShippingAddressPage> {
           _cityCtrl.text = data['city'] ?? '';
           _stateCtrl.text = data['state'] ?? '';
           _pincodeCtrl.text = data['postalCode'] ?? '';
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Could not resolve address from your location.')),
+          );
         }
       }
     } catch (e) {
       debugPrint('Detect Error: $e');
+      if (!mounted) return;
+
+      String message = 'Could not detect location automatically.';
+      bool showSettingsBtn = false;
+
+      if (e.toString().contains('GPS_DISABLED')) {
+        message = 'Please enable GPS/Location to detect your location.';
+        showSettingsBtn = true;
+      } else if (e.toString().contains('PERMISSION')) {
+        message = 'Location permission is required to find your address.';
+        showSettingsBtn = true;
+      } else if (e.toString().contains('TIMEOUT')) {
+        message = 'Location fetch timed out. Please try again or enter manually.';
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.red.shade800,
+          behavior: SnackBarBehavior.floating,
+          action: showSettingsBtn ? SnackBarAction(
+            label: 'SETTINGS',
+            textColor: Colors.white,
+            onPressed: () => Geolocator.openLocationSettings(),
+          ) : null,
+        ),
+      );
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -233,14 +265,23 @@ class _ShippingAddressPageState extends ConsumerState<ShippingAddressPage> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: ElevatedButton.icon(
-                          onPressed: () {
-                            setState(() => _showAddForm = true);
-                            _detectLocation();
-                          },
-                          icon: const Icon(Icons.my_location,
-                              size: 20, color: Colors.white),
-                          label: const Text('Locate Me',
-                              style: TextStyle(
+                          onPressed: _isSaving
+                              ? null
+                              : () {
+                                  setState(() => _showAddForm = true);
+                                  _detectLocation();
+                                },
+                          icon: _isSaving
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                      color: Colors.white, strokeWidth: 2),
+                                )
+                              : const Icon(Icons.my_location,
+                                  size: 20, color: Colors.white),
+                          label: Text(_isSaving ? 'Locating...' : 'Locate Me',
+                              style: const TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold)),
                           style: ElevatedButton.styleFrom(
@@ -531,11 +572,18 @@ class _ShippingAddressPageState extends ConsumerState<ShippingAddressPage> {
                       color: Color(0xFF1F2937)),
                 ),
                 TextButton.icon(
-                  onPressed: _detectLocation,
-                  icon: const Icon(Icons.my_location,
-                      size: 18, color: AppColors.accentGreen),
-                  label: const Text('Locate Me',
-                      style: TextStyle(
+                  onPressed: _isSaving ? null : _detectLocation,
+                  icon: _isSaving
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                              color: AppColors.accentGreen, strokeWidth: 2),
+                        )
+                      : const Icon(Icons.my_location,
+                          size: 18, color: AppColors.accentGreen),
+                  label: Text(_isSaving ? 'Locating...' : 'Locate Me',
+                      style: const TextStyle(
                           color: AppColors.accentGreen,
                           fontWeight: FontWeight.bold)),
                 ),

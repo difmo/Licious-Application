@@ -165,6 +165,11 @@ class AuthStore extends Notifier<AuthState> {
   Future<void> sendOtp({required String phoneNumber, bool force = false}) async {
     // Only skip if we already have a verificationId (OTP sent)
     // or if we are actively in a loading state specifically triggered by this store's auth flow
+    if (state.status == AuthStatus.loading) {
+      AppLogger.d('AuthStore: Skipping sendOtp (already loading).');
+      return;
+    }
+
     if (!force && state.verificationId != null) {
       AppLogger.d('AuthStore: Skipping redundant OTP request (session already active).');
       return;
@@ -225,6 +230,12 @@ class AuthStore extends Notifier<AuthState> {
   /// Private helper to finalize login with a Firebase credential
   Future<void> _signInWithFirebaseCredential(
       String phoneNumber, PhoneAuthCredential credential) async {
+    // Prevent concurrent verification attempts
+    if (state.status == AuthStatus.loading || state.status == AuthStatus.authenticated) {
+       AppLogger.d('AuthStore: Ignoring verification request (already loading or authenticated).');
+       return;
+    }
+
     try {
       state = state.copyWith(status: AuthStatus.loading, error: null);
 
@@ -297,8 +308,8 @@ class AuthStore extends Notifier<AuthState> {
 
   Future<void> verifyOtp(
       {required String phoneNumber, required String otp}) async {
-    if (state.status == AuthStatus.authenticated) {
-      AppLogger.d('AuthStore: Already authenticated, skipping verifyOtp.');
+    if (state.status == AuthStatus.authenticated || state.status == AuthStatus.loading) {
+      AppLogger.d('AuthStore: Skipping verifyOtp (status: ${state.status}).');
       return;
     }
 

@@ -4,11 +4,7 @@ import '../../../routes/app_routes.dart';
 import '../../../data/services/wallet_service.dart';
 import '../../../data/services/db_service.dart';
 
-// Provider for transaction history
-final walletHistoryProvider =
-    FutureProvider.autoDispose<List<dynamic>>((ref) async {
-  return ref.read(walletServiceProvider).getTransactionHistory();
-});
+import '../provider/wallet_provider.dart';
 
 class WalletPage extends ConsumerWidget {
   const WalletPage({super.key});

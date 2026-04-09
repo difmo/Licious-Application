@@ -290,7 +290,7 @@ class RestaurantMenuPage extends ConsumerWidget {
                           gridDelegate:
                               const SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: 2,
-                            childAspectRatio: 0.78,
+                            childAspectRatio: 0.7,
                             crossAxisSpacing: 12,
                             mainAxisSpacing: 12,
                           ),

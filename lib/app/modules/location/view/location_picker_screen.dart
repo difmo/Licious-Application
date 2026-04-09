@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-import '../../../core/constants/app_colors.dart';
-import '../../../data/services/location_service.dart';
-import '../../../data/services/geocoding_service.dart';
+import 'package:licius_application/app/core/constants/app_colors.dart';
+import 'package:licius_application/app/data/services/location_service.dart';
+import 'package:licius_application/app/data/services/geocoding_service.dart';
 
 class LocationPickerScreen extends ConsumerStatefulWidget {
   /// Optional initial coordinate to center the map on.
@@ -197,7 +197,7 @@ class _LocationPickerScreenState extends ConsumerState<LocationPickerScreen> {
         centerTitle: true,
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.accentGreen))
+          ? Center(child: CircularProgressIndicator(color: AppColors.accentGreen))
           : Column(
               children: [
                 // ── Map Section (Flexible) ──────────────────────────────────

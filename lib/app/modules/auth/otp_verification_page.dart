@@ -27,6 +27,7 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage>
 
   bool _isSendingOtp = false;
   bool _isVerifying = false;
+  bool _hasNavigated = false;
 
   @override
   void codeUpdated() {
@@ -112,7 +113,8 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage>
   }
 
   void _performPostAuthNavigation(AuthAuthenticated authState) {
-    if (!mounted) return;
+    if (!mounted || _hasNavigated) return;
+    _hasNavigated = true;
     
     final cartProvider = CartProviderScope.of(context);
     try {
