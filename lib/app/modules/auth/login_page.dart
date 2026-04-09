@@ -168,6 +168,12 @@ class _LoginPageState extends ConsumerState<LoginPage>
     final result =
         await ref.read(authProvider.notifier).checkUser(phoneNumber: formatted);
 
+    if (result != null && result.success) {
+      // Pre-trigger OTP session immediately (non-blocking)
+      // The verification page's initState will check if a session is already in progress
+      ref.read(authProvider.notifier).sendOtp(phoneNumber: formatted);
+    }
+
     if (!mounted) return;
     setState(() => _isChecking = false);
 

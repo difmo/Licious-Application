@@ -79,8 +79,8 @@ class AuthNotifier extends Notifier<AuthState> {
     return await ref.read(core.authStoreProvider.notifier).checkUser(phoneNumber: phoneNumber);
   }
 
-  Future<void> sendOtp({required String phoneNumber}) async {
-    await ref.read(core.authStoreProvider.notifier).sendOtp(phoneNumber: phoneNumber);
+  Future<void> sendOtp({required String phoneNumber, bool force = false}) async {
+    await ref.read(core.authStoreProvider.notifier).sendOtp(phoneNumber: phoneNumber, force: force);
   }
 
   Future<void> verifyOtp({

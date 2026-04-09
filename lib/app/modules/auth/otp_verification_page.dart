@@ -43,7 +43,11 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage>
     super.initState();
     listenForCode();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _sendOtp();
+      // Only send if we don't already have a valid session in progress
+      final authState = ref.read(authProvider);
+      if (authState is! AuthAuthenticated && !_isSendingOtp) {
+        _sendOtp();
+      }
     });
   }
 
@@ -55,7 +59,7 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage>
     super.dispose();
   }
 
-  Future<void> _sendOtp() async {
+  Future<void> _sendOtp({bool force = false}) async {
     setState(() {
       _isSendingOtp = true;
       _pinController.clear();
@@ -63,7 +67,7 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage>
 
     await ref
         .read(authProvider.notifier)
-        .sendOtp(phoneNumber: widget.phoneNumber);
+        .sendOtp(phoneNumber: widget.phoneNumber, force: force);
 
     if (!mounted) return;
     setState(() => _isSendingOtp = false);
@@ -74,13 +78,17 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage>
   }
 
   Future<void> _verifyOtp() async {
+    if (_isVerifying) return; // Guard against multiple rapid calls
+    
+    // Safety check BEFORE starting: if already authenticated (instant verification), skip
+    if (ref.read(authProvider) is AuthAuthenticated) return;
+
     final otp = _pinController.text;
     if (otp.length < _otpLength) {
       _showSnackBar('Please enter the complete $_otpLength-digit OTP');
       return;
     }
 
-    final cartProvider = CartProviderScope.of(context);
     setState(() => _isVerifying = true);
 
     await ref.read(authProvider.notifier).verifyOtp(
@@ -88,40 +96,45 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage>
           otp: otp,
         );
 
+    // After manual verifyOtp returns, we don't call _performPostAuthNavigation manually.
+    // We let the ref.listen handler in build() handle it reactively.
+    // This prevents double calls to loadCartFromApi() and double navigation.
+    
     if (!mounted) return;
     setState(() => _isVerifying = false);
 
     final authState = ref.read(authProvider);
 
-    if (authState is AuthAuthenticated) {
-      try {
-        cartProvider.updateUserProfile(
-          UserProfile(
-            name: authState.user.fullName,
-            email: authState.user.email,
-            phone: authState.user.phoneNumber,
-            profileImage: 'assets/images/image copy 2.png',
-          ),
-        );
-        cartProvider.loadCartFromApi();
-      } catch (e) {
-        debugPrint('Failed to update profile: $e');
-      }
-
-      if (authState.user.role == 'rider') {
-        Navigator.pushNamedAndRemoveUntil(
-            context, AppRoutes.riderHome, (route) => false);
-      } else {
-        // Direct to Home. Contextual location handled later.
-        Navigator.pushNamedAndRemoveUntil(
-            context, AppRoutes.home, (route) => false);
-      }
-    } else if (authState is AuthError) {
-      setState(() {
-        _isVerifying = false;
-      });
+    if (authState is AuthError) {
       _pinController.clear();
       _pinFocusNode.requestFocus();
+    }
+  }
+
+  void _performPostAuthNavigation(AuthAuthenticated authState) {
+    if (!mounted) return;
+    
+    final cartProvider = CartProviderScope.of(context);
+    try {
+      cartProvider.updateUserProfile(
+        UserProfile(
+          name: authState.user.fullName,
+          email: authState.user.email,
+          phone: authState.user.phoneNumber,
+          profileImage: 'assets/images/image copy 2.png',
+        ),
+      );
+      cartProvider.loadCartFromApi();
+    } catch (e) {
+      debugPrint('Failed to update profile during post-auth nav: $e');
+    }
+
+    if (authState.user.role == 'rider') {
+      Navigator.pushNamedAndRemoveUntil(
+          context, AppRoutes.riderHome, (route) => false);
+    } else {
+      Navigator.pushNamedAndRemoveUntil(
+          context, AppRoutes.home, (route) => false);
     }
   }
 
@@ -144,7 +157,9 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage>
   Widget build(BuildContext context) {
     // Listen for auth state changes to show feedback
     ref.listen<AuthState>(authProvider, (previous, next) {
-      if (next is AuthSuccess) {
+      if (next is AuthAuthenticated) {
+        _performPostAuthNavigation(next);
+      } else if (next is AuthSuccess) {
         _showSnackBar(next.message, backgroundColor: Colors.green);
       } else if (next is AuthError) {
         _showSnackBar(next.message, backgroundColor: Colors.red);
@@ -198,7 +213,7 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage>
                     const Text("Requesting OTP...", style: TextStyle(color: Color(0xFF2E7D32), fontSize: 13, fontWeight: FontWeight.bold)),
                   ] else ...[
                     const Text("Didn't receive the code? ", style: TextStyle(color: Colors.black54, fontSize: 13)),
-                    GestureDetector(onTap: _sendOtp, child: const Text('Resend', style: TextStyle(color: Color(0xFF2E7D32), fontWeight: FontWeight.bold, fontSize: 13))),
+                    GestureDetector(onTap: () => _sendOtp(force: true), child: const Text('Resend', style: TextStyle(color: Color(0xFF2E7D32), fontWeight: FontWeight.bold, fontSize: 13))),
                   ],
                 ],
               ),

@@ -75,6 +75,11 @@ class AuthStore extends Notifier<AuthState> {
     // Listen for force logout events from the interceptor
     _logoutSubscription?.cancel();
     _logoutSubscription = AuthInterceptor.onForceLogoutStream.listen((reason) {
+      // Don't kill the session if we are in the middle of verifying (phone verification id exists)
+      if (state.verificationId != null || state.status == AuthStatus.loading) {
+        AppLogger.d('AuthStore: Ignoring force logout during active auth flow.');
+        return;
+      }
       AppLogger.w('AuthStore: Force logout triggered. Reason: $reason');
       setUnauthenticated(error: reason);
     });
@@ -157,7 +162,14 @@ class AuthStore extends Notifier<AuthState> {
     }
   }
 
-  Future<void> sendOtp({required String phoneNumber}) async {
+  Future<void> sendOtp({required String phoneNumber, bool force = false}) async {
+    // Only skip if we already have a verificationId (OTP sent)
+    // or if we are actively in a loading state specifically triggered by this store's auth flow
+    if (!force && state.verificationId != null) {
+      AppLogger.d('AuthStore: Skipping redundant OTP request (session already active).');
+      return;
+    }
+
     state = state.copyWith(
         status: AuthStatus.loading, error: null, clearVerificationId: true);
     try {
@@ -245,11 +257,15 @@ class AuthStore extends Notifier<AuthState> {
         unawaited(syncFcmToken());
       } else {
         AppLogger.w('AuthStore: verification result - FAILED: ${response.message}');
-        state = AuthState.unauthenticated(error: _handleAuthError(response.message));
+        if (state.status != AuthStatus.authenticated) {
+            state = AuthState.unauthenticated(error: _handleAuthError(response.message));
+        }
       }
     } catch (e, stack) {
       AppLogger.e('AuthStore: Error finalizing Firebase sign-in', e, stack);
-      state = AuthState.unauthenticated(error: _handleAuthError(e));
+      if (state.status != AuthStatus.authenticated) {
+          state = AuthState.unauthenticated(error: _handleAuthError(e));
+      }
     }
   }
 
@@ -281,6 +297,11 @@ class AuthStore extends Notifier<AuthState> {
 
   Future<void> verifyOtp(
       {required String phoneNumber, required String otp}) async {
+    if (state.status == AuthStatus.authenticated) {
+      AppLogger.d('AuthStore: Already authenticated, skipping verifyOtp.');
+      return;
+    }
+
     final verificationId = state.verificationId;
     if (verificationId == null) {
       state = AuthState.unauthenticated(
