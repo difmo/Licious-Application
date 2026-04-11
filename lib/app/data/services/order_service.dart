@@ -232,6 +232,54 @@ class OrderService {
       return {};
     }
   }
+
+  Future<Map<String, dynamic>> verifyOrderPayment({
+    required String orderId,
+    required String razorpayOrderId,
+    required String razorpayPaymentId,
+    required String razorpaySignature,
+  }) async {
+    try {
+      final response = await _apiClient.post(
+        '${ApiClient.baseUrl}/orders/verify-payment',
+        data: {
+          'orderId': orderId,
+          'razorpayOrderId': razorpayOrderId,
+          'razorpayPaymentId': razorpayPaymentId,
+          'razorpaySignature': razorpaySignature,
+        },
+        requiresAuth: true,
+      );
+      return response;
+    } catch (e) {
+      return {
+        'success': false,
+        'message': e.toString(),
+      };
+    }
+  }
+
+  Future<Map<String, dynamic>> cancelOrder(String orderId) async {
+    try {
+      final response = await _apiClient.post(
+        '${ApiClient.baseUrl}/orders/cancel',
+        data: {'orderId': orderId},
+        requiresAuth: true,
+      );
+      return response;
+    } catch (e) {
+      // If the specific cancel endpoint doesn't exist, we try the status update as fallback
+      try {
+        return await _apiClient.patch(
+          '${ApiClient.baseUrl}/orders/status',
+          data: {'orderId': orderId, 'status': 'Cancelled'},
+          requiresAuth: true,
+        );
+      } catch (e2) {
+        return {'success': false, 'message': e2.toString()};
+      }
+    }
+  }
 }
 
 final orderServiceProvider = Provider<OrderService>((ref) {
@@ -290,8 +338,11 @@ class ActiveOrdersNotifier extends AsyncNotifier<List<dynamic>> {
 
       return history.where((o) {
         final status = (o['status'] ?? '').toString().toLowerCase();
-        // Return only orders that are neither delivered nor cancelled
-        return status != 'delivered' && status != 'cancelled';
+        // Return only orders that are neither delivered, cancelled, nor stuck in payment pending
+        return status != 'delivered' && 
+               status != 'cancelled' && 
+               status != 'payment pending' &&
+               status != 'failed';
       }).toList();
     } catch (e) {
       debugPrint('Error in _fetchActiveOrders: $e');

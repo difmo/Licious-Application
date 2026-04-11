@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/provider/auth_provider.dart';
 import '../../../data/models/auth_models.dart';
+import '../../../core/utils/validators.dart';
 
 class EditProfilePage extends ConsumerStatefulWidget {
   const EditProfilePage({super.key});
@@ -16,6 +17,8 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
   late TextEditingController _phoneController;
   bool _isSaving = false;
   bool _isInitialized = false;
+  String _initialEmail = '';
+  String _initialName = '';
 
   @override
   void initState() {
@@ -36,24 +39,33 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
   void _populateControllers(UserModel user) {
     if (_isInitialized) return;
     _nameController.text = user.fullName;
+    _initialName = user.fullName;
     _emailController.text = user.email;
+    _initialEmail = user.email;
     _phoneController.text = user.phoneNumber;
     _isInitialized = true;
   }
 
   Future<void> _saveProfile() async {
-    if (_nameController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Name cannot be empty')),
-      );
-      return;
+    final name = _nameController.text.trim();
+    final email = _emailController.text.trim();
+
+    if (email.isNotEmpty) {
+      final emailError = Validators.validateEmail(email);
+      if (emailError != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(emailError)),
+        );
+        return;
+      }
     }
 
     setState(() => _isSaving = true);
 
     try {
-      final response = await ref.read(authServiceProvider).updateName(
-            fullName: _nameController.text.trim(),
+      final response = await ref.read(authServiceProvider).updateProfile(
+            fullName: name,
+            email: email,
           );
 
       if (!mounted) return;
@@ -61,8 +73,10 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
       if (response.success) {
         final currentProfile = ref.read(userProfileProvider).value;
         if (currentProfile != null) {
-          final updatedUser =
-              currentProfile.copyWith(fullName: _nameController.text.trim());
+          final updatedUser = currentProfile.copyWith(
+            fullName: name,
+            email: email,
+          );
           // Update the global auth store immediately for instant UI response
           await ref.read(authStoreProvider.notifier).updateUser(updatedUser);
         }
@@ -134,7 +148,6 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
-              ),
                 children: [
                   // Profile Image Section
                   Center(
@@ -173,7 +186,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
                     hint: 'Enter your email',
                     icon: Icons.email_outlined,
                     keyboardType: TextInputType.emailAddress,
-                    enabled: false, // Usually email/phone aren't editable here
+                    enabled: !_isSaving,
                   ),
                   const SizedBox(height: 20),
                   _buildTextField(

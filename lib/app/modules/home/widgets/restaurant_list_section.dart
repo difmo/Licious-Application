@@ -131,10 +131,6 @@ class _ShopCard extends StatelessWidget {
   String get _heroImage => _heroImages[index % _heroImages.length];
   String get _cuisine => shop.cuisine.isNotEmpty ? shop.cuisine : 'Seafood';
 
-
-
-
-
   String get _deliveryTime {
     if (shop.deliveryTime != '30-45 mins') return shop.deliveryTime;
     final mins = 15 + (index * 5) % 20;
@@ -324,7 +320,7 @@ class _ShopCard extends StatelessWidget {
                           Text(
                             shop.rating > 0
                                 ? shop.rating.toStringAsFixed(1)
-                                : 'New', 
+                                : 'New',
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 12,
@@ -649,7 +645,7 @@ class _ShopsEmptyState extends StatelessWidget {
             const Icon(Icons.storefront_outlined, size: 56, color: Colors.grey),
             const SizedBox(height: 12),
             const Text(
-              'No restaurants found',
+              'No Retailer Found',
               style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,

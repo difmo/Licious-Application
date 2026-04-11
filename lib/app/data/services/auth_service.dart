@@ -144,15 +144,15 @@ class AuthService {
   }
 
   Future<AuthResponseModel> updateProfile({
-    required String fullName,
-    required String email,
+    String? fullName,
+    String? email,
   }) async {
     try {
       final data = await _client.put(
         '${ApiClient.baseUrl}/profile',
         data: {
-          'fullName': fullName,
-          'email': email,
+          if (fullName != null) 'fullName': fullName,
+          if (email != null) 'email': email,
         },
         requiresAuth: true,
       );
@@ -174,6 +174,22 @@ class AuthService {
         requiresAuth: true,
       );
       return AuthResponseModel.fromJson(data);
+    } on ApiException catch (e) {
+      return AuthResponseModel(success: false, message: e.message);
+    } catch (e) {
+      return AuthResponseModel(success: false, message: e.toString());
+    }
+  }
+
+  // ── Update Email ────────────────────────────────────────────────────────
+  Future<AuthResponseModel> updateEmail({required String email}) async {
+    try {
+      final json = await _client.put(
+        '${ApiClient.baseUrl}/auth/update-email',
+        data: {'email': email},
+        requiresAuth: true,
+      );
+      return AuthResponseModel.fromJson(json);
     } on ApiException catch (e) {
       return AuthResponseModel(success: false, message: e.message);
     } catch (e) {

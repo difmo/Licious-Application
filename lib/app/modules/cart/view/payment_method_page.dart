@@ -20,7 +20,9 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
   String _frequency = 'Daily';
   List<String> _selectedDays = [];
   late DateTime _startDate;
-  String _selectedPaymentMethod = 'Wallet'; // 'Wallet' or 'Razorpay'
+   String _selectedPaymentMethod = 'Wallet'; // 'Wallet' or 'Razorpay'
+   String? _lastOneTimePaymentMethod; // Cache to restore user choice
+   String? _currentOrderId; 
   late PaymentService _paymentService;
   final List<String> _frequencies = [
     'Daily',
@@ -66,20 +68,30 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
     final cartProvider = CartProviderScope.of(context);
 
     try {
-      // TODO: Tell backend to verify the order payment
-      // For now, we assume the backend handles the status update via webhook or 
-      // we need a verify endpoint as suggested to the user.
+      // 1. Tell backend to verify the order payment
+      final orderService = ref.read(orderServiceProvider);
+      final verifyRes = await orderService.verifyOrderPayment(
+        orderId: _currentOrderId ?? '', 
+        razorpayOrderId: response.orderId!,
+        razorpayPaymentId: response.paymentId!,
+        razorpaySignature: response.signature!,
+      );
+
+      if (verifyRes['success'] != true) {
+        throw Exception(verifyRes['message'] ?? 'Payment verification failed');
+      }
       
-      // Since this is a UI change and backend isn't ready yet,
-      // we'll show success and redirect.
-      await Future.delayed(const Duration(milliseconds: 1000));
+      // 2. Clear cart and sync wallet status
       await cartProvider.syncWallet();
       cartProvider.clearCart();
       ref.invalidate(activeOrdersProvider);
       
+      // 3. Redirect to success page
       navigator.pushAndRemoveUntil(
           MaterialPageRoute(
-              builder: (_) => const OrderSuccessPage()),
+              builder: (_) => OrderSuccessPage(
+                order: verifyRes['order'] ?? verifyRes['data'],
+              )),
           (route) => route.isFirst);
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text('Payment Verification Error: $e')));
@@ -88,8 +100,15 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
     }
   }
 
-  void _handlePaymentFailure(PaymentFailureResponse response) {
-    if (response.code == Razorpay.PAYMENT_CANCELLED) return;
+  void _handlePaymentFailure(PaymentFailureResponse response) async {
+    if (response.code == Razorpay.PAYMENT_CANCELLED) {
+      if (_currentOrderId != null) {
+        // Notify backend that order should be cancelled as user backed out
+        final orderService = ref.read(orderServiceProvider);
+        await orderService.cancelOrder(_currentOrderId!);
+      }
+      return;
+    }
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Payment Failed: ${response.message}')),
@@ -353,17 +372,29 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
                       _TypeButton(
                         label: 'One-time Order',
                         selected: _orderType == 0,
-                        onTap: () => setState(() => _orderType = 0),
+                        onTap: () {
+                          setState(() {
+                            _orderType = 0;
+                            if (_lastOneTimePaymentMethod != null) {
+                              _selectedPaymentMethod = _lastOneTimePaymentMethod!;
+                            }
+                          });
+                        },
                         icon: Icons.shopping_bag_outlined,
                       ),
                       const SizedBox(width: 12),
                       _TypeButton(
                         label: 'Daily Deliveries',
                         selected: _orderType == 1,
-                        onTap: () => setState(() {
-                          _orderType = 1;
-                          _selectedPaymentMethod = 'Wallet'; // Auto-reset to wallet for subscriptions
-                        }),
+                        onTap: () {
+                          if (_orderType == 0) {
+                            _lastOneTimePaymentMethod = _selectedPaymentMethod;
+                          }
+                          setState(() {
+                            _orderType = 1;
+                            _selectedPaymentMethod = 'Wallet'; // Auto-reset to wallet for subscriptions
+                          });
+                        },
                         icon: Icons.calendar_today_outlined,
                       ),
                     ],
@@ -589,6 +620,8 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
                               if (_selectedPaymentMethod == 'Razorpay') {
                                 // DIRECT PAY FLOW
                                 final razorpayOrderId = response['razorpayOrderId'] ?? response['orderId'];
+                                _currentOrderId = response['orderId']?.toString() ?? response['order']?['_id']?.toString();
+                                
                                 if (razorpayOrderId == null) {
                                   throw Exception('Failed to initialize Direct Payment. No order ID returned.');
                                 }
