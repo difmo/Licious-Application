@@ -96,6 +96,8 @@ class _ProductGrid extends StatelessWidget {
         final product = products[index];
         return ProductCard(
           product: product,
+          shopId: product.shopId,
+          shopName: product.shopName,
           onAdd: () {
             cart.addToCart(CartItem.fromProduct(product));
             ScaffoldMessenger.of(context).showSnackBar(

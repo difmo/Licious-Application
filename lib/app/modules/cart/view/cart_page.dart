@@ -161,7 +161,7 @@ class CartPage extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.grey.shade300),
+          border: Border.all(color: Colors.grey.shade300, width: 1),
         ),
         child: Padding(
           padding: const EdgeInsets.all(12),
@@ -211,6 +211,18 @@ class CartPage extends StatelessWidget {
                         color: Color(0xFF1A1A1A),
                       ),
                     ),
+                    if (item.weightLabel != null && item.weightLabel!.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          item.weightLabel!,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF68B92E),
+                          ),
+                        ),
+                      ),
                     const SizedBox(height: 4),
                     Text(
                       item.subtitle,
@@ -235,8 +247,8 @@ class CartPage extends StatelessWidget {
                 children: [
                   QuantitySelector(
                     quantity: item.quantity,
-                    onIncrement: () => cart.increment(item.title),
-                    onDecrement: () => cart.decrement(item.title),
+                    onIncrement: () => cart.increment(item.id, variantId: item.variantId),
+                    onDecrement: () => cart.decrement(item.id, variantId: item.variantId),
                     size: 34, // Slightly smaller for list view
                   ),
                   const SizedBox(height: 8),
@@ -255,12 +267,18 @@ class CartPage extends StatelessWidget {
                           whyChoose: [],
                         ),
                       );
+                      final selectedVariant = item.variantId != null 
+                          ? product.variants.firstWhere((v) => v.id == item.variantId, orElse: () => ProductVariant(id: item.variantId!, label: item.weightLabel ?? '', price: item.unitPrice, stock: 99, weightInKg: 0.5, weightValue: 0.5, weightUnit: 'Kg'))
+                          : null;
                       showModalBottomSheet(
                         context: context,
                         isScrollControlled: true,
                         backgroundColor: Colors.transparent,
                         builder: (context) =>
-                            SubscriptionConfigDrawer(product: product),
+                            SubscriptionConfigDrawer(
+                              product: product,
+                              selectedVariant: selectedVariant,
+                            ),
                       );
                     },
                     style: TextButton.styleFrom(
@@ -302,7 +320,7 @@ class CartPage extends StatelessWidget {
           const SizedBox(height: 12),
           _buildSummaryRow(
             'Shipping',
-            '₹${cart.shippingCharges.toStringAsFixed(0)}',
+            cart.shippingCharges == 0 ? 'Free' : '₹${cart.shippingCharges.toStringAsFixed(0)}',
           ),
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 16),

@@ -1,0 +1,96 @@
+Analyzing Licious-Application...                                
+
+   info - Unnecessary 'this.' qualifier - lib\app\data\models\auth_models.dart:70:29 - unnecessary_this
+   info - Use 'rethrow' to rethrow a caught exception - lib\app\data\services\address_service.dart:56:9 - use_rethrow_when_possible
+   info - Don't invoke 'print' in production code - lib\app\data\services\cart_service.dart:42:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\services\cart_service.dart:63:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\services\cart_service.dart:65:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\services\cart_service.dart:84:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\services\cart_service.dart:86:7 - avoid_print
+   info - 'desiredAccuracy' is deprecated and shouldn't be used. use settings parameter with AndroidSettings, AppleSettings, WebSettings, or LocationSettings - lib\app\data\services\location_service.dart:31:9 - deprecated_member_use
+   info - Statements in an if should be enclosed in a block - lib\app\data\services\order_service.dart:89:11 - curly_braces_in_flow_control_structures
+   info - Don't invoke 'print' in production code - lib\app\data\services\payment_service.dart:30:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\services\payment_service.dart:31:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\services\payment_service.dart:39:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\services\payment_service.dart:40:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\services\payment_service.dart:43:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\services\payment_service.dart:58:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\services\payment_service.dart:60:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\services\payment_service.dart:62:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\services\payment_service.dart:63:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\services\payment_service.dart:64:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\data\services\payment_service.dart:65:7 - avoid_print
+   info - Unnecessary use of string interpolation - lib\app\data\services\review_service.dart:40:9 - unnecessary_string_interpolations
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\app\modules\auth\login_page.dart:233:38 - deprecated_member_use
+warning - Unused import: 'package:shared_preferences/shared_preferences.dart' - lib\app\modules\auth\otp_verification_page.dart:3:8 - unused_import
+   info - The import of 'package:flutter/services.dart' is unnecessary because all of the used elements are also provided by the import of 'package:flutter/material.dart' - lib\app\modules\auth\otp_verification_page.dart:7:8 - unnecessary_import
+warning - The value of the field '_localError' isn't used - lib\app\modules\auth\otp_verification_page.dart:32:11 - unused_field
+warning - The value of the local variable 'isSessionReady' isn't used - lib\app\modules\auth\otp_verification_page.dart:215:25 - unused_local_variable
+   info - Statements in an if should be enclosed in a block - lib\app\modules\cart\view\shipping_address_page.dart:100:9 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\app\modules\cart\view\shipping_address_page.dart:102:9 - curly_braces_in_flow_control_structures
+   info - 'activeColor' is deprecated and shouldn't be used. Use activeThumbColor instead. This feature was deprecated after v3.31.0-2.0.pre - lib\app\modules\cart\view\shipping_address_page.dart:629:19 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\app\modules\home\view\filtered_products_page.dart:130:35 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\app\modules\home\view\search_page.dart:266:39 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\app\modules\home\view\search_page.dart:339:45 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\app\modules\home\view\search_page.dart:386:37 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\app\modules\home\view\search_page.dart:474:43 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\app\modules\home\view\search_page.dart:548:40 - deprecated_member_use
+warning - Unused import: 'package:flutter_riverpod/flutter_riverpod.dart' - lib\app\modules\home\widgets\home_header.dart:2:8 - unused_import
+warning - Unused import: '../../../data/services/notification_api_service.dart' - lib\app\modules\home\widgets\home_header.dart:7:8 - unused_import
+warning - Unused import: '../../profile/view/profile_detail_page.dart' - lib\app\modules\home\widgets\home_header.dart:11:8 - unused_import
+warning - Unused import: '../../profile/view/address_form_page.dart' - lib\app\modules\home\widgets\location_bottom_sheet.dart:5:8 - unused_import
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\app\modules\home\widgets\location_bottom_sheet.dart:92:56 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\app\modules\home\widgets\location_bottom_sheet.dart:167:57 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\app\modules\home\widgets\location_bottom_sheet.dart:171:44 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\app\modules\home\widgets\product_card.dart:214:45 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\app\modules\home\widgets\restaurant_list_section.dart:200:47 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\app\modules\home\widgets\restaurant_list_section.dart:213:55 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\app\modules\location\view\address_details_screen.dart:118:48 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\app\modules\location\view\address_details_screen.dart:120:67 - deprecated_member_use
+   info - 'activeColor' is deprecated and shouldn't be used. Use activeThumbColor or activeTrackColor instead. This feature was deprecated after v3.31.0-2.0.pre - lib\app\modules\location\view\address_details_screen.dart:248:21 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\app\modules\location\view\address_selection_sheet.dart:143:69 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\app\modules\location\view\address_selection_sheet.dart:180:74 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\app\modules\location\view\location_map_picker.dart:251:49 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\app\modules\location\view\location_map_picker.dart:282:41 - deprecated_member_use
+warning - The value of the field '_isCameraMoving' isn't used - lib\app\modules\location\view\location_picker_screen.dart:28:8 - unused_field
+   info - 'activeColor' is deprecated and shouldn't be used. Use activeThumbColor instead. This feature was deprecated after v3.31.0-2.0.pre - lib\app\modules\location\view\select_delivery_address_screen.dart:787:27 - deprecated_member_use
+warning - Unused import: '../../../data/services/location_service.dart' - lib\app\modules\location\widgets\location_permission_sheet.dart:5:8 - unused_import
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\app\modules\location\widgets\location_permission_sheet.dart:61:54 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\app\modules\location\widgets\location_permission_sheet.dart:109:39 - deprecated_member_use
+   info - Unnecessary use of 'toList' in a spread - lib\app\modules\orders\view\order_tracking_page.dart:491:12 - unnecessary_to_list_in_spreads
+   info - Use interpolation to compose strings and values - lib\app\modules\profile\view\address_form_page.dart:34:42 - prefer_interpolation_to_compose_strings
+   info - Use interpolation to compose strings and values - lib\app\modules\profile\view\address_form_page.dart:40:42 - prefer_interpolation_to_compose_strings
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\app\modules\profile\view\address_management_page.dart:55:51 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\app\modules\profile\view\address_management_page.dart:132:55 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\app\modules\profile\view\address_management_page.dart:136:41 - deprecated_member_use
+   info - Statements in an if should be enclosed in a block - lib\app\modules\profile\view\my_orders_page.dart:123:7 - curly_braces_in_flow_control_structures
+   info - Unnecessary braces in a string interpolation - lib\app\modules\profile\view\profile_detail_page.dart:584:48 - unnecessary_brace_in_string_interps
+   info - Unnecessary use of 'toList' in a spread - lib\app\modules\profile\view\profile_detail_page.dart:627:71 - unnecessary_to_list_in_spreads
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\app\modules\profile\view\profile_detail_page.dart:686:43 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\app\modules\profile\view\profile_detail_page.dart:698:38 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\app\modules\profile\view\profile_detail_page.dart:754:53 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\app\modules\profile\view\profile_page.dart:154:51 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\app\modules\profile\view\profile_page.dart:155:38 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\app\modules\profile\view\profile_page.dart:698:80 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\app\modules\profile\view\profile_page.dart:875:42 - deprecated_member_use
+   info - Don't use 'BuildContext's across async gaps - lib\app\modules\profile\view\profile_page.dart:949:34 - use_build_context_synchronously
+   info - Unnecessary use of 'toList' in a spread - lib\app\modules\profile\widgets\order_review_dialog.dart:101:22 - unnecessary_to_list_in_spreads
+   info - Don't invoke 'print' in production code - lib\app\modules\rider\view\rider_home_page.dart:45:3 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\modules\rider\view\rider_home_page.dart:52:5 - avoid_print
+   info - Don't invoke 'print' in production code - lib\app\modules\rider\view\rider_home_page.dart:54:5 - avoid_print
+warning - The value of the local variable 'hasDelivery' isn't used - lib\app\modules\subscription\subscription_page.dart:292:17 - unused_local_variable
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\app\modules\subscription\subscription_page.dart:999:27 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\app\modules\subscription\subscription_page.dart:1006:39 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\app\modules\subscription\subscription_page.dart:1011:48 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\app\modules\subscription\subscription_page.dart:1015:48 - use_build_context_synchronously
+   info - 'activeColor' is deprecated and shouldn't be used. Use activeThumbColor instead. This feature was deprecated after v3.31.0-2.0.pre - lib\app\modules\subscription\subscription_page.dart:1145:31 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\app\modules\subscriptions\view\subscription_dashboard_page.dart:123:36 - deprecated_member_use
+   info - Don't use 'BuildContext's across async gaps - lib\app\modules\subscriptions\view\subscription_dashboard_page.dart:233:21 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\app\modules\subscriptions\view\subscription_dashboard_page.dart:239:46 - use_build_context_synchronously
+   info - 'encryptedSharedPreferences' is deprecated and shouldn't be used. EncryptedSharedPreferences is deprecated and will be removed in v11. The Jetpack Security library is deprecated by Google. Your data will be automatically migrated to custom ciphers on first access. Remove this parameter - it will be ignored - lib\core\storage\secure_storage_service.dart:15:13 - deprecated_member_use
+   info - 'androidProvider' is deprecated and shouldn't be used. Use providerAndroid instead. This parameter will be removed in a future major release - lib\main.dart:29:5 - deprecated_member_use
+   info - 'appleProvider' is deprecated and shouldn't be used. Use providerApple instead. This parameter will be removed in a future major release - lib\main.dart:31:5 - deprecated_member_use
+warning - The exception variable 'e' isn't used, so the 'catch' clause can be removed - test_dio2.dart:6:28 - unused_catch_clause
+   info - Don't invoke 'print' in production code - test_dio2.dart:7:5 - avoid_print
+warning - Unused import: 'dart:io' - test_profile.dart:1:8 - unused_import
+

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../data/services/order_service.dart';
 import '../../../data/services/socket_service.dart';
 
@@ -22,7 +23,9 @@ class _OrderTrackingPageState extends ConsumerState<OrderTrackingPage> {
   void initState() {
     super.initState();
     _order = Map<String, dynamic>.from(widget.order);
-    _statusHistory = List<dynamic>.from(_order['statusHistory'] ?? []);
+    _statusHistory = List<dynamic>.from(
+      _order['statusHistory'] ?? _order['updates'] ?? _order['timeline'] ?? [],
+    );
     
     _loadOrderDetails();
     _setupSocket();
@@ -47,7 +50,8 @@ class _OrderTrackingPageState extends ConsumerState<OrderTrackingPage> {
       if (freshData.isNotEmpty && mounted) {
         setState(() {
           _order = freshData;
-          _statusHistory = List<dynamic>.from(_order['statusHistory'] ?? []);
+          _statusHistory = List<dynamic>.from(
+              _order['statusHistory'] ?? _order['updates'] ?? _order['timeline'] ?? []);
           _isLoading = false;
         });
       } else if (mounted) {
@@ -58,20 +62,22 @@ class _OrderTrackingPageState extends ConsumerState<OrderTrackingPage> {
     }
   }
 
+  void Function(dynamic)? _orderUpdateCallback;
+
   void _setupSocket() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final orderId = _order['orderId']?.toString() ?? '';
       if (orderId.isNotEmpty) {
         final socket = ref.read(socketServiceProvider);
         socket.joinOrderRoom(orderId);
-        socket.onOrderUpdate((data) {
+        
+        _orderUpdateCallback = (data) {
           if (!mounted) return;
           setState(() {
             _order['status'] = data['status'] ?? _order['status'];
             if (data['statusHistory'] != null) {
               _statusHistory = List<dynamic>.from(data['statusHistory']);
             } else {
-              // Append the new status entry locally
               _statusHistory.add({
                 'status': data['status'],
                 'role': 'system',
@@ -79,7 +85,9 @@ class _OrderTrackingPageState extends ConsumerState<OrderTrackingPage> {
               });
             }
           });
-        });
+        };
+        
+        socket.onOrderUpdate(_orderUpdateCallback!);
       }
     });
   }
@@ -87,10 +95,16 @@ class _OrderTrackingPageState extends ConsumerState<OrderTrackingPage> {
   @override
   void dispose() {
     final orderId = _order['orderId']?.toString() ?? '';
+    final socket = ref.read(socketServiceProvider);
+    
     if (orderId.isNotEmpty) {
-      ref.read(socketServiceProvider).leaveOrderRoom(orderId);
-      ref.read(socketServiceProvider).offEvent('orderUpdate');
+      socket.leaveOrderRoom(orderId);
     }
+    
+    if (_orderUpdateCallback != null) {
+      socket.offOrderUpdate(_orderUpdateCallback!);
+    }
+    
     super.dispose();
   }
 
@@ -214,7 +228,9 @@ class _OrderTrackingPageState extends ConsumerState<OrderTrackingPage> {
     if (items.isNotEmpty) {
       final item = items.first;
       final product = item['product'];
-      itemName = (product is Map && product['name'] != null) ? product['name'].toString() : 'Item';
+      final baseName = (product is Map && product['name'] != null) ? product['name'].toString() : 'Item';
+      final weight = (item['weightLabel'] ?? item['weight_label'] ?? (product is Map ? product['weightLabel'] : null) ?? '').toString();
+      itemName = '$baseName${weight.isNotEmpty ? " ($weight)" : ""}';
       qty = item['quantity']?.toString() ?? '1';
       
       // Attempt to get retailer name
@@ -227,7 +243,7 @@ class _OrderTrackingPageState extends ConsumerState<OrderTrackingPage> {
         }
       }
     }
-    final subtitle = items.isNotEmpty ? '${qty}x $itemName' : '';
+    final subtitle = items.isNotEmpty ? (items.length > 1 ? '${items.length} items' : '${qty}x $itemName') : '';
 
     final isSub =
         _order['orderType'] == 'Subscription' || _order['frequency'] != null;
@@ -407,6 +423,17 @@ class _OrderTrackingPageState extends ConsumerState<OrderTrackingPage> {
                 child: Divider(color: Color(0xFFEEEEEE), thickness: 1.5),
               ),
 
+              // ── Items List ──────────────────────────────────────────────
+              _buildItemsSection(items),
+
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: Divider(color: Color(0xFFEEEEEE), thickness: 1.5),
+              ),
+              
+              // ── Rider Section ──────────────────────────────────────────────
+              _buildRiderSection(),
+
               // ── Order Summary (Payment) ─────────────────────────────────────
               _buildOrderSummary(),
 
@@ -415,6 +442,54 @@ class _OrderTrackingPageState extends ConsumerState<OrderTrackingPage> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildItemsSection(List<dynamic> items) {
+    if (items.isEmpty) return const SizedBox();
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('ORDER ITEMS',
+            style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey)),
+        const SizedBox(height: 12),
+        ...items.map((item) {
+          final product = item['product'];
+          final name = (product is Map && product['name'] != null) ? product['name'].toString() : 'Item';
+          final qty = item['quantity']?.toString() ?? '1';
+          final price = item['price']?.toString() ?? '';
+          final weight = (item['weightLabel'] ?? item['weight_label'] ?? item['label'] ?? (product is Map ? (product['weightLabel'] ?? product['label'] ?? product['weight']) : null) ?? '').toString();
+          
+          final displayName = '$name${weight.isNotEmpty ? " ($weight)" : ""}';
+          
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF7F8FA),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: Text('${qty}x', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF114F3B))),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(displayName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                ),
+                if (price.isNotEmpty && price != '0' && price != '0.0')
+                  Text('₹$price', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+              ],
+            ),
+          );
+        }).toList(),
+      ],
     );
   }
 
@@ -526,7 +601,7 @@ class _OrderTrackingPageState extends ConsumerState<OrderTrackingPage> {
   }
 
   Widget _buildAddressSection() {
-    final addr = _order['deliveryAddress'];
+    final addr = _order['deliveryAddress'] ?? _order['address'] ?? _order['shippingAddress'];
     if (addr == null || (addr is Map && addr.isEmpty)) {
       return const Padding(
         padding: EdgeInsets.only(left: 36),
@@ -801,6 +876,97 @@ class _OrderTrackingPageState extends ConsumerState<OrderTrackingPage> {
           ],
         );
       }).toList(),
+    );
+  }
+
+  Widget _buildRiderSection() {
+    final rider = _order['rider'] ?? _order['riderId'];
+    if (rider == null) return const SizedBox.shrink();
+
+    final riderName = rider is Map ? (rider['fullName'] ?? rider['name'] ?? '') : '';
+    final riderPhone = rider is Map ? (rider['phoneNumber'] ?? rider['phone'] ?? '') : '';
+
+    if (riderName.isEmpty && riderPhone.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('DELIVERY PARTNER',
+            style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey)),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF0F4EC),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFF68B92E).withValues(alpha: 0.2)),
+          ),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: const Color(0xFF114F3B),
+                child: Text(
+                  riderName.isNotEmpty ? riderName[0].toUpperCase() : 'R',
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (riderName.isNotEmpty)
+                      Text(
+                        riderName,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    if (riderPhone.isNotEmpty) ...[
+                      if (riderName.isNotEmpty) const SizedBox(height: 4),
+                      GestureDetector(
+                        onTap: () async {
+                          final url = Uri.parse('tel:$riderPhone');
+                          if (await canLaunchUrl(url)) {
+                            await launchUrl(url);
+                          }
+                        },
+                        child: Row(
+                          children: [
+                            const Icon(Icons.phone, size: 14, color: Colors.grey),
+                            const SizedBox(width: 4),
+                            Text(
+                              riderPhone,
+                              style: const TextStyle(
+                                color: Colors.black54,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const Padding(
+          padding: EdgeInsets.symmetric(vertical: 20),
+          child: Divider(color: Color(0xFFEEEEEE), thickness: 1.5),
+        ),
+      ],
     );
   }
 }

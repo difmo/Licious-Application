@@ -6,6 +6,7 @@ import '../../../data/services/wallet_service.dart';
 import '../../../data/services/db_service.dart';
 import '../../../core/constants/app_colors.dart';
 import './wallet_page.dart';
+import '../provider/wallet_provider.dart';
 
 class TopUpPage extends ConsumerStatefulWidget {
   const TopUpPage({super.key});
@@ -19,6 +20,7 @@ class _TopUpPageState extends ConsumerState<TopUpPage> {
   bool _isLoading = false;
   // Cache service so we can call dispose() without using ref after unmount
   late PaymentService _paymentService;
+  double? _pendingAmount;
 
   @override
   void initState() {
@@ -33,7 +35,8 @@ class _TopUpPageState extends ConsumerState<TopUpPage> {
 
   void _handlePaymentSuccess(PaymentSuccessResponse response) async {
     setState(() => _isLoading = true);
-    final amount = double.tryParse(_amountController.text) ?? 0.0;
+    final amount = _pendingAmount ?? double.tryParse(_amountController.text) ?? 0.0;
+    _pendingAmount = null; // Consume the pending amount immediately
 
     final result = await ref.read(walletServiceProvider).topUpSuccess(
           amount: amount,
@@ -47,10 +50,11 @@ class _TopUpPageState extends ConsumerState<TopUpPage> {
       if (result['success'] == true) {
         // Sync both the ChangeNotifier (used in Profile/Checkout) 
         // and invalidate the Riverpod providers (used in WalletPage)
-        CartProviderScope.of(context).syncWallet();
-        ref.invalidate(walletBalanceProvider);
+        CartProviderScope.read(context).syncWallet();
         ref.invalidate(walletHistoryProvider);
+        ref.invalidate(walletTransactionsProvider);
         
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
               content: Text('Wallet topped up successfully!'),
@@ -58,6 +62,7 @@ class _TopUpPageState extends ConsumerState<TopUpPage> {
         );
         Navigator.pop(context);
       } else {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content: Text(result['message'] ?? 'Verification failed'),
@@ -68,6 +73,15 @@ class _TopUpPageState extends ConsumerState<TopUpPage> {
   }
 
   void _handlePaymentFailure(PaymentFailureResponse response) {
+    // Reset pending amount so no stale data can be reused
+    _pendingAmount = null;
+    if (!mounted) return;
+
+    // Razorpay error code 0 means the user dismissed/cancelled the payment sheet.
+    // Don't treat that as an "error" — just silently dismiss.
+    final isCancelled = response.code == Razorpay.PAYMENT_CANCELLED;
+    if (isCancelled) return;
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
           content: Text('Payment Failed: ${response.message}'),
@@ -76,6 +90,7 @@ class _TopUpPageState extends ConsumerState<TopUpPage> {
   }
 
   void _handleExternalWallet(ExternalWalletResponse response) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
           content: Text('External Wallet: ${response.walletName}'),
@@ -92,7 +107,6 @@ class _TopUpPageState extends ConsumerState<TopUpPage> {
 
   @override
   Widget build(BuildContext context) {
-    final profile = CartProviderScope.of(context).userProfile;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -125,6 +139,10 @@ class _TopUpPageState extends ConsumerState<TopUpPage> {
                     fontWeight: FontWeight.w800,
                     color: AppColors.primaryDark),
                 hintText: '0',
+                hintStyle: const TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.grey),
                 focusedBorder: UnderlineInputBorder(
                     borderSide:
                         BorderSide(color: AppColors.primaryDark, width: 2)),
@@ -144,29 +162,34 @@ class _TopUpPageState extends ConsumerState<TopUpPage> {
             ),
             const SizedBox(height: 48),
             _isLoading
-                ? const Center(
-                    child:
-                        CircularProgressIndicator(color: AppColors.accentGreen))
+                ? Center(child: CircularProgressIndicator(color: AppColors.accentGreen))
                 : ElevatedButton(
                     onPressed: () async {
-                      final amount =
-                          double.tryParse(_amountController.text) ?? 0.0;
+                      final amountText = _amountController.text.trim();
+                      final amount = double.tryParse(amountText) ?? 0.0;
                       if (amount < 100) {
                         ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
                                 content: Text('Minimum top-up is ₹100')));
                         return;
                       }
+
+                      if (!mounted) return;
+                      final profile = CartProviderScope.read(context).userProfile;
                       final messenger = ScaffoldMessenger.of(context);
+                      
                       try {
+                        _pendingAmount = amount;
                         await _paymentService.openCheckout(
                           amount: amount,
                           contact: profile.phone,
                           email: profile.email,
                         );
                       } catch (e) {
-                        messenger.showSnackBar(
-                            SnackBar(content: Text(e.toString())));
+                        if (mounted) {
+                          messenger.showSnackBar(
+                              SnackBar(content: Text(e.toString())));
+                        }
                       }
                     },
                     style: ElevatedButton.styleFrom(
@@ -186,3 +209,4 @@ class _TopUpPageState extends ConsumerState<TopUpPage> {
     );
   }
 }
+

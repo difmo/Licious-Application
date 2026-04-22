@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app/routes/app_routes.dart';
@@ -7,8 +8,8 @@ import 'app/data/services/db_service.dart';
 import 'app/data/services/cart_service.dart';
 import 'app/data/services/wallet_service.dart';
 import 'app/data/services/address_service.dart';
+import 'app/data/services/auth_service.dart';
 import 'app/core/theme/app_theme.dart';
-import 'app/data/services/location_tracking_service.dart';
 import 'app/data/services/notification_service.dart';
 import 'app/data/services/fcm_service.dart';
 
@@ -19,17 +20,29 @@ import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Enable Edge-to-Edge display for Android 15+
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      systemNavigationBarColor: Colors.transparent,
+      statusBarColor: Colors.transparent,
+      systemNavigationBarIconBrightness: Brightness.dark,
+      statusBarIconBrightness: Brightness.dark,
+    ),
+  );
+
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  
+
   // Activate providers for App Check. Use debug provider for local development.
   await FirebaseAppCheck.instance.activate(
-    androidProvider: kDebugMode ? AndroidProvider.debug : AndroidProvider.playIntegrity,
+    androidProvider:
+        kDebugMode ? AndroidProvider.debug : AndroidProvider.playIntegrity,
     appleProvider: kDebugMode ? AppleProvider.debug : AppleProvider.deviceCheck,
   );
   await dotenv.load(fileName: ".env");
-  LocationTrackingService.init();
   NotificationService.init();
   await FCMService.init();
   FCMService.listenToTokenRefresh();
@@ -42,21 +55,40 @@ void main() async {
   );
 }
 
-class ShrimpbiteApp extends ConsumerWidget {
+class ShrimpbiteApp extends ConsumerStatefulWidget {
   const ShrimpbiteApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final cartService = ref.watch(cartServiceProvider);
-    final walletService = ref.watch(walletServiceProvider);
-    final addressService = ref.watch(addressServiceProvider);
+  ConsumerState<ShrimpbiteApp> createState() => _ShrimpbiteAppState();
+}
 
-    return CartProviderScope(
-      provider: CartProvider(
+class _ShrimpbiteAppState extends ConsumerState<ShrimpbiteApp> {
+  late CartProvider _cartProvider;
+  bool _isInit = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_isInit) {
+      final cartService = ref.watch(cartServiceProvider);
+      final walletService = ref.watch(walletServiceProvider);
+      final addressService = ref.watch(addressServiceProvider);
+      final authService = ref.watch(authServiceProvider);
+
+      _cartProvider = CartProvider(
         service: cartService,
         walletService: walletService,
         addressService: addressService,
-      ),
+        authService: authService,
+      );
+      _isInit = true;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return CartProviderScope(
+      provider: _cartProvider,
       child: MaterialApp(
         title: 'Shrimpbite',
         debugShowCheckedModeBanner: false,

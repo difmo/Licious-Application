@@ -39,17 +39,42 @@ app.*.symbols
 # Obfuscation related
 app.*.map.json
 
+# Heap dumps and crashes
+*.hprof
+*.crash
+
 # Android Studio will place build artifacts here
 /android/app/debug
 /android/app/profile
 /android/app/release
 
-# Secret keys — never commit
+# Secret keys and signing files — NEVER commit
 android/local.properties
+android/key.properties
+*.jks
+*.keystore
+*.p12
+*.pem
 
 # Environment Variables
 .env
+.env.*
+!.env.example
+
+# Temporary sensitive text files
+otp.txt
+importantdata.txt
+analyze*.txt
+status.txt
 
 # Firebase Config Files
-android/app/google-services.json
-ios/Runner/GoogleService-Info.plist
+**/google-services*.json
+**/GoogleService-Info*.plist
+
+# macOS / Windows / Linux desktop related
+.DS_Store
+.history
+.svn/
+*.log
+Thumbs.db
+desktop.ini

@@ -20,15 +20,18 @@ class HomePage extends ConsumerWidget {
         statusBarBrightness: Brightness.light,
       ),
       child: Scaffold(
-        backgroundColor: const Color(0xFFF7F8FA),
+        backgroundColor: Colors.white,
         body: SafeArea(
           bottom: false,
           child: RefreshIndicator(
             onRefresh: () async {
+              // Capture provider before any awaits
+              final cart = CartProviderScope.of(context);
               await ref.read(shopsListProvider.notifier).refresh();
+              
               // Proactively refresh other related data if needed
-              CartProviderScope.of(context).loadAddresses();
-              CartProviderScope.of(context).syncWallet();
+              cart.loadAddresses();
+              cart.syncWallet();
             },
             color: const Color(0xFF68B92E),
             child: CustomScrollView(
@@ -111,10 +114,10 @@ class _AnimatedFooterTextState extends State<AnimatedFooterText>
       child: const Padding(
         padding: EdgeInsets.symmetric(vertical: 0),
         child: Text(
-          'With love,\nfrom Shrimp.',
+          'With love from Shrimp.',
           textAlign: TextAlign.center,
           style: TextStyle(
-            fontSize: 28,
+            fontSize: 30,
             fontWeight: FontWeight.w900,
             color: Color(0xFFB4B4B4),
             height: 1.1,

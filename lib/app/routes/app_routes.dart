@@ -1,12 +1,7 @@
 class AppRoutes {
   static const String splash = '/splash';
-  static const String initialRoute = '/';
-  static const String deals = '/deals';
-
-  static const String welcome = '/welcome';
-  static const String forgotPassword = '/forgot-password';
   static const String login = '/login';
-  static const String signup = '/signup';
+
   static const String home = '/home';
   static const String productDetails = '/product_details';
   static const String categories = '/categories';
@@ -21,6 +16,9 @@ class AppRoutes {
   static const String walletStatement = '/wallet-statement';
   static const String activeOrders = '/active-orders';
   static const String trackOrder = '/track-order';
-  static const String locationPicker = '/location-picker';
+  static const String addressDetails = '/address-details';
+  static const String locationMapPicker = '/location-map-picker';
+  static const String mySubscriptions = '/my-subscriptions';
   static const String search = '/search';
+  static const String locationPermission = '/location-permission';
 }

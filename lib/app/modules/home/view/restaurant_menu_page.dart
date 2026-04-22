@@ -3,7 +3,9 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/shop_product_model.dart';
 import '../../../data/models/product_model.dart';
+import '../../../data/models/food_models.dart';
 import '../../../data/services/db_service.dart';
+import '../widgets/variant_selector_sheet.dart';
 import '../../../data/services/favorites_service.dart';
 import '../provider/shop_provider.dart';
 import '../widgets/cart_summary_bar.dart';
@@ -13,12 +15,6 @@ import 'package:licius_application/app/routes/app_routes.dart';
 class RestaurantMenuPage extends ConsumerWidget {
   final ShopModel shop;
   const RestaurantMenuPage({super.key, required this.shop});
-
-  // Deterministic display metadata (same logic as the card)
-  double get _rating {
-    final code = shop.id.codeUnits.fold<int>(0, (a, b) => a + b);
-    return 3.8 + (code % 9) * 0.1;
-  }
 
   String get _deliveryTime {
     final code = shop.id.codeUnits.fold<int>(0, (a, b) => a + b);
@@ -86,16 +82,7 @@ class RestaurantMenuPage extends ConsumerWidget {
                         ),
                       ),
                     ),
-                    actions: [
-                      Padding(
-                        padding: const EdgeInsets.only(right: 12),
-                        child: CircleAvatar(
-                          backgroundColor: Colors.white.withValues(alpha: 0.9),
-                          child: const Icon(Icons.bookmark_border,
-                              color: Colors.black87, size: 20),
-                        ),
-                      ),
-                    ],
+                    actions: const [],
                     flexibleSpace: FlexibleSpaceBar(
                       background: _buildHeroBanner(currentShop),
                     ),
@@ -109,7 +96,7 @@ class RestaurantMenuPage extends ConsumerWidget {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.grey.shade200),
+                        border: Border.all(color: Colors.grey.shade300, width: 1),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -117,32 +104,42 @@ class RestaurantMenuPage extends ConsumerWidget {
                           Row(
                             children: [
                               Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      shop.deliveryTime.isNotEmpty
-                                          ? shop.deliveryTime
-                                          : _deliveryTime,
-                                      style: const TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
-                                        color: Color(0xFF1A1A1A),
-                                      ),
-                                    ),
-                                    if (shop.location.isNotEmpty) ...[
-                                      const SizedBox(height: 3),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
                                       Text(
-                                        shop.location,
+                                        shop.name,
+                                        style: const TextStyle(
+                                          fontSize: 22,
+                                          fontWeight: FontWeight.w900,
+                                          color: Color(0xFF1A1A1A),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        currentShop.cuisine.isNotEmpty
+                                            ? currentShop.cuisine
+                                            : (shop.businessName.isNotEmpty ? shop.businessName : 'Seafood'),
                                         style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.grey.shade600),
+                                            fontSize: 13,
+                                            color: Colors.grey.shade600,
+                                            fontWeight: FontWeight.w500),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                       ),
+                                      if (shop.location.isNotEmpty) ...[
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          shop.location,
+                                          style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey.shade500),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
                                     ],
-                                  ],
-                                ),
+                                  ),
                               ),
                               Container(
                                 padding: const EdgeInsets.symmetric(
@@ -159,7 +156,7 @@ class RestaurantMenuPage extends ConsumerWidget {
                                     Text(
                                       shop.rating > 0
                                           ? shop.rating.toStringAsFixed(1)
-                                          : _rating.toStringAsFixed(1),
+                                          : 'New',
                                       style: const TextStyle(
                                         color: Colors.white,
                                         fontWeight: FontWeight.bold,
@@ -222,29 +219,30 @@ class RestaurantMenuPage extends ConsumerWidget {
                           ] else ...[
                             const SizedBox(height: 12),
                             // Offer banner
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 8),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFEBFFD7),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.local_offer,
-                                      size: 14, color: Color(0xFF439462)),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Flat ₹100 OFF above ₹499',
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
-                                      color: Color(0xFF439462),
+                            if (currentShop.offer.isNotEmpty)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEBFFD7),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.local_offer,
+                                        size: 14, color: Color(0xFF439462)),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      currentShop.offer,
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF439462),
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
-                            ),
                           ],
                         ],
                       ),
@@ -252,11 +250,13 @@ class RestaurantMenuPage extends ConsumerWidget {
                   ),
 
                   // ── Products Section Header ────────────────────────────────────
-                  const SliverPadding(
-                    padding: EdgeInsets.fromLTRB(16, 4, 16, 12),
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
                     sliver: SliverToBoxAdapter(
                       child: Text(
-                        'SHRIMP VARIETIES',
+                        currentShop.cuisine.isNotEmpty
+                            ? '${currentShop.cuisine.toUpperCase()} VARIETIES'
+                            : 'PRODUCT VARIETIES',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w800,
@@ -290,7 +290,7 @@ class RestaurantMenuPage extends ConsumerWidget {
                           gridDelegate:
                               const SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: 2,
-                            childAspectRatio: 0.78,
+                            childAspectRatio: 0.7,
                             crossAxisSpacing: 12,
                             mainAxisSpacing: 12,
                           ),
@@ -397,6 +397,8 @@ class _ProductCard extends ConsumerStatefulWidget {
 }
 
 class _ProductCardState extends ConsumerState<_ProductCard> {
+  int _selectedVariantIndex = 0;
+
   @override
   Widget build(BuildContext context) {
     final cart = CartProviderScope.of(context);
@@ -406,7 +408,7 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: Colors.grey.shade300, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -427,12 +429,7 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
                       )
                     : _imagePlaceholder(),
               ),
-              // Favorite button — wired to backend
-              Positioned(
-                top: 6,
-                right: 6,
-                child: _FavoriteHeart(productId: p.id),
-              ),
+
               // Out of stock badge
               if (!p.isAvailable)
                 Positioned.fill(
@@ -454,6 +451,13 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
                     ),
                   ),
                 ),
+
+              // Favorite toggle (top right)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: _FavoriteHeart(productId: p.id),
+              ),
             ],
           ),
 
@@ -473,14 +477,39 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
                     color: Color(0xFF1A1A1A),
                   ),
                 ),
-                const SizedBox(height: 2),
-                if (p.category != null)
-                  Text(
-                    p.category!.name,
-                    style: const TextStyle(fontSize: 11, color: Colors.grey),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    if (p.category != null)
+                      Flexible(
+                        child: Text(
+                          p.category!.name,
+                          style:
+                              const TextStyle(fontSize: 11, color: Colors.grey),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    if (p.rating > 0)
+                      Row(
+                        children: [
+                          const Icon(Icons.star, size: 10, color: Colors.amber),
+                          const SizedBox(width: 2),
+                          Text(
+                            p.rating.toStringAsFixed(1),
+                            style: const TextStyle(
+                                fontSize: 10, fontWeight: FontWeight.bold),
+                          ),
+                          if (p.ratingsCount > 0)
+                            Text(
+                              ' (${p.ratingsCount})',
+                              style: const TextStyle(
+                                  fontSize: 9, color: Colors.grey),
+                            ),
+                        ],
+                      ),
+                  ],
+                ),
                 if (p.description.isNotEmpty)
                   Text(
                     p.description,
@@ -488,6 +517,47 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
+                
+                // ── Variant Selection ──────────────────────────────────────
+                if (p.variants.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    height: 24,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: p.variants.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 6),
+                      itemBuilder: (ctx, idx) {
+                        final v = p.variants[idx];
+                        final isSelected = _selectedVariantIndex == idx;
+                        return GestureDetector(
+                          onTap: () => setState(() => _selectedVariantIndex = idx),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            decoration: BoxDecoration(
+                              color: isSelected ? const Color(0xFF68B92E).withValues(alpha: 0.1) : Colors.transparent,
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(
+                                color: isSelected ? const Color(0xFF68B92E) : Colors.grey.shade300,
+                                width: 1,
+                              ),
+                            ),
+                            child: Center(
+                              child: Text(
+                                v.weightLabel,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                  color: isSelected ? const Color(0xFF68B92E) : Colors.grey.shade600,
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -501,7 +571,7 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  '₹${p.price.toStringAsFixed(0)}',
+                  '₹${(p.variants.isNotEmpty ? p.variants[_selectedVariantIndex].price : p.price).toStringAsFixed(0)}',
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w900,
@@ -528,23 +598,53 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
       ),
     )
         .animate(delay: (60 * widget.index).ms)
-        .fadeIn(duration: 350.ms)
         .slideY(begin: 0.08, end: 0, duration: 350.ms, curve: Curves.easeOut);
   }
 
+  void _showVariantSheet(BuildContext context, ShopProduct p, String shopName) {
+    // Convert ShopProduct to Product for the sheet
+    final product = Product(
+      id: p.id,
+      name: p.name,
+      image: p.primaryImage,
+      price: p.price,
+      weight: p.variants.isNotEmpty ? p.variants[0].label : (p.category?.name ?? ''),
+      variants: p.variants,
+      category: p.category?.name ?? 'Shrimp',
+      description: p.description,
+      whyChoose: [],
+    );
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => VariantSelectorSheet(
+        product: product,
+        shopId: widget.shopId,
+        shopName: shopName,
+      ),
+    );
+  }
+
+
   Widget _buildCartControls(
       BuildContext context, CartProvider cart, ShopProduct p, String shopName) {
+    final selectedVariant = p.variants.isNotEmpty ? p.variants[_selectedVariantIndex] : null;
+    
     final cartItem = cart.items.firstWhere(
-      (item) => item.id == p.id,
+      (item) => item.id == p.id && item.variantId == selectedVariant?.id,
       orElse: () => CartItem(
         id: p.id,
         title: p.name,
-        unitPrice: p.price,
-        subtitle: p.category?.name ?? 'Shrimp',
+        unitPrice: selectedVariant?.price ?? p.price,
+        subtitle: selectedVariant?.weightLabel ?? p.category?.name ?? 'Shrimp',
         image: p.primaryImage,
         category: 'restaurant',
         shopId: widget.shopId,
         shopName: shopName,
+        variantId: selectedVariant?.id,
+        weightLabel: selectedVariant?.weightLabel,
         quantity: 0,
       ),
     );
@@ -564,6 +664,10 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
     if (cartItem.quantity == 0) {
       return GestureDetector(
         onTap: () {
+          if (p.variants.isNotEmpty) {
+            _showVariantSheet(context, p, shopName);
+            return;
+          }
           if (cart.isSameShop(widget.shopId)) {
             cart.addToCart(CartItem(
               id: p.id,
@@ -603,14 +707,15 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
 
     return QuantitySelector(
       quantity: cartItem.quantity,
-      onIncrement: () => cart.increment(p.name),
-      onDecrement: () => cart.decrement(p.name),
+      onIncrement: () => cart.increment(p.id, variantId: selectedVariant?.id),
+      onDecrement: () => cart.decrement(p.id, variantId: selectedVariant?.id),
       size: 32, // Compact size for grid card
     );
   }
 
   void _showReplaceCartDialog(BuildContext context, CartProvider cart,
       ShopProduct p, String newShopName) {
+    final selectedVariant = p.variants.isNotEmpty ? p.variants[_selectedVariantIndex] : null;
     final oldShopName = cart.cartShopName ?? 'another shop';
 
     showDialog(
@@ -651,16 +756,18 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
                 child: ElevatedButton(
                   onPressed: () {
                     cart.clearCart();
-                    cart.addToCart(CartItem(
-                      id: p.id,
-                      title: p.name,
-                      unitPrice: p.price,
-                      subtitle: p.category?.name ?? 'Shrimp',
-                      image: p.primaryImage,
-                      category: 'restaurant',
-                      shopId: widget.shopId,
-                      shopName: newShopName,
-                    ));
+                      cart.addToCart(CartItem(
+                        id: p.id,
+                        title: p.name,
+                        unitPrice: selectedVariant?.price ?? p.price,
+                        subtitle: selectedVariant?.weightLabel ?? p.category?.name ?? 'Shrimp',
+                        image: p.primaryImage,
+                        category: 'restaurant',
+                        shopId: widget.shopId,
+                        shopName: newShopName,
+                        variantId: selectedVariant?.id,
+                        weightLabel: selectedVariant?.weightLabel,
+                      ));
                     Navigator.pop(ctx);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
@@ -784,7 +891,7 @@ class _FavoriteHeartState extends ConsumerState<_FavoriteHeart>
                 ? Colors.red.shade50.withValues(alpha: 0.95)
                 : Colors.white.withValues(alpha: 0.9),
             shape: BoxShape.circle,
-            border: Border.all(color: Colors.grey.shade200),
+            border: Border.all(color: Colors.grey.shade300, width: 1),
           ),
           child: Icon(
             isFav ? Icons.favorite : Icons.favorite_border,

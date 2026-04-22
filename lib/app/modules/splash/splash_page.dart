@@ -43,9 +43,9 @@ class _SplashPageState extends ConsumerState<SplashPage>
       ref.read(authProvider.notifier).init();
     });
 
-    // Enforce a minimum display time for the splash screen (3 seconds)
+    // Enforce a minimum display time for the splash screen (0.5 seconds)
     // and then navigate based on current state.
-    Future.delayed(const Duration(seconds: 3), () {
+    Future.delayed(const Duration(milliseconds: 500), () {
       if (!mounted) return;
       setState(() => _minimumTimePassed = true);
       _handleNavigation(ref.read(authProvider));
@@ -55,22 +55,33 @@ class _SplashPageState extends ConsumerState<SplashPage>
   void _handleNavigation(AuthState state) {
     if (!mounted || _navigated) return;
 
+    // Instant jump for authenticated users to avoid seeing splash/login transition
     if (state is AuthAuthenticated) {
       _navigated = true;
       _syncAndNavigate(state);
-    } else if (state is AuthUnauthenticated || state is AuthError) {
+      return;
+    }
+
+    // Only wait for minimum time for unauthenticated flow
+    if (!_minimumTimePassed) return;
+
+    if (state is AuthUnauthenticated || state is AuthError) {
       _navigated = true;
-      Navigator.pushReplacementNamed(context, AppRoutes.initialRoute);
+      Navigator.pushReplacementNamed(context, AppRoutes.login);
     } else if (state is AuthSuccess) {
-      // Success state from registration or forgot password usually goes to login
       _navigated = true;
       Navigator.pushReplacementNamed(context, AppRoutes.login);
     }
   }
 
   void _syncAndNavigate(AuthAuthenticated auth) {
-    // Sync the legacy provider for UI components that rely on it
-    CartProviderScope.of(context).updateUserProfile(
+    if (!mounted) return;
+
+    // CAPTURE before context might become invalid
+    final cart = CartProviderScope.of(context);
+
+    // Sync user data to the legacy provider
+    cart.updateUserProfile(
       UserProfile(
         name: auth.user.fullName,
         email: auth.user.email,
@@ -82,6 +93,8 @@ class _SplashPageState extends ConsumerState<SplashPage>
     if (auth.user.role == 'rider') {
       Navigator.pushReplacementNamed(context, AppRoutes.riderHome);
     } else {
+      // REGULAR USER: Direct to Home. 
+      // Location permission will be asked contextually when adding an address.
       Navigator.pushReplacementNamed(context, AppRoutes.home);
     }
   }
@@ -94,23 +107,16 @@ class _SplashPageState extends ConsumerState<SplashPage>
 
   @override
   Widget build(BuildContext context) {
-    // Watch state change to navigate immediately if the minimum delay has passed
+    // Watch state change to navigate immediately
     ref.listen<AuthState>(authProvider, (previous, next) {
-      // If we already navigated or are still in a loading/initial state, wait
       if (_navigated) return;
 
-      // We only navigate automatically if the minimum display time has passed
-      if (next is AuthAuthenticated ||
-          next is AuthUnauthenticated ||
-          next is AuthError) {
-        if (_minimumTimePassed) {
-          _handleNavigation(next);
-        }
-      }
+      // Handle the new state
+      _handleNavigation(next);
     });
 
     return Scaffold(
-      backgroundColor: const Color(0xFFEFEFEF),
+      backgroundColor: Colors.white,
       body: Center(
         child: FadeTransition(
           opacity: _fadeAnim,

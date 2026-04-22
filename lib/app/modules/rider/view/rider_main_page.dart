@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import 'rider_home_page.dart';
-import 'rider_earnings_page.dart';
 import 'rider_history_page.dart';
 import 'rider_profile_page.dart';
 
@@ -18,7 +17,6 @@ class _RiderMainPageState extends State<RiderMainPage> {
   final List<Widget> _pages = [
     const RiderHomePage(),
     const RiderHistoryPage(),
-    const RiderEarningsPage(),
     const RiderProfilePage(),
   ];
 
@@ -55,10 +53,6 @@ class _RiderMainPageState extends State<RiderMainPage> {
             BottomNavigationBarItem(
               icon: Icon(Icons.history_rounded),
               label: 'History',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.account_balance_wallet_rounded),
-              label: 'Earnings',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.person_rounded),

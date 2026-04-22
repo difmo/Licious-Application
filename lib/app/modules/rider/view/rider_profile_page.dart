@@ -36,6 +36,7 @@ class RiderProfilePage extends ConsumerWidget {
                 boxShadow: [
                   BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 15, offset: const Offset(0, 5)),
                 ],
+                border: Border.all(color: Colors.grey.shade300, width: 1),
               ),
               child: Column(
                 children: [
@@ -84,6 +85,7 @@ class RiderProfilePage extends ConsumerWidget {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 12, offset: const Offset(0, 4))],
+                border: Border.all(color: Colors.grey.shade300, width: 1),
               ),
               child: Column(
                 children: [
@@ -105,9 +107,37 @@ class RiderProfilePage extends ConsumerWidget {
               label: 'Logout',
               color: Colors.redAccent,
               onTap: () async {
-                await ref.read(authProvider.notifier).logout();
-                if (context.mounted) {
-                  Navigator.pushNamedAndRemoveUntil(context, AppRoutes.login, (r) => false);
+                final shouldLogout = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
+                    title: const Text('Are you sure?',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    content: const Text('Do you really want to sign out?'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('No',
+                            style: TextStyle(color: Colors.grey)),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text('Yes',
+                            style: TextStyle(
+                                color: Colors.red,
+                                fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                );
+
+                if (shouldLogout == true) {
+                  await ref.read(authProvider.notifier).logout();
+                  if (context.mounted) {
+                    Navigator.pushNamedAndRemoveUntil(
+                        context, AppRoutes.login, (r) => false);
+                  }
                 }
               },
             ).animate(delay: 200.ms).fadeIn().slideY(begin: 0.1, end: 0),
@@ -160,7 +190,7 @@ class _ActionButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withValues(alpha: 0.15)),
+          border: Border.all(color: Colors.grey.shade300, width: 1),
         ),
         child: Row(
           children: [

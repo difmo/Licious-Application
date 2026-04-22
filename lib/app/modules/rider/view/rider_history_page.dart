@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/constants/app_colors.dart';
+import 'package:licius_application/app/core/constants/app_colors.dart';
 import '../../../data/services/rider_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
@@ -10,6 +10,19 @@ final deliveryHistoryProvider =
   final all = await ref.read(riderServiceProvider).getDeliveryHistory();
   return all;
 });
+
+String _cleanAddress(String address) {
+  if (address.isEmpty) return '';
+  String cleaned = address
+      .replaceAll(RegExp(r'Name:\s*[^,]+,?\s*', caseSensitive: false), '')
+      .replaceAll(RegExp(r'Phone:\s*[^,]+,?\s*', caseSensitive: false), '');
+  cleaned = cleaned.replaceAll(RegExp(r',\s*,'), ',').trim();
+  if (cleaned.startsWith(',')) cleaned = cleaned.substring(1).trim();
+  if (cleaned.endsWith(',')) {
+    cleaned = cleaned.substring(0, cleaned.length - 1).trim();
+  }
+  return cleaned;
+}
 
 class RiderHistoryPage extends ConsumerWidget {
   const RiderHistoryPage({super.key});
@@ -49,8 +62,7 @@ class RiderHistoryPage extends ConsumerWidget {
             ),
           );
         },
-        loading: () => const Center(
-            child: CircularProgressIndicator(color: AppColors.accentGreen)),
+        loading: () => Center(child: CircularProgressIndicator(color: AppColors.accentGreen)),
         error: (err, _) => Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -156,6 +168,7 @@ class _DeliveryHistoryCard extends StatelessWidget {
     } else if (addrRaw is String && addrRaw.isNotEmpty) {
       addressStr = addrRaw;
     }
+    addressStr = _cleanAddress(addressStr);
 
     // ── Items ────────────────────────────────────────────────────────────────
     final itemsList = item['items'] as List<dynamic>? ?? [];
@@ -196,6 +209,7 @@ class _DeliveryHistoryCard extends StatelessWidget {
             offset: const Offset(0, 8),
           ),
         ],
+        border: Border.all(color: Colors.grey.shade300, width: 1),
       ),
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -314,6 +328,7 @@ class _DeliveryHistoryCard extends StatelessWidget {
               decoration: BoxDecoration(
                 color: const Color(0xFFF9FBF8),
                 borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.grey.shade300, width: 1),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -365,6 +380,7 @@ class _Row extends StatelessWidget {
           decoration: BoxDecoration(
             color: const Color(0xFFF0F4EC),
             borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey.shade300, width: 1),
           ),
           child: Icon(icon, size: 16, color: const Color(0xFF114F3B)),
         ),
@@ -390,3 +406,4 @@ class _Row extends StatelessWidget {
     );
   }
 }
+

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/services/order_service.dart';
+import '../../../data/services/db_service.dart';
+import '../../../data/models/product_model.dart';
 import '../../orders/view/order_tracking_page.dart';
 
 class MyOrdersPage extends ConsumerWidget {
@@ -38,20 +40,27 @@ class MyOrdersPage extends ConsumerWidget {
         ],
       ),
       body: ordersAsync.when(
-        data: (orders) => orders.isEmpty
-            ? const _EmptyOrdersView()
-            : RefreshIndicator(
-                onRefresh: () async => ref.refresh(myOrdersProvider),
-                color: const Color(0xFF114F3B),
-                child: ListView.builder(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  physics: const BouncingScrollPhysics(),
-                  itemCount: orders.length,
-                  itemBuilder: (context, index) =>
-                      _OrderCard(order: orders[index]),
-                ),
-              ),
+        data: (allOrders) {
+          final pastOrders = allOrders.where((o) {
+            final status = (o['status'] ?? '').toString().toLowerCase();
+            return status == 'delivered' || status == 'cancelled';
+          }).toList();
+
+          return pastOrders.isEmpty
+              ? const _EmptyOrdersView()
+              : RefreshIndicator(
+                  onRefresh: () async => ref.refresh(myOrdersProvider),
+                  color: const Color(0xFF114F3B),
+                  child: ListView.builder(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    physics: const BouncingScrollPhysics(),
+                    itemCount: pastOrders.length,
+                    itemBuilder: (context, index) =>
+                        _OrderCard(order: pastOrders[index]),
+                  ),
+                );
+        },
         loading: () => const Center(
           child: CircularProgressIndicator(color: Color(0xFF114F3B)),
         ),
@@ -138,6 +147,25 @@ class _OrderCard extends ConsumerWidget {
   }
 
   String _orderStatus() => order['status']?.toString() ?? 'Pending';
+
+  String _formatDate(dynamic dateString) {
+    if (dateString == null) return '';
+    try {
+      final DateTime dt = DateTime.parse(dateString.toString()).toLocal();
+      return '${dt.day}/${dt.month}/${dt.year} at ${dt.hour > 12 ? dt.hour - 12 : (dt.hour == 0 ? 12 : dt.hour)}:${dt.minute.toString().padLeft(2, '0')} ${dt.hour >= 12 ? 'PM' : 'AM'}';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  String _orderDate() {
+    return _formatDate(order['createdAt'] ?? order['date'] ?? order['orderDate']);
+  }
+
+  String _deliveredDate() {
+    // Delivery timestamp usually stored on status transition update
+    return _formatDate(order['updatedAt'] ?? order['deliveredAt']);
+  }
 
   bool _isDelivered() => _orderStatus().toLowerCase() == 'delivered';
 
@@ -253,6 +281,22 @@ class _OrderCard extends ConsumerWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
+                    if (_orderDate().isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6.0),
+                        child: Text(
+                          'Ordered on: ${_orderDate()}',
+                          style: TextStyle(color: Colors.grey.shade500, fontSize: 11, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    if (_isDelivered() && _deliveredDate().isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2.0),
+                        child: Text(
+                          'Delivered on: ${_deliveredDate()}',
+                          style: const TextStyle(color: Color(0xFF114F3B), fontSize: 11, fontWeight: FontWeight.bold),
+                        ),
+                      ),
                     const Spacer(),
                     // Bill and Action Action Button
                     Row(
@@ -293,9 +337,36 @@ class _OrderCard extends ConsumerWidget {
                               );
                             } else {
                               HapticFeedback.mediumImpact();
+                              // Logic for Reorder: Add each item back to cart
+                              final cart = CartProviderScope.read(context);
+                              final items = order['items'] as List<dynamic>? ?? [];
+                              
+                              for (final item in items) {
+                                final p = item['product'] as Map<String, dynamic>? ?? {};
+                                final qty = (item['quantity'] as num?)?.toInt() ?? 1;
+                                
+                                // Map nested product object to CartItem
+                                final cartItem = CartItem(
+                                  id: (p['_id'] ?? p['id'] ?? '').toString(),
+                                  title: (p['name'] ?? '').toString(),
+                                  unitPrice: (item['price'] ?? p['price'] as num?)?.toDouble() ?? 0.0,
+                                  subtitle: (item['weightLabel'] ?? p['weightLabel'] ?? p['weight'] ?? '').toString(),
+                                  image: (p['images'] is List && p['images'].isNotEmpty
+                                      ? p['images'].first.toString()
+                                      : ''),
+                                  category: (p['category'] ?? '').toString(),
+                                  shopId: (order['retailerId'] ?? order['shopId'] ?? p['retailerId'] ?? '').toString(),
+                                  shopName: (order['retailerName'] ?? order['shopName'] ?? '').toString(),
+                                  variantId: (item['variantId'] ?? p['variantId'])?.toString(),
+                                  weightLabel: (item['weightLabel'] ?? p['weightLabel'])?.toString(),
+                                  quantity: qty,
+                                );
+                                cart.addToCart(cartItem);
+                              }
+
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text('Added to cart for reorder!'),
+                                  content: Text('Added your order items back to cart!'),
                                   backgroundColor: Color(0xFF114F3B),
                                   behavior: SnackBarBehavior.floating,
                                 ),

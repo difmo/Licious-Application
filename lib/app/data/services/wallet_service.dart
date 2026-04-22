@@ -12,12 +12,22 @@ class WalletService {
         '${ApiClient.walletBaseUrl}/balance',
         requiresAuth: true,
       );
+      
+      double extractedBalance = 0.0;
+      if (response['balance'] != null) {
+        extractedBalance = (response['balance'] as num).toDouble();
+      } else if (response['data'] != null && response['data']['balance'] != null) {
+        extractedBalance = (response['data']['balance'] as num).toDouble();
+      } else if (response['walletBalance'] != null) {
+        extractedBalance = (response['walletBalance'] as num).toDouble();
+      }
+
       return {
         'success': response['success'] ?? true,
-        'balance': response['balance'] ?? 0.0,
+        'balance': extractedBalance,
       };
     } catch (e) {
-      return {'success': false, 'message': e.toString()};
+      return {'success': false, 'message': e.toString(), 'balance': 0.0};
     }
   }
 

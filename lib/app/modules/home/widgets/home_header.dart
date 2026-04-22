@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../controller/main_controller.dart';
 import '../../../widgets/bounce_widget.dart';
+import '../../../data/services/db_service.dart';
+import '../../../data/services/notification_api_service.dart';
 import '../../../routes/app_routes.dart';
+import './location_bottom_sheet.dart';
+import '../../location/widgets/location_permission_sheet.dart';
+import '../../profile/view/profile_detail_page.dart';
 
 class HomeHeader extends StatefulWidget {
   const HomeHeader({super.key});
@@ -14,66 +20,91 @@ class HomeHeader extends StatefulWidget {
 class _HomeHeaderState extends State<HomeHeader> {
   @override
   Widget build(BuildContext context) {
+    final cart = CartProviderScope.of(context);
+    final selectedAddress = cart.selectedAddress;
+
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 16),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
       decoration: const BoxDecoration(color: Colors.white),
-      // decoration: const BoxDecoration(color: Color(0xFFF9FFF6)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Location Picker Row
+          // ── Top Bar (Location & Profile) ──────────────────────────────────────
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Icon(Icons.location_on, color: Color(0xFF1A1A1A), size: 18),
-              const SizedBox(width: 4),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          'Vibhav Khand -4',
-                          style: TextStyle(
-                            fontSize: 14.6,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF1A1A1A),
+              // Location Selector
+              Expanded(
+                child: InkWell(
+                  onTap: () {
+                    if (selectedAddress == null) {
+                      LocationPermissionSheet.show(context);
+                    } else {
+                      LocationBottomSheet.show(context);
+                    }
+                  },
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.location_on, size: 22, color: Color(0xFF38B24D)),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Padding(
+                              padding: const EdgeInsets.only(top: 2.0),
+                              child: Text(
+                                selectedAddress?.title ?? 'Set Location',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w900,
+                                  color: Color(0xFF1A1A1A),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
                           ),
+                          const Icon(Icons.keyboard_arrow_down, size: 24, color: Color(0xFF1A1A1A)),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 26),
+                        child: Text(
+                          selectedAddress?.street ?? 'Add your delivery address to start shopping',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        Icon(Icons.keyboard_arrow_down, size: 20),
-                      ],
-                    ),
-                    Text(
-                      'Vibhav Khand, Gomti Nagar, L...',
-                      style: TextStyle(fontSize: 10.2, color: Colors.grey),
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              // Header Buttons
-              const SizedBox(width: 8),
-
-              // Cart Icon removed from here
+              const SizedBox(width: 16),
+              // Profile
               BounceWidget(
                 onTap: () {
                   MainControllerScope.of(context).changePage(4);
                 },
-                child: Hero(
-                  tag: 'profile_pic',
-                  child: CircleAvatar(
-                    radius: 18,
-                    backgroundColor: Colors.green.shade200,
-                    child: const Icon(
-                      Icons.person,
-                      color: Color(0xFFE54141),
-                      size: 20,
-                    ),
-                  ),
+                child: const CircleAvatar(
+                  radius: 20,
+                  backgroundColor: Color(0xFFF3F4F6),
+                  child: Icon(Icons.person_outline, color: Color(0xFF1A1A1A), size: 24),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 20),
+
+          const SizedBox(height: 16),
           // Search Bar Row
           Row(
             children: [
@@ -83,13 +114,13 @@ class _HomeHeaderState extends State<HomeHeader> {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey.shade200),
+                    border: Border.all(color: Colors.grey.shade300, width: 1),
                   ),
                   child: TextField(
                     readOnly: true,
                     onTap: () => Navigator.pushNamed(context, AppRoutes.search),
                     decoration: InputDecoration(
-                      hintText: 'Search "curries"',
+                      hintText: 'Search Shrimp type...',
                       fillColor: Colors.white,
                       filled: true,
                       contentPadding: const EdgeInsets.symmetric(vertical: 0),
@@ -104,21 +135,13 @@ class _HomeHeaderState extends State<HomeHeader> {
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: const BorderSide(
-                          color: Color(0xFF68B92E),
+                          color: Color(0xFF38B24D),
                           width: 1.5,
                         ),
                       ),
                       prefixIcon: const Icon(
                         Icons.search,
-                        color: Color(0xFFE54141),
-                      ),
-                      suffixIcon: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          VerticalDivider(indent: 10, endIndent: 10),
-                          Icon(Icons.mic, color: Color(0xFFE54141)),
-                          SizedBox(width: 8),
-                        ],
+                        color: Color(0xFF38B24D),
                       ),
                     ),
                   ),

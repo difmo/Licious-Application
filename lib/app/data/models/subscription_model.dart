@@ -64,6 +64,9 @@ class UserSubscription {
   final DateTime? endDate;
   final String retailerName;
   final List<DateTime> vacationDates;
+  final int productPrice;
+  final String? variantId;
+  final String? weightLabel;
 
   UserSubscription({
     required this.id,
@@ -78,6 +81,9 @@ class UserSubscription {
     required this.startDate,
     this.endDate,
     this.vacationDates = const [],
+    this.productPrice = 0,
+    this.variantId,
+    this.weightLabel,
   });
 
   factory UserSubscription.fromJson(Map<String, dynamic> json) {
@@ -91,7 +97,8 @@ class UserSubscription {
           : product['image']?.toString() ?? '';
     }
 
-    final retailer = json['retailer'] ?? (product is Map ? product['retailer'] : null);
+    final retailer =
+        json['retailer'] ?? (product is Map ? product['retailer'] : null);
     String retailerName = '';
     if (retailer is Map) {
       final biz = retailer['businessDetails'];
@@ -127,6 +134,19 @@ class UserSubscription {
               ?.map((e) => DateTime.tryParse(e.toString()) ?? DateTime.now())
               .toList() ??
           [],
+      productPrice:
+          product is Map ? (product['price'] as num?)?.toInt() ?? 0 : 0,
+      variantId: (json['variantId'] ??
+              (product is Map ? (product['variantId'] ?? product['variant_id']) : null))
+          ?.toString(),
+      weightLabel: (json['weightLabel'] ??
+              (product is Map
+                  ? (product['label'] ??
+                      product['weightLabel'] ??
+                      product['weight_label'] ??
+                      product['weight'])
+                  : null))
+          ?.toString(),
     );
   }
 }

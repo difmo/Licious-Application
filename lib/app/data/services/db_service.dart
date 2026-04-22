@@ -4,32 +4,40 @@ import '../models/food_models.dart';
 import 'cart_service.dart';
 import 'wallet_service.dart';
 import 'address_service.dart';
+import 'auth_service.dart';
 import '../network/api_client.dart';
+import '../../../core/utils/logger.dart';
 
 class CartProvider extends ChangeNotifier {
   final CartService? _service;
   final WalletService? _walletService;
   final AddressService? _addressService;
+  final AuthService? _authService;
   final List<CartItem> _items = [];
 
   CartProvider({
     CartService? service,
     WalletService? walletService,
     AddressService? addressService,
+    AuthService? authService,
   })  : _service = service,
         _walletService = walletService,
-        _addressService = addressService {
-    loadAddresses();
-    syncWallet();
+        _addressService = addressService,
+        _authService = authService {
+    // We only trigger these if the services are present
+    if (_authService != null) loadProfile();
+    if (_addressService != null) loadAddresses();
+    if (_walletService != null) syncWallet();
   }
 
   AddressService? get addressService => _addressService;
 
   UserProfile _userProfile = const UserProfile(
-    name: 'Guest User',
+    name: 'shrimpbite user',
     email: '',
     phone: '',
     profileImage: 'assets/images/image copy 2.png',
+    addresses: [],
   );
 
   bool get isLoggedIn => _userProfile.email.isNotEmpty;
@@ -120,9 +128,9 @@ class CartProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  List<UserAddress> _addresses = [];
   bool _isAddressesLoading = false;
-  int _selectedAddressIndex = 0;
+  int _selectedAddressIndex =
+      0; // Default to first address
 
   bool get isAddressesLoading => _isAddressesLoading;
 
@@ -134,14 +142,14 @@ class CartProvider extends ChangeNotifier {
   }
 
   UserAddress? get selectedAddress {
-    if (_addresses.isEmpty) return null;
+    final addrs = _userProfile.addresses;
+    if (addrs.isEmpty) return null;
     if (_selectedAddressIndex >= 0 &&
-        _selectedAddressIndex < _addresses.length) {
-      return _addresses[_selectedAddressIndex];
+        _selectedAddressIndex < addrs.length) {
+      return addrs[_selectedAddressIndex];
     }
-    if (_addresses.isEmpty) return null;
-    return _addresses.firstWhere((a) => a.isDefault,
-        orElse: () => _addresses.first);
+    return addrs.firstWhere((a) => a.isDefault,
+        orElse: () => addrs.first);
   }
 
   final List<UserPaymentMethod> _payments = [
@@ -462,7 +470,7 @@ class CartProvider extends ChangeNotifier {
   List<FoodCategory> get foodCategories => _foodCategories;
   List<Restaurant> get restaurants => _restaurants;
   List<UserOrder> get orders => _orders;
-  List<UserAddress> get addresses => _addresses;
+  List<UserAddress> get addresses => _userProfile.addresses;
   List<UserPaymentMethod> get payments => _payments;
   UserProfile get userProfile => _userProfile;
 
@@ -473,27 +481,78 @@ class CartProvider extends ChangeNotifier {
 
   void clearSession() {
     _userProfile = const UserProfile(
-      name: 'Guest User',
+      name: 'shrimpbite user',
       email: '',
       phone: '',
       profileImage: 'assets/images/image copy 2.png',
     );
     _items.clear();
     _favoriteIds.clear();
+    _userProfile = _userProfile.copyWith(addresses: []);
+    _orders.clear();
     notifyListeners();
   }
 
   // ── API Integration ───────────────────────────────────────────────────────
+  Future<void> loadProfile() async {
+    if (_authService == null) return;
+    try {
+      final response = await _authService!.getProfile();
+      if (response.success && response.data != null) {
+        final user = response.data!;
+        _userProfile = UserProfile(
+          name: user.fullName,
+          email: user.email,
+          phone: user.phoneNumber,
+          profileImage: 'assets/images/image copy 2.png', 
+          walletId: user.walletId,
+          addresses: _userProfile.addresses, // Keep existing addresses
+        );
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error loading profile: $e');
+    }
+  }
+
+  bool _isCartLoading = false;
+  bool get isCartLoading => _isCartLoading;
+
   /// Syncs the local cart with the backend.
   Future<void> loadCartFromApi() async {
-    if (_service == null) return;
+    if (_service == null || _isCartLoading) return;
+    
+    _isCartLoading = true;
+    notifyListeners();
+
     try {
       final remoteItems = await _service!.getCart();
       _items.clear();
       _items.addAll(remoteItems);
-      notifyListeners();
     } catch (e) {
       debugPrint('Error loading cart from API: $e');
+    } finally {
+      _isCartLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Pushes all local items to the server to ensure backend cart is not empty.
+  /// This is used before checkout to fix "Cart is empty" errors.
+  Future<void> syncLocalCartToServer() async {
+    if (_service == null || _items.isEmpty) return;
+    try {
+      // CLEAR the remote cart first to ensure a clean sync 
+      // (prevents quantity doubling if the server increments items).
+      await _service!.clearCart();
+      
+      for (final item in _items) {
+        await _service!.addToCart(item.id, item.quantity,
+            variantId: item.variantId, weightLabel: item.weightLabel);
+      }
+      debugPrint('CartProvider: Local cart synced to server successfully.');
+    } catch (e) {
+      debugPrint('CartProvider: Error syncing local cart to server: $e');
     }
   }
 
@@ -501,7 +560,7 @@ class CartProvider extends ChangeNotifier {
 
   List<Restaurant> get favRestaurants {
     if (_restaurants.isEmpty) return [];
-    
+
     final List<Restaurant> favs = [];
     for (var id in _favoriteIds) {
       final r = _restaurants.firstWhere((res) => res.id == id,
@@ -513,7 +572,7 @@ class CartProvider extends ChangeNotifier {
         favs.add(r);
       }
     }
-    
+
     // Correct way: map ids to restaurants in order
     return _favoriteIds
         .map((id) => _restaurants.firstWhere((r) => r.id == id,
@@ -544,7 +603,8 @@ class CartProvider extends ChangeNotifier {
   void addAddress(UserAddress address) async {
     if (_addressService != null) {
       final addressParts = address.details.split(',');
-      final cityName = addressParts.isNotEmpty ? addressParts.first.trim() : 'City';
+      final cityName =
+          addressParts.isNotEmpty ? addressParts.first.trim() : 'City';
       final result = await _addressService!.saveAddress(
         label: address.title,
         fullAddress: address.street,
@@ -560,18 +620,20 @@ class CartProvider extends ChangeNotifier {
       }
     } else {
       // Fallback for local testing
+      final newAddrs = List<UserAddress>.from(_userProfile.addresses);
       if (address.isDefault) {
-        for (int i = 0; i < _addresses.length; i++) {
-          _addresses[i] = UserAddress(
-            id: _addresses[i].id,
-            title: _addresses[i].title,
-            street: _addresses[i].street,
-            details: _addresses[i].details,
+        for (int i = 0; i < newAddrs.length; i++) {
+          newAddrs[i] = UserAddress(
+            id: newAddrs[i].id,
+            title: newAddrs[i].title,
+            street: newAddrs[i].street,
+            details: newAddrs[i].details,
             isDefault: false,
           );
         }
       }
-      _addresses.add(address);
+      newAddrs.add(address);
+      _userProfile = _userProfile.copyWith(addresses: newAddrs);
       notifyListeners();
     }
   }
@@ -592,22 +654,36 @@ class CartProvider extends ChangeNotifier {
       final result = await _addressService!.getAddresses();
       if (result['success']) {
         final List<dynamic> data = result['data'] ?? [];
-        _addresses = data
-            .map((json) => UserAddress(
+        _userProfile = _userProfile.copyWith(addresses: data.map((json) => UserAddress(
                   id: json['_id'] ?? '',
                   title: json['label'] ?? 'Address',
                   street: json['fullAddress'] ?? '',
-                  details:
-                      '${json['city'] ?? ''}, ${json['state'] ?? ''} ${json['pincode'] ?? ''}',
+                  details: () {
+                    final city = json['city']?.toString() ?? '';
+                    final state = json['state']?.toString() ?? '';
+                    final pincode = json['pincode']?.toString() ?? '';
+
+                    String res = city;
+                    if (state.isNotEmpty) {
+                      if (res.isNotEmpty) res += ', ';
+                      res += state;
+                    }
+
+                    if (pincode.isNotEmpty && !res.contains(pincode)) {
+                      if (res.isNotEmpty) res += ' ';
+                      res += pincode;
+                    }
+                    return res;
+                  }(),
                   isDefault: json['isDefault'] ?? false,
                 ))
-            .toList();
+            .toList().reversed.toList());
 
         // Reset selection to default address if available
-        final defaultIdx = _addresses.indexWhere((a) => a.isDefault);
+        final defaultIdx = _userProfile.addresses.indexWhere((a) => a.isDefault);
         if (defaultIdx != -1) {
           _selectedAddressIndex = defaultIdx;
-        } else if (_addresses.isNotEmpty) {
+        } else if (_userProfile.addresses.isNotEmpty) {
           _selectedAddressIndex = 0;
         }
       }
@@ -619,35 +695,68 @@ class CartProvider extends ChangeNotifier {
     }
   }
 
-  void updateAddress(UserAddress address) {
-    final index = _addresses.indexWhere((a) => a.id == address.id);
-    if (index != -1) {
-      if (address.isDefault) {
-        for (int i = 0; i < _addresses.length; i++) {
-          _addresses[i] = UserAddress(
-            id: _addresses[i].id,
-            title: _addresses[i].title,
-            street: _addresses[i].street,
-            details: _addresses[i].details,
-            isDefault: false,
-          );
+  Future<void> updateAddress(UserAddress address) async {
+    if (_addressService != null) {
+      final addressParts = address.details.split(',');
+      final cityName = addressParts.isNotEmpty ? addressParts.first.trim() : 'City';
+      final stateName = address.details.contains(',') ? address.details.split(',')[1].trim() : '';
+      final pin = address.details.split(' ').last;
+      
+      final result = await _addressService!.updateAddress(
+        address.id,
+        {
+          "label": address.title,
+          "fullAddress": address.street,
+          "city": cityName,
+          "state": stateName,
+          "pincode": pin,
+          "isDefault": address.isDefault,
         }
+      );
+      if (result['success']) {
+        loadAddresses();
       }
-      _addresses[index] = address;
-      notifyListeners();
+    } else {
+      final newAddrs = List<UserAddress>.from(_userProfile.addresses);
+      final index = newAddrs.indexWhere((a) => a.id == address.id);
+      if (index != -1) {
+        if (address.isDefault) {
+          for (int i = 0; i < newAddrs.length; i++) {
+            newAddrs[i] = UserAddress(
+              id: newAddrs[i].id,
+              title: newAddrs[i].title,
+              street: newAddrs[i].street,
+              details: newAddrs[i].details,
+              isDefault: false,
+            );
+          }
+        }
+        newAddrs[index] = address;
+        _userProfile = _userProfile.copyWith(addresses: newAddrs);
+        notifyListeners();
+      }
     }
   }
 
-  void removeAddress(String id) {
-    _addresses.removeWhere((a) => a.id == id);
-    notifyListeners();
+  Future<void> removeAddress(String id) async {
+    if (_addressService != null) {
+      final result = await _addressService!.deleteAddress(id);
+      if (result['success']) {
+        loadAddresses();
+      }
+    } else {
+      final newAddrs = List<UserAddress>.from(_userProfile.addresses);
+      newAddrs.removeWhere((a) => a.id == id);
+      _userProfile = _userProfile.copyWith(addresses: newAddrs);
+      notifyListeners();
+    }
   }
 
   int get itemCount => _items.fold(0, (sum, item) => sum + item.quantity);
 
   double get subtotal => _items.fold(0.0, (sum, item) => sum + item.totalPrice);
 
-  double get shippingCharges => _items.isEmpty ? 0.0 : 1.6;
+  double get shippingCharges => 0.0;
 
   double get total => subtotal + shippingCharges;
 
@@ -665,45 +774,59 @@ class CartProvider extends ChangeNotifier {
   }
 
   void addToCart(CartItem cartItem) {
-    final idx = _items.indexWhere((item) => item.title == cartItem.title);
+    AppLogger.i('CartProvider: Adding to cart - ID: ${cartItem.id}, Title: ${cartItem.title}, Variant: ${cartItem.variantId}, Qty: ${cartItem.quantity}');
+
+    final idx = _items.indexWhere((item) =>
+        item.id == cartItem.id && item.variantId == cartItem.variantId);
     if (idx >= 0) {
       _items[idx].quantity += cartItem.quantity;
       if (_service != null) {
-        _service!.updateQuantity(_items[idx].id, _items[idx].quantity);
+        _service!.updateQuantity(_items[idx].id, _items[idx].quantity,
+            variantId: _items[idx].variantId, weightLabel: _items[idx].weightLabel);
       }
     } else {
       _items.add(cartItem);
+      AppLogger.d('CartProvider: New item added to cart.');
       if (_service != null) {
-        _service!.addToCart(cartItem.id, cartItem.quantity);
+        _service!.addToCart(cartItem.id, cartItem.quantity,
+            variantId: cartItem.variantId, weightLabel: cartItem.weightLabel);
       }
     }
     notifyListeners();
   }
 
-  void increment(String title) {
-    final idx = _items.indexWhere((item) => item.title == title);
+  void increment(String productId, {String? variantId}) {
+    final idx = _items.indexWhere(
+        (item) => item.id == productId && item.variantId == variantId);
     if (idx >= 0) {
       _items[idx].quantity++;
       if (_service != null) {
-        _service!.updateQuantity(_items[idx].id, _items[idx].quantity);
+        _service!.updateQuantity(productId, _items[idx].quantity,
+            variantId: variantId, weightLabel: _items[idx].weightLabel);
       }
       notifyListeners();
     }
   }
 
-  void decrement(String title) {
-    final idx = _items.indexWhere((item) => item.title == title);
+  void clear() {
+    _items.clear();
+    notifyListeners();
+  }
+
+  void decrement(String productId, {String? variantId}) {
+    final idx = _items.indexWhere(
+        (item) => item.id == productId && item.variantId == variantId);
     if (idx >= 0) {
-      final itemId = _items[idx].id;
       if (_items[idx].quantity > 1) {
         _items[idx].quantity--;
         if (_service != null) {
-          _service!.updateQuantity(itemId, _items[idx].quantity);
+          _service!.updateQuantity(productId, _items[idx].quantity,
+              variantId: variantId, weightLabel: _items[idx].weightLabel);
         }
       } else {
         _items.removeAt(idx);
         if (_service != null) {
-          _service!.removeFromCart(itemId);
+          _service!.removeFromCart(productId, variantId: variantId);
         }
       }
       notifyListeners();
@@ -732,9 +855,20 @@ class CartProviderScope extends InheritedNotifier<CartProvider> {
     required super.child,
   }) : super(notifier: provider);
 
-  static CartProvider of(BuildContext context) {
-    return context
-        .dependOnInheritedWidgetOfExactType<CartProviderScope>()!
-        .notifier!;
+  static CartProvider of(BuildContext context, {bool listen = true}) {
+    if (listen) {
+      return context
+          .dependOnInheritedWidgetOfExactType<CartProviderScope>()!
+          .notifier!;
+    } else {
+      return (context
+              .getElementForInheritedWidgetOfExactType<CartProviderScope>()!
+              .widget as CartProviderScope)
+          .notifier!;
+    }
   }
+
+  /// Helper to get the provider without registering as a listener.
+  /// Safer for use inside button callbacks or after async awaits.
+  static CartProvider read(BuildContext context) => of(context, listen: false);
 }

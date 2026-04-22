@@ -1,3 +1,5 @@
+import 'food_models.dart';
+
 /// Model for an API-fetched product category (embedded inside a product).
 class ShopProductCategory {
   final String id;
@@ -25,7 +27,10 @@ class ShopProduct {
   final String stockStatus; // "In Stock" | "Out of Stock"
   final String retailerId;
   final String status; // "Published" | "Draft"
+  final List<ProductVariant> variants;
   final DateTime createdAt;
+  final double rating;
+  final int ratingsCount;
 
   const ShopProduct({
     required this.id,
@@ -38,7 +43,10 @@ class ShopProduct {
     required this.stockStatus,
     required this.retailerId,
     required this.status,
+    this.variants = const [],
     required this.createdAt,
+    this.rating = 0.0,
+    this.ratingsCount = 0,
   });
 
   bool get isAvailable =>
@@ -100,9 +108,15 @@ class ShopProduct {
       stockStatus: (json['stockStatus'] ?? 'Out of Stock').toString(),
       retailerId: (json['retailer'] ?? '').toString(),
       status: (json['status'] ?? 'Draft').toString(),
+      variants: (json['variants'] as List<dynamic>?)
+              ?.map((v) => ProductVariant.fromJson(v))
+              .toList() ??
+          const [],
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
           : DateTime.now(),
+      rating: (json['rating'] as num?)?.toDouble() ?? (json['avgRating'] as num?)?.toDouble() ?? 0.0,
+      ratingsCount: (json['ratingsCount'] as num?)?.toInt() ?? (json['reviewsCount'] as num?)?.toInt() ?? 0,
     );
   }
 }
@@ -117,6 +131,12 @@ class ShopModel {
   final double rating;
   final String deliveryTime;
   final bool isShopActive;
+  final int ratingsCount;
+  final String cuisine;
+  final String offer;
+  final bool isFeatured;
+  final double? latitude;
+  final double? longitude;
 
   const ShopModel({
     required this.id,
@@ -124,9 +144,15 @@ class ShopModel {
     this.businessName = '',
     this.image = '',
     this.location = '',
-    this.rating = 4.5,
+    this.rating = 0.0,
     this.deliveryTime = '30-45 mins',
     this.isShopActive = true,
+    this.ratingsCount = 0,
+    this.cuisine = 'Seafood',
+    this.offer = '',
+    this.isFeatured = false,
+    this.latitude,
+    this.longitude,
   });
 
   ShopModel copyWith({
@@ -138,6 +164,12 @@ class ShopModel {
     double? rating,
     String? deliveryTime,
     bool? isShopActive,
+    int? ratingsCount,
+    String? cuisine,
+    String? offer,
+    bool? isFeatured,
+    double? latitude,
+    double? longitude,
   }) {
     return ShopModel(
       id: id ?? this.id,
@@ -148,6 +180,12 @@ class ShopModel {
       rating: rating ?? this.rating,
       deliveryTime: deliveryTime ?? this.deliveryTime,
       isShopActive: isShopActive ?? this.isShopActive,
+      ratingsCount: ratingsCount ?? this.ratingsCount,
+      cuisine: cuisine ?? this.cuisine,
+      offer: offer ?? this.offer,
+      isFeatured: isFeatured ?? this.isFeatured,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
     );
   }
 
@@ -158,9 +196,19 @@ class ShopModel {
       businessName: (json['businessName'] ?? '').toString(),
       image: (json['image'] ?? json['logo'] ?? json['banner'] ?? '').toString(),
       location: (json['location'] ?? json['address'] ?? '').toString(),
-      rating: (json['rating'] as num?)?.toDouble() ?? 4.5,
+      rating: (json['rating'] as num?)?.toDouble() ?? 
+              (json['avgRating'] as num?)?.toDouble() ?? 
+              (json['shopRating'] as num?)?.toDouble() ?? 0.0,
       deliveryTime: (json['deliveryTime'] ?? '30-45 mins').toString(),
       isShopActive: json['isShopActive'] ?? json['isActive'] ?? true,
+      ratingsCount: (json['ratingsCount'] as num?)?.toInt() ?? 
+                    (json['reviewsCount'] as num?)?.toInt() ?? 
+                    (json['reviews'] as num?)?.toInt() ?? 0,
+      cuisine: (json['cuisine'] ?? json['category'] ?? 'Seafood').toString(),
+      offer: (json['offer'] ?? json['discount'] ?? '').toString(),
+      isFeatured: json['isFeatured'] ?? json['featured'] ?? false,
+      latitude: (json['latitude'] ?? json['lat'])?.toDouble(),
+      longitude: (json['longitude'] ?? json['lng'])?.toDouble(),
     );
   }
 }

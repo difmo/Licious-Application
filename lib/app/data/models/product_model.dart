@@ -9,6 +9,8 @@ class CartItem {
   final String category;
   final String? shopId;
   final String? shopName;
+  final String? variantId;
+  final String? weightLabel;
   int quantity;
 
   CartItem({
@@ -20,17 +22,24 @@ class CartItem {
     required this.category,
     this.shopId,
     this.shopName,
+    this.variantId,
+    this.weightLabel,
     this.quantity = 1,
   });
 
-  factory CartItem.fromProduct(Product product) {
+  factory CartItem.fromProduct(Product product, {int variantIndex = -1}) {
+    final v = (variantIndex >= 0 && variantIndex < product.variants.length)
+        ? product.variants[variantIndex]
+        : null;
     return CartItem(
       id: product.id,
       title: product.name,
-      unitPrice: product.price,
-      subtitle: product.weight,
+      unitPrice: v?.price ?? product.price,
+      subtitle: v?.weightLabel ?? product.weight,
       image: product.image,
       category: product.category,
+      variantId: v?.id,
+      weightLabel: v?.weightLabel,
     );
   }
 

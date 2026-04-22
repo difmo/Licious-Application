@@ -34,14 +34,6 @@ class ProfileHeader extends StatelessWidget {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(color: Colors.white, width: 4),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha:  0.3),
-                        blurRadius: 15,
-                        spreadRadius: 0,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
                     image: DecorationImage(
                       image: AssetImage(profileImage),
                       fit: BoxFit.cover,

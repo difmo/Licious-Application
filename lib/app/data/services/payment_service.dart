@@ -15,6 +15,7 @@ class PaymentService {
     required Function(PaymentFailureResponse) onFailure,
     required Function(ExternalWalletResponse) onExternalWallet,
   }) {
+    _razorpay.clear();
     _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, onSuccess);
     _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, onFailure);
     _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, onExternalWallet);
@@ -24,31 +25,34 @@ class PaymentService {
     required double amount,
     required String contact,
     required String email,
+    String? razorpayOrderId,
+    String description = 'Wallet Top-up',
   }) async {
     try {
-      // 1. Create order on backend
-      print("Starting openCheckout... amount is $amount");
-      print("Contact: '$contact', Email: '$email'");
+      String? orderId = razorpayOrderId;
 
-      final orderResponse = await _apiClient.post(
-        '${ApiClient.paymentBaseUrl}/create-order',
-        data: {'amount': amount},
-        requiresAuth: true,
-      );
+      if (orderId == null) {
+        // 1. Create order on backend (Only for Wallet Top-up)
+        print("Starting openCheckout for Top-up... amount is $amount");
+        final orderResponse = await _apiClient.post(
+          '${ApiClient.paymentBaseUrl}/create-order',
+          data: {'amount': amount},
+          requiresAuth: true,
+        );
+        orderId = orderResponse['order']['id'];
+      } else {
+        print("Starting openCheckout for Direct Order... amount is $amount");
+      }
 
-      print("orderResponse type: ${orderResponse.runtimeType}");
-      print("orderResponse data: $orderResponse");
-
-      final orderId = orderResponse['order']['id'];
-      print("Extracted orderId: $orderId");
+      print("Final orderId for Razorpay: $orderId");
 
       // 2. Open Razorpay Checkout
       var options = {
-        'key': 'rzp_test_S7lSvWtu89c6zD', // Using the test key provided
+        'key': 'rzp_test_SUXGPUpcFjOpXn',
         'amount': (amount * 100).toInt(),
         'name': 'Shrimpbite',
         'order_id': orderId,
-        'description': 'Wallet Top-up',
+        'description': description,
         'prefill': {'contact': contact, 'email': email},
         'external': {
           'wallets': ['paytm']

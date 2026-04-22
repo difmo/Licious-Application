@@ -5,6 +5,7 @@ import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 import '../../../core/api/auth_interceptor.dart';
 import '../../../core/api/api_provider.dart';
 import '../../../core/storage/secure_storage_service.dart';
+import '../../../core/utils/logger.dart';
 
 /// Thrown when the server returns a non-2xx status or an error occurs.
 class ApiException implements Exception {
@@ -26,23 +27,23 @@ class ApiException implements Exception {
 final apiClientProvider = Provider<ApiClient>((ref) {
   final dio = Dio(BaseOptions(
     baseUrl: dotenv.get('API_BASE_URL').trim(),
-    connectTimeout: const Duration(seconds: 30),
-    receiveTimeout: const Duration(seconds: 30),
+    connectTimeout: const Duration(seconds: 60),
+    receiveTimeout: const Duration(seconds: 60),
     contentType: Headers.jsonContentType,
   ));
 
   final storage = ref.watch(storageServiceProvider);
   dio.interceptors.addAll([
     AuthInterceptor(dio, storage),
-    // PrettyDioLogger(
-    //   requestHeader: true,
-    //   requestBody: true,
-    //   responseBody: true,
-    //   responseHeader: false,
-    //   error: true,
-    //   compact: true,
-    //   maxWidth: 90,
-    // ),
+    PrettyDioLogger(
+      requestHeader: true,
+      requestBody: true,
+      responseBody: true,
+      responseHeader: false,
+      error: true,
+      compact: true,
+      maxWidth: 90,
+    ),
   ]);
 
   return ApiClient(dio);
@@ -167,29 +168,56 @@ class ApiClient {
   }
 
   ApiException _handleError(DioException e) {
+    if (e.type == DioExceptionType.connectionError ||
+        e.type == DioExceptionType.unknown) {
+      if (e.message != null && e.message!.contains('SocketException')) {
+        return const ApiException(
+            message:
+                'Server unreachable (api.shrimpbite.in). Please check your internet or try again later.');
+      }
+    }
+
+    if (e.type == DioExceptionType.connectionTimeout ||
+        e.type == DioExceptionType.receiveTimeout) {
+      return const ApiException(message: 'Connection timed out. Please try again.');
+    }
+
     if (e.response != null) {
       final data = e.response?.data;
       String message = e.message ?? 'Server error';
       if (data is Map) {
         message = data['message']?.toString() ?? message;
+        if (e.response?.statusCode == 403) {
+          if (message.contains('attestation')) {
+            message = 'Security check failed. Please ensure you are using the official app and have a stable connection.';
+          } else {
+            message = 'Access denied. Please check your account permissions or re-authenticate.';
+          }
+        }
       } else if (data is String && data.isNotEmpty) {
-        // If it's a string but doesn't look like HTML, use it
         if (!data.contains('<html')) {
           message = data;
         }
       }
       return ApiException(statusCode: e.response?.statusCode, message: message);
     }
+    AppLogger.e('API Error: ${e.message}', e, e.stackTrace);
     return ApiException(message: e.message ?? 'Network error');
   }
 
   // ── Helper static methods for token access ──────────────────────────────
   static Future<String?> getToken() async =>
       await SecureStorageService().getAccessToken();
-  static Future<void> saveToken(String token) async {
+  static Future<void> saveTokens({required String access, String? refresh}) async {
     final storage = SecureStorageService();
-    final refresh = await storage.getRefreshToken();
-    await storage.saveTokens(access: token, refresh: refresh ?? '');
+    await storage.saveTokens(
+      access: access,
+      refresh: refresh ?? (await storage.getRefreshToken()) ?? '',
+    );
+  }
+
+  static Future<void> saveToken(String token) async {
+    await saveTokens(access: token);
   }
 
   static Future<void> clearToken() async =>

@@ -1,41 +1,102 @@
-import 'package:flutter/foundation.dart';
-import '../network/api_client.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../network/api_client.dart';
+import '../models/food_models.dart';
 
-/// Provider for ReviewService
 final reviewServiceProvider = Provider<ReviewService>((ref) {
   return ReviewService(client: ref.watch(apiClientProvider));
 });
 
-/// Service layer for submitting customer reviews.
+final productReviewsProvider = FutureProvider.family<List<Review>, String>((ref, productId) async {
+  return ref.watch(reviewServiceProvider).getProductReviews(productId);
+});
+
 class ReviewService {
   final ApiClient _client;
 
   ReviewService({required ApiClient client}) : _client = client;
 
-  /// Submit a new review
-  Future<bool> submitReview({
+  Future<List<Review>> getProductReviews(String productId) async {
+    try {
+      final response = await _client.get('/reviews/$productId');
+      if (response != null && response['success'] == true) {
+        final List<dynamic> data = response['data'] ?? [];
+        return data.map((json) => Review.fromJson(json)).toList();
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>> postReview({
     required String productId,
-    required String retailerId,
-    required int rating,
+    required double rating,
     required String comment,
-    required List<String> tags,
+    String? retailerId,
+    List<String>? tags,
   }) async {
     try {
-      final json = await _client.post(
-        '${ApiClient.reviewBaseUrl}/reviews',
+      final response = await _client.post(
+        '${ApiClient.reviewBaseUrl}',
         data: {
           'product': productId,
-          'retailer': retailerId,
           'rating': rating,
           'comment': comment,
-          'tags': tags,
+          if (retailerId != null) 'retailer': retailerId,
+          if (tags != null) 'tags': tags,
         },
+        requiresAuth: true,
       );
-      return json['success'] == true;
+      return response;
     } catch (e) {
-      debugPrint('Review submit error: $e');
-      return false;
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  /// POST /api/reviews/submit-order-review
+  Future<Map<String, dynamic>> submitOrderReview({
+    required String orderId,
+    required int orderRating,
+    String? orderComment,
+    int? riderRating,
+    List<Map<String, dynamic>>? productReviews,
+  }) async {
+    try {
+      final response = await _client.post(
+        '${ApiClient.reviewBaseUrl}/submit-order-review',
+        data: {
+          'orderId': orderId,
+          'orderRating': orderRating,
+          if (orderComment != null) 'orderComment': orderComment,
+          if (riderRating != null) 'riderRating': riderRating,
+          if (productReviews != null) 'productReviews': productReviews,
+        },
+        requiresAuth: true,
+      );
+      return response;
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  /// GET /api/reviews/rider/:riderId
+  Future<Map<String, dynamic>> getRiderRating(String riderId) async {
+    try {
+      final response = await _client.get(
+        '${ApiClient.reviewBaseUrl}/rider/$riderId',
+        requiresAuth: true,
+      );
+      if (response != null && response['success'] == true) {
+        final data = response['data'] is Map ? response['data'] as Map<String, dynamic> : response;
+        return {
+          'averageRating': (data['averageRating'] ?? data['rating'] ?? 0.0),
+          'totalReviews': (data['totalReviews'] ?? data['total_reviews'] ?? data['count'] ?? 0),
+        };
+      }
+      return {'averageRating': 0.0, 'totalReviews': 0};
+    } catch (e) {
+      return {'averageRating': 0.0, 'totalReviews': 0};
     }
   }
 }
+

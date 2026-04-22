@@ -1,15 +1,13 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:licius_application/app/routes/app_routes.dart';
-import '../../data/models/food_models.dart';
-import '../../data/services/db_service.dart';
+import 'package:sms_autofill/sms_autofill.dart';
 import '../../widgets/common_button.dart';
 import 'provider/auth_provider.dart';
-import 'widgets/input_field.dart';
-import 'package:google_sign_in/google_sign_in.dart';
-import 'google_profile_page.dart';
+import 'otp_verification_page.dart';
 
-final GoogleSignIn _googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -18,33 +16,90 @@ class LoginPage extends ConsumerStatefulWidget {
   ConsumerState<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginPageState extends ConsumerState<LoginPage> {
+class _LoginPageState extends ConsumerState<LoginPage>
+    with SingleTickerProviderStateMixin {
   final _phoneController = TextEditingController();
-  final _passwordController = TextEditingController();
 
-  bool _obscurePassword = true;
   bool _agreeToTerms = false;
+  bool _isChecking = false;
+
+  late TapGestureRecognizer _termsRecognizer;
+  late TapGestureRecognizer _privacyRecognizer;
+
+  late AnimationController _animController;
+  late Animation<double> _fadeAnim;
+  late Animation<Offset> _slideAnim;
 
   @override
   void initState() {
     super.initState();
+    _termsRecognizer = TapGestureRecognizer()
+      ..onTap =
+          () => _launchURL('https://shrimpbite.in/index.php/terms-conditions/');
+    _privacyRecognizer = TapGestureRecognizer()
+      ..onTap =
+          () => _launchURL('https://shrimpbite.in/index.php/privacy-policy/');
+
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
+    _slideAnim = Tween<Offset>(begin: const Offset(0, 0.1), end: Offset.zero)
+        .animate(
+            CurvedAnimation(parent: _animController, curve: Curves.easeOut));
+    _animController.forward();
+
     // Show "verified" toast only when arriving from OTP verification
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       final args = ModalRoute.of(context)?.settings.arguments;
       if (args is Map && args['verified'] == true) {
         _showSnackBar(
-          'User register successful please login',
+          'Login successful!',
           backgroundColor: Colors.green.shade600,
           icon: Icons.check_circle,
         );
       }
+      
+      // Prompt for phone number hint ONLY ON FIRST INSTALL/RUN
+      // Otherwise, stay quiet unless user taps the phone icon manually
+      if (_phoneController.text.isEmpty) {
+        final prefs = await SharedPreferences.getInstance();
+        final bool hasBeenPrompted = prefs.getBool('phone_hint_prompted') ?? false;
+        
+        if (!hasBeenPrompted) {
+          _fillPhoneHint();
+          await prefs.setBool('phone_hint_prompted', true);
+        }
+      }
     });
+  }
+
+  Future<void> _fillPhoneHint() async {
+    try {
+      final String? hint = await SmsAutoFill().hint;
+      if (hint != null && hint.isNotEmpty) {
+        if (!mounted) return;
+        // Clean and take last 10 digits
+        final cleaned = hint.replaceAll(RegExp(r'\D'), '');
+        final last10 = cleaned.length >= 10 
+            ? cleaned.substring(cleaned.length - 10) 
+            : cleaned;
+        setState(() {
+          _phoneController.text = last10;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error getting phone hint: $e');
+    }
   }
 
   @override
   void dispose() {
     _phoneController.dispose();
-    _passwordController.dispose();
+    _termsRecognizer.dispose();
+    _privacyRecognizer.dispose();
+    _animController.dispose();
     super.dispose();
   }
 
@@ -80,14 +135,22 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     );
   }
 
-  // ── Login action ─────────────────────────────────────────────────────────
+  // ── Format phone for backend (+91 prefix) ─────────────────────────────────
 
-  Future<void> _login() async {
+  String _formatPhone(String raw) {
+    final trimmed = raw.replaceAll(RegExp(r'\D'), '');
+    if (trimmed.length == 10) return '+91$trimmed';
+    if (trimmed.length == 12 && trimmed.startsWith('91')) return '+$trimmed';
+    return trimmed;
+  }
+
+  // ── Continue action ──────────────────────────────────────────────────────
+
+  Future<void> _continue() async {
     final phone = _phoneController.text.trim();
-    final password = _passwordController.text;
 
-    if (phone.isEmpty || password.isEmpty) {
-      _showSnackBar('Please fill all fields',
+    if (phone.isEmpty) {
+      _showSnackBar('Please enter your phone number',
           backgroundColor: Colors.orange.shade700);
       return;
     }
@@ -98,104 +161,42 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       return;
     }
 
-    // Trigger Riverpod login action
-    await ref
-        .read(authProvider.notifier)
-        .login(phoneNumber: phone, password: password);
+    final formatted = _formatPhone(phone);
+
+    setState(() => _isChecking = true);
+
+    final result =
+        await ref.read(authProvider.notifier).checkUser(phoneNumber: formatted);
+
+    if (result != null && result.success) {
+      // Pre-trigger OTP session immediately (non-blocking)
+      // The verification page's initState will check if a session is already in progress
+      ref.read(authProvider.notifier).sendOtp(phoneNumber: formatted);
+    }
 
     if (!mounted) return;
+    setState(() => _isChecking = false);
 
-    // React to new state
-    final authState = ref.read(authProvider);
-
-    if (authState is AuthAuthenticated) {
-      // Update legacy CartProvider profile (kept for rest of UI compatibility)
-      final cartProvider = CartProviderScope.of(context);
-      cartProvider.updateUserProfile(
-        UserProfile(
-          name: authState.user.fullName,
-          email: authState.user.email,
-          phone: authState.user.phoneNumber,
-          profileImage: 'assets/images/image copy 2.png',
-        ),
-      );
-      // Sync cart immediately after login
-      cartProvider.loadCartFromApi();
-
-      _showSnackBar('Welcome back!',
-          backgroundColor: Colors.green.shade600, icon: Icons.check_circle);
-
-      if (authState.user.role == 'rider') {
-        Navigator.pushNamedAndRemoveUntil(
-            context, AppRoutes.riderHome, (route) => false);
-      } else {
-        Navigator.pushNamedAndRemoveUntil(
-            context, AppRoutes.home, (route) => false);
-      }
-    } else if (authState is AuthError) {
-      _showSnackBar(authState.message, backgroundColor: Colors.red);
-      ref.read(authProvider.notifier).reset();
-    } else if (authState is AuthSuccess) {
-      _showSnackBar(authState.message,
-          backgroundColor: Colors.green.shade600, icon: Icons.check_circle);
-      // AuthSuccess might not have user object directly in some versions of provider
-      // but usually redirects to home. We'll stick to home as fallback.
-      Navigator.pushNamedAndRemoveUntil(
-          context, AppRoutes.home, (route) => false);
+    if (result == null || !result.success) {
+      _showSnackBar(result?.message ?? 'Could not connect. Try again.',
+          backgroundColor: Colors.red);
+      return;
     }
+
+    // All users (customer and rider) now use Firebase OTP flow
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => OtpVerificationPage(phoneNumber: formatted),
+      ),
+    );
   }
 
-  // ── Google Sign-In action ────────────────────────────────────────────────
-  Future<void> _handleGoogleSignIn() async {
-    try {
-      debugPrint('[GOOGLE AUTH] Sign-in process started...');
-      // Cancel any previous sign-in first to avoid stale data
-      await _googleSignIn.signOut();
-
-      final GoogleSignInAccount? account = await _googleSignIn.signIn();
-
-      if (account == null) {
-        // User cancelled the sign-in
-        return;
-      }
-
-      // ── LOG GOOGLE SIGN-IN SUCCESS ──────────────────────────────────────────
-      debugPrint('');
-      debugPrint('╔══════════════════════════════════════════════════════════════╗');
-      debugPrint('║              GOOGLE SIGN-IN SUCCESS                          ║');
-      debugPrint('╟──────────────────────────────────────────────────────────────╢');
-      debugPrint('║  Name  : ${account.displayName?.padRight(44) ?? "N/A"}║');
-      debugPrint('║  Email : ${account.email.padRight(44)}║');
-      debugPrint('║  ID    : ${account.id.padRight(44)}║');
-      debugPrint('╚══════════════════════════════════════════════════════════════╝');
-      debugPrint('');
-      // ───────────────────────────────────────────────────────────────────────
-
-      // Success! Navigate to the detail page (or perform backend sync)
-      if (mounted) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => GoogleProfilePage(account: account),
-          ),
-        );
-      }
-    } catch (e, stackTrace) {
-      debugPrint('');
-      debugPrint('╔══════════════════════════════════════════════════════════════╗');
-      debugPrint('║              GOOGLE SIGN-IN FAILED                           ║');
-      debugPrint('╟──────────────────────────────────────────────────────────────╢');
-      debugPrint('║  Error: ${e.toString().padRight(52)}║');
-      debugPrint('╚══════════════════════════════════════════════════════════════╝');
-      debugPrint('Stacktrace: $stackTrace');
-      debugPrint('');
-
-      if (mounted) {
-        _showSnackBar(
-          'Google Sign-In Failed: $e',
-          backgroundColor: Colors.red,
-        );
-      }
+  Future<void> _launchURL(String url) async {
+    final Uri uri = Uri.parse(url);
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      _showSnackBar('Could not open the link: $url',
+          backgroundColor: Colors.red);
     }
   }
 
@@ -203,246 +204,211 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Watch auth state to drive loading indicator
-    final authState = ref.watch(authProvider);
-    final isLoading = authState is AuthLoading;
-
     return Scaffold(
       backgroundColor: Colors.white,
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
         child: Column(
           children: [
-            // ── Top food image ──
-            SizedBox(
-              height: 300,
-              width: double.infinity,
-              child: Image.asset(
-                'assets/images/image copy 5.png',
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(
-                  color: Colors.grey.shade300,
-                  child: const Icon(
-                    Icons.image_not_supported,
-                    size: 50,
-                    color: Colors.grey,
+            // ── Top Header with Brand Image ──
+            Stack(
+              children: [
+                SizedBox(
+                  height: 320,
+                  width: double.infinity,
+                  child: Image.asset(
+                    'assets/images/image copy 5.png',
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      color: const Color(0xFF114F3B),
+                      child: const Center(
+                        child: Icon(Icons.shopping_bag_outlined, size: 60, color: Colors.white24),
+                      ),
+                    ),
                   ),
                 ),
-              ),
+                Container(
+                  height: 320,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.bottomCenter,
+                      end: Alignment.topCenter,
+                      colors: [
+                        Colors.white,
+                        Colors.white.withOpacity(0.0),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
 
-            // ── Form card ──
-            Container(
-              padding: const EdgeInsets.fromLTRB(24, 32, 24, 32),
-              color: Colors.white,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Welcome back !',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    'Sign in to your account',
-                    style: TextStyle(fontSize: 15, color: Colors.grey),
-                  ),
-                  const SizedBox(height: 28),
-
-                  // Phone Number field
-                  InputField(
-                    controller: _phoneController,
-                    label: 'Phone Number',
-                    hintText: 'Enter your phone number',
-                    prefixIcon: Icons.phone_outlined,
-                    keyboardType: TextInputType.phone,
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Password field
-                  InputField(
-                    controller: _passwordController,
-                    label: 'Password',
-                    hintText: 'Enter your password',
-                    prefixIcon: Icons.lock_outline,
-                    isPassword: true,
-                    obscureText: _obscurePassword,
-                    onToggleVisibility: () =>
-                        setState(() => _obscurePassword = !_obscurePassword),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Forgot Password
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      GestureDetector(
-                        onTap: () =>
-                            Navigator.pushNamed(context, '/forgot-password'),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade100,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: const Text(
-                            'Forgot Password?',
-                            style: TextStyle(
-                              color: Colors.black87,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Terms & Conditions Checkbox
-                  Row(
+            // ── Form Content ──
+            FadeTransition(
+              opacity: _fadeAnim,
+              child: SlideTransition(
+                position: _slideAnim,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(28, 0, 28, 48),
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      SizedBox(
-                        height: 24,
-                        width: 24,
-                        child: Checkbox(
-                          value: _agreeToTerms,
-                          onChanged: (v) =>
-                              setState(() => _agreeToTerms = v ?? false),
-                          activeColor: const Color(0xFF0EA5E9),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          side: BorderSide(
-                              color: Colors.grey.shade400, width: 1.5),
+                      const Text(
+                        'Premium Seafresh\nDelivered To You',
+                        style: TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF114F3B),
+                          height: 1.1,
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: RichText(
-                          text: const TextSpan(
-                            text: 'I agree to the ',
-                            style: TextStyle(
-                                fontSize: 14, color: Colors.grey, height: 1.5),
-                            children: [
-                              TextSpan(
-                                text: 'Terms & Conditions',
-                                style: TextStyle(
-                                    color: Color(0xFF0EA5E9),
-                                    fontWeight: FontWeight.bold),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Enter your mobile number to get started with OTP verification.',
+                        style: TextStyle(fontSize: 16, color: Colors.black54, height: 1.4),
+                      ),
+                      const SizedBox(height: 40),
+
+                      // Phone Number Input
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.grey.shade200),
+                        ),
+                        child: TextField(
+                          controller: _phoneController,
+                          keyboardType: TextInputType.phone,
+                          maxLength: 10,
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1.5),
+                          decoration: InputDecoration(
+                            counterText: '',
+                            hintText: '98765 43210',
+                            hintStyle: TextStyle(color: Colors.grey.shade400, letterSpacing: 1.5),
+                            prefixIcon: const Padding(
+                              padding: EdgeInsets.only(left: 16, right: 8),
+                              child: Text(
+                                '+91 ',
+                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
                               ),
-                              TextSpan(
-                                  text: ' and ',
-                                  style: TextStyle(color: Colors.grey)),
-                              TextSpan(
-                                text: 'Privacy Policy',
-                                style: TextStyle(
-                                    color: Color(0xFF0EA5E9),
-                                    fontWeight: FontWeight.bold),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 28),
-
-                  // Login button
-                  CommonButton(
-                    text: 'Login',
-                    onPressed: _login,
-                    isLoading: isLoading,
-                  ),
-                  const SizedBox(height: 24),
-
-                  // ── Divider ──
-                  Row(
-                    children: [
-                      Expanded(child: Divider(color: Colors.grey.shade300)),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text(
-                          'Or continue with',
-                          style: TextStyle(
-                              color: Colors.grey.shade500, fontSize: 13),
-                        ),
-                      ),
-                      Expanded(child: Divider(color: Colors.grey.shade300)),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-
-                  // ── Google Button ──
-                  SizedBox(
-                    width: double.infinity,
-                    height: 54,
-                    child: OutlinedButton(
-                      onPressed: _handleGoogleSignIn,
-                      style: OutlinedButton.styleFrom(
-                        side:
-                            BorderSide(color: Colors.grey.shade200, width: 1.5),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Image.asset(
-                            'assets/images/google_logo.png',
-                            width: 24,
-                            height: 24,
-                          ),
-                          const SizedBox(width: 12),
-                          const Text(
-                            'Continue with Google',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.black87,
                             ),
+                            suffixIcon: IconButton(
+                              icon: const Icon(Icons.contact_phone_outlined, color: Color(0xFF2E7D32), size: 20),
+                              onPressed: _fillPhoneHint,
+                              tooltip: 'Auto-fill phone number',
+                            ),
+                            prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(vertical: 18),
                           ),
-                        ],
+                        ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 28),
+                      const SizedBox(height: 24),
 
-                  // Sign up link
-                  Center(
-                    child: GestureDetector(
-                      onTap: () =>
-                          Navigator.pushNamed(context, AppRoutes.signup),
-                      child: RichText(
-                        text: const TextSpan(
-                          text: "Don't have an account ? ",
-                          style: TextStyle(fontSize: 14, color: Colors.grey),
+                      // Terms & Conditions Checkbox
+                      GestureDetector(
+                        onTap: () => setState(() => _agreeToTerms = !_agreeToTerms),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            TextSpan(
-                              text: 'Sign up',
-                              style: TextStyle(
-                                  color: Colors.black,
-                                  fontWeight: FontWeight.bold),
+                            SizedBox(
+                              height: 24,
+                              width: 24,
+                              child: Checkbox(
+                                value: _agreeToTerms,
+                                onChanged: (v) =>
+                                    setState(() => _agreeToTerms = v ?? false),
+                                activeColor: const Color(0xFF2E7D32),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                side: BorderSide(
+                                    color: Colors.grey.shade300, width: 2),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: RichText(
+                                text: TextSpan(
+                                  text: 'I agree to the ',
+                                  style: const TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.black54,
+                                      height: 1.5),
+                                  children: [
+                                    TextSpan(
+                                      text: 'Terms & Conditions',
+                                      style: const TextStyle(
+                                          color: Color(0xFF2E7D32),
+                                          fontWeight: FontWeight.bold),
+                                      recognizer: _termsRecognizer,
+                                    ),
+                                    const TextSpan(
+                                        text: ' and ',
+                                        style: TextStyle(color: Colors.black54)),
+                                    TextSpan(
+                                      text: 'Privacy Policy',
+                                      style: const TextStyle(
+                                          color: Color(0xFF2E7D32),
+                                          fontWeight: FontWeight.bold),
+                                      recognizer: _privacyRecognizer,
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
                           ],
                         ),
                       ),
-                    ),
+                      const SizedBox(height: 44),
+
+                      // Continue button
+                      CommonButton(
+                        text: 'Send OTP',
+                        onPressed: _continue,
+                        isLoading: _isChecking,
+                        backgroundColor: const Color(0xFF2E7D32),
+                        borderRadius: 28,
+                      ),
+                      
+                      const SizedBox(height: 32),
+                      
+                      // Trust indicators
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _trustItem(Icons.verified_user_outlined, 'Secure'),
+                          const SizedBox(width: 24),
+                          _trustItem(Icons.speed_outlined, 'Fast'),
+                          const SizedBox(width: 24),
+                          _trustItem(Icons.local_shipping_outlined, 'Fresh'),
+                        ],
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 24),
-                ],
+                ),
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _trustItem(IconData icon, String label) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: Colors.grey.shade400),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey.shade500,
+              fontWeight: FontWeight.w600),
+        ),
+      ],
     );
   }
 }

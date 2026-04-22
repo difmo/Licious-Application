@@ -63,10 +63,10 @@ class _SearchPageState extends ConsumerState<SearchPage> {
             onSubmitted: _onSearch,
             textInputAction: TextInputAction.search,
             decoration: InputDecoration(
-              hintText: 'Search for shops or products...',
+              hintText: 'Search Shrimp type...',
               hintStyle: const TextStyle(fontSize: 14, color: Colors.grey),
               prefixIcon:
-                  const Icon(Icons.search, color: Color(0xFFE54141), size: 20),
+                  const Icon(Icons.search, color: Color(0xFF38B24D), size: 20),
               suffixIcon: _searchController.text.isNotEmpty
                   ? IconButton(
                       icon: const Icon(Icons.clear, size: 18),
@@ -225,7 +225,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('This shop is currently not accepting orders.'),
-              backgroundColor: Colors.black87,
+              backgroundColor: Colors.green,
             ),
           );
           return;
@@ -260,6 +260,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey.shade300, width: 1),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.04),
@@ -379,6 +380,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.grey.shade300, width: 1),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.04),

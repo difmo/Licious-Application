@@ -4,12 +4,7 @@ import '../../../data/models/food_models.dart';
 import '../../../data/services/wallet_service.dart';
 import 'package:intl/intl.dart';
 
-// Provider for filtered wallet transactions
-final walletTransactionsProvider =
-    FutureProvider.autoDispose<List<WalletTransaction>>((ref) async {
-  final rawData = await ref.read(walletServiceProvider).getTransactionHistory();
-  return rawData.map((json) => WalletTransaction.fromJson(json)).toList();
-});
+import '../provider/wallet_provider.dart';
 
 class WalletStatementScreen extends ConsumerStatefulWidget {
   const WalletStatementScreen({super.key});
@@ -38,13 +33,6 @@ class _WalletStatementScreenState extends ConsumerState<WalletStatementScreen> {
         backgroundColor: Colors.white,
         elevation: 0.5,
         foregroundColor: Colors.black,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.download_rounded),
-            onPressed: () => _showDownloadOptions(context),
-            tooltip: 'Download Statement',
-          ),
-        ],
       ),
       body: Column(
         children: [
@@ -141,9 +129,8 @@ class _WalletStatementScreenState extends ConsumerState<WalletStatementScreen> {
                   padding: const EdgeInsets.only(right: 8),
                   child: ChoiceChip(
                     label: Text(filter,
-                        style: const TextStyle(
-                            fontSize: 12,
-                            color: Colors.white)),
+                        style:
+                            const TextStyle(fontSize: 12, color: Colors.white)),
                     selected: true,
                     onSelected: (val) {},
                     selectedColor: const Color(0xFF439462),
@@ -223,9 +210,8 @@ class _WalletStatementScreenState extends ConsumerState<WalletStatementScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildSummaryItem(
-                  'Total money added', '+₹${totalCredit.toStringAsFixed(0)}',
-                  Colors.green),
+              _buildSummaryItem('Total money added',
+                  '+₹${totalCredit.toStringAsFixed(0)}', Colors.green),
               Container(width: 1, height: 30, color: Colors.white24),
               _buildSummaryItem('Expense', '-₹${totalDebit.toStringAsFixed(0)}',
                   Colors.redAccent),
@@ -273,7 +259,7 @@ class _WalletStatementScreenState extends ConsumerState<WalletStatementScreen> {
       // Search filter
       bool matchesSearch =
           tx.id.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          tx.orderId.toLowerCase().contains(_searchQuery.toLowerCase());
+              tx.orderId.toLowerCase().contains(_searchQuery.toLowerCase());
 
       // Date filter
       DateTime now = DateTime.now();
@@ -349,7 +335,7 @@ class _TransactionItemWidget extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F4F8)),
+        border: Border.all(color: Colors.grey.shade300, width: 1),
       ),
       child: Row(
         children: [
@@ -395,14 +381,16 @@ class _TransactionItemWidget extends StatelessWidget {
                   color: isCredit ? Colors.green : Colors.redAccent,
                 ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                'Bal: ₹${transaction.balanceAfter.toStringAsFixed(0)}',
-                style: const TextStyle(
-                    fontSize: 10,
-                    color: Colors.grey,
-                    fontWeight: FontWeight.bold),
-              ),
+              if (transaction.balanceAfter > 0) ...[
+                const SizedBox(height: 4),
+                Text(
+                  'Bal: ₹${transaction.balanceAfter.toStringAsFixed(0)}',
+                  style: const TextStyle(
+                      fontSize: 10,
+                      color: Colors.grey,
+                      fontWeight: FontWeight.bold),
+                ),
+              ],
             ],
           ),
         ],

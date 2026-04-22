@@ -211,7 +211,7 @@ class _PaymentPageState extends State<PaymentPage> {
           const SizedBox(height: 8),
           _buildSummaryRow(
             'Shipping',
-            '₹${cart.shippingCharges.toStringAsFixed(0)}',
+            cart.shippingCharges == 0 ? 'Free' : '₹${cart.shippingCharges.toStringAsFixed(0)}',
           ),
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 12),

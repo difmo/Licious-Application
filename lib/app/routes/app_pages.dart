@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
 import 'app_routes.dart';
 import '../modules/splash/splash_page.dart';
-import '../modules/auth/deals_page.dart';
-
 
 import '../modules/auth/login_page.dart';
-import '../modules/auth/register_page.dart';
-import '../modules/auth/forgot_password_page.dart';
+
 import '../modules/home/view/main_page.dart';
 import '../modules/categories/view/categories_page.dart';
 import '../modules/categories/view/vegetables_page.dart';
@@ -21,18 +18,15 @@ import '../modules/wallet/view/top_up_page.dart';
 import '../modules/wallet/view/wallet_statement_screen.dart';
 import '../modules/orders/view/active_orders_page.dart';
 import '../modules/orders/view/track_order_page.dart';
-import '../modules/location/view/location_picker_screen.dart';
+import '../modules/location/view/location_map_picker.dart';
+import '../modules/location/view/address_details_screen.dart';
 import '../modules/home/view/search_page.dart';
+import '../modules/subscriptions/view/subscription_dashboard_page.dart';
 
 class AppPages {
   static Map<String, WidgetBuilder> get routes => {
         AppRoutes.splash: (context) => const SplashPage(),
-        AppRoutes.initialRoute: (context) => const LoginPage(),
-        AppRoutes.deals: (context) => const DealsPage(),
-        AppRoutes.welcome: (context) => const LoginPage(),
         AppRoutes.login: (context) => const LoginPage(),
-        AppRoutes.signup: (context) => const RegisterPage(),
-        AppRoutes.forgotPassword: (context) => const ForgotPasswordPage(),
         AppRoutes.home: (context) => const MainPage(),
         AppRoutes.subscriptions: (context) => const SubscriptionPage(),
         AppRoutes.wallet: (context) => const WalletPage(),
@@ -54,7 +48,14 @@ class AppPages {
             status: args?['status'],
           );
         },
-        AppRoutes.locationPicker: (context) => const LocationPickerScreen(),
+        AppRoutes.addressDetails: (context) {
+          final args = ModalRoute.of(context)?.settings.arguments
+              as Map<String, dynamic>;
+          return AddressDetailsScreen(locationData: args);
+        },
+        AppRoutes.locationMapPicker: (context) => const LocationMapPicker(),
         AppRoutes.search: (context) => const SearchPage(),
+        AppRoutes.mySubscriptions: (context) =>
+            const SubscriptionDashboardPage(),
       };
 }

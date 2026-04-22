@@ -4,37 +4,54 @@ import '../../../data/models/food_models.dart';
 import '../../../data/services/db_service.dart';
 import '../../../data/models/product_model.dart';
 import '../../../data/services/subscription_service.dart';
+
 import '../widgets/cart_summary_bar.dart';
 import '../widgets/quantity_selector.dart';
 
-class ProductDetailsPage extends ConsumerWidget {
+class ProductDetailsPage extends ConsumerStatefulWidget {
   final Product product;
 
   const ProductDetailsPage({super.key, required this.product});
 
-  void _showSubscriptionDrawer(BuildContext context, WidgetRef ref) {
+  @override
+  ConsumerState<ProductDetailsPage> createState() => _ProductDetailsPageState();
+}
+
+class _ProductDetailsPageState extends ConsumerState<ProductDetailsPage> {
+  int _selectedVariantIndex = 0;
+
+  void _showSubscriptionDrawer(BuildContext context, ProductVariant? selectedVariant) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => SubscriptionConfigDrawer(product: product),
+      builder: (context) => SubscriptionConfigDrawer(
+        product: widget.product,
+        selectedVariant: selectedVariant,
+      ),
     );
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
+    final product = widget.product;
     // Note: CartProviderScope.of(context) might need ref.watch(cartProvider) if refactored
     // Using context for legacy compatibility if CartProviderScope still exists
     final cart = CartProviderScope.of(context);
+    final selectedVariant =
+        product.variants.isNotEmpty ? product.variants[_selectedVariantIndex] : null;
+
     final cartItem = cart.items.firstWhere(
-      (item) => item.id == product.id,
+      (item) => item.id == product.id && item.variantId == selectedVariant?.id,
       orElse: () => CartItem(
         id: product.id,
         title: product.name,
-        unitPrice: product.price,
-        subtitle: product.weight,
+        unitPrice: selectedVariant?.price ?? product.price,
+        subtitle: selectedVariant?.weightLabel ?? product.weight,
         image: product.image,
         category: product.category,
+        variantId: selectedVariant?.id,
+        weightLabel: selectedVariant?.weightLabel,
         quantity: 0,
       ),
     );
@@ -62,24 +79,7 @@ class ProductDetailsPage extends ConsumerWidget {
                     ),
                   ),
                 ),
-                actions: [
-                  Padding(
-                    padding: const EdgeInsets.only(right: 16),
-                    child: CircleAvatar(
-                      backgroundColor: Colors.white.withValues(alpha: 0.9),
-                      child: IconButton(
-                        icon: Icon(
-                          product.isFavorite
-                              ? Icons.favorite
-                              : Icons.favorite_border,
-                          color:
-                              product.isFavorite ? Colors.red : Colors.black87,
-                        ),
-                        onPressed: () => cart.toggleFavorite(product.id),
-                      ),
-                    ),
-                  ),
-                ],
+                actions: const [],
                 flexibleSpace: FlexibleSpaceBar(
                   background: Hero(
                     tag: 'product_${product.id}',
@@ -135,17 +135,64 @@ class ProductDetailsPage extends ConsumerWidget {
                                     fontWeight: FontWeight.bold,
                                     color: Color(0xFF1A1A1A))),
                           ),
-                          Text('₹${product.price.toStringAsFixed(0)}',
-                              style: const TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.w800,
-                                  color: Color(0xFF68B92E))),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(product.weight,
-                          style: TextStyle(
-                              fontSize: 16, color: Colors.grey.shade600)),
+                         Text('₹${(selectedVariant?.price ?? product.price).toStringAsFixed(0)}',
+                             style: const TextStyle(
+                                 fontSize: 24,
+                                 fontWeight: FontWeight.w800,
+                                 color: Color(0xFF68B92E))),
+                       ],
+                     ),
+                     const SizedBox(height: 8),
+                     Text(selectedVariant?.weightLabel ?? product.weight,
+                         style: TextStyle(
+                             fontSize: 16, color: Colors.grey.shade600)),
+                     
+                     // ── Variant Selection ──────────────────────────────────────
+                     if (product.variants.isNotEmpty) ...[
+                       const SizedBox(height: 20),
+                       const Text('Select weight',
+                           style: TextStyle(
+                               fontSize: 14,
+                               fontWeight: FontWeight.bold,
+                               color: Colors.grey)),
+                       const SizedBox(height: 12),
+                       SizedBox(
+                         height: 44,
+                         child: ListView.separated(
+                           scrollDirection: Axis.horizontal,
+                           itemCount: product.variants.length,
+                           separatorBuilder: (_, __) => const SizedBox(width: 12),
+                           itemBuilder: (ctx, idx) {
+                             final v = product.variants[idx];
+                             final isSelected = _selectedVariantIndex == idx;
+                             return GestureDetector(
+                               onTap: () => setState(() => _selectedVariantIndex = idx),
+                               child: Container(
+                                 padding: const EdgeInsets.symmetric(horizontal: 20),
+                                 decoration: BoxDecoration(
+                                   color: isSelected ? const Color(0xFF68B92E).withValues(alpha: 0.1) : Colors.white,
+                                   borderRadius: BorderRadius.circular(12),
+                                   border: Border.all(
+                                     color: isSelected ? const Color(0xFF68B92E) : Colors.grey.shade300,
+                                     width: isSelected ? 2 : 1,
+                                   ),
+                                 ),
+                                 child: Center(
+                                   child: Text(
+                                     v.weightLabel,
+                                     style: TextStyle(
+                                       fontSize: 14,
+                                       fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                       color: isSelected ? const Color(0xFF2E7D32) : Colors.black87,
+                                     ),
+                                   ),
+                                 ),
+                               ),
+                             );
+                           },
+                         ),
+                       ),
+                     ],
                       const SizedBox(height: 24),
                       const Text('Product Description',
                           style: TextStyle(
@@ -183,7 +230,8 @@ class ProductDetailsPage extends ConsumerWidget {
                               ),
                             )),
                       ],
-                      const SizedBox(height: 140),
+                      const SizedBox(height: 48),
+
                     ],
                   ),
                 ),
@@ -220,7 +268,7 @@ class ProductDetailsPage extends ConsumerWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   OutlinedButton.icon(
-                    onPressed: () => _showSubscriptionDrawer(context, ref),
+                    onPressed: () => _showSubscriptionDrawer(context, selectedVariant),
                     icon: const Icon(Icons.calendar_month, size: 20),
                     label: const Text('Subscribe & Save',
                         style: TextStyle(
@@ -238,7 +286,16 @@ class ProductDetailsPage extends ConsumerWidget {
                   !isInCart
                       ? ElevatedButton(
                           onPressed: () =>
-                              cart.addToCart(CartItem.fromProduct(product)),
+                              cart.addToCart(CartItem(
+                                id: product.id,
+                                title: product.name,
+                                unitPrice: selectedVariant?.price ?? product.price,
+                                subtitle: selectedVariant?.weightLabel ?? product.weight,
+                                image: product.image,
+                                category: product.category,
+                                variantId: selectedVariant?.id,
+                                weightLabel: selectedVariant?.weightLabel,
+                              )),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF68B92E),
                             foregroundColor: Colors.white,
@@ -270,8 +327,8 @@ class ProductDetailsPage extends ConsumerWidget {
                                       color: Color(0xFF1A1A1A))),
                               QuantitySelector(
                                 quantity: cartItem.quantity,
-                                onIncrement: () => cart.increment(product.name),
-                                onDecrement: () => cart.decrement(product.name),
+                                onIncrement: () => cart.increment(product.id, variantId: selectedVariant?.id),
+                                onDecrement: () => cart.decrement(product.id, variantId: selectedVariant?.id),
                                 size: 40,
                               ),
                             ],
@@ -289,7 +346,8 @@ class ProductDetailsPage extends ConsumerWidget {
 
 class SubscriptionConfigDrawer extends StatefulWidget {
   final Product product;
-  const SubscriptionConfigDrawer({super.key, required this.product});
+  final ProductVariant? selectedVariant;
+  const SubscriptionConfigDrawer({super.key, required this.product, this.selectedVariant});
 
   @override
   State<SubscriptionConfigDrawer> createState() =>
@@ -361,7 +419,7 @@ class _SubscriptionConfigDrawerState extends State<SubscriptionConfigDrawer> {
           const Text('Subscription Settings',
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
-          Text('Configure recurring delivery for ${widget.product.name}',
+          Text('Configure recurring delivery for ${widget.product.name} ${widget.selectedVariant != null ? "(${widget.selectedVariant!.weightLabel})" : ""}',
               style: TextStyle(color: Colors.grey.shade600)),
           const SizedBox(height: 24),
           const Text('Delivery Frequency',
@@ -505,6 +563,8 @@ class _SubscriptionConfigDrawerState extends State<SubscriptionConfigDrawer> {
                   productId: widget.product.id,
                   frequency: _frequency,
                   quantity: _quantity,
+                  variantId: widget.selectedVariant?.id,
+                  weightLabel: widget.selectedVariant?.label ?? widget.product.weight,
                   customDays: _frequency == 'Weekly' ? _selectedDays : [],
                   startDate: _startDate,
                 );
@@ -533,3 +593,4 @@ class _SubscriptionConfigDrawerState extends State<SubscriptionConfigDrawer> {
     );
   }
 }
+

@@ -3,22 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/shop_product_model.dart';
 import '../provider/shop_provider.dart';
 import '../../home/view/restaurant_menu_page.dart';
-import 'filter_bottom_sheet.dart';
-
-// ── Cuisine types to cycle through for display ───────────────────────────────
-const List<String> _cuisineTypes = [
-  'Seafood · Coastal',
-  'Seafood · Grill',
-  'Seafood · Pan Asian',
-  'Seafood · Kerala',
-  'Seafood · Thai',
-  'Seafood · Mughlai',
-  'Seafood · Chinese',
-  'Seafood · Continental',
-  'Seafood · Goan',
-  'Seafood · Fusion',
-  'Seafood · Tandoor',
-];
+import '../../../widgets/modern_filter_bottom_sheet.dart';
 
 // ── Placeholder hero images (local assets as fallback) ───────────────────────
 const List<String> _heroImages = [
@@ -33,29 +18,6 @@ const List<String> _heroImages = [
   'assets/images/shrimp_tiger_trio.png',
   'assets/images/shrimp_cooked_duo.png',
 ];
-
-// ── Offer cycling logic ───────────────────────────────────────────────────────
-String _offerText(int index) {
-  switch (index % 3) {
-    case 0:
-      return 'Flat ₹100 OFF above ₹499';
-    case 1:
-      return 'Flat ₹150 OFF above ₹799';
-    default:
-      return 'Flat ₹200 OFF above ₹999';
-  }
-}
-
-int _offerAbove(int index) {
-  switch (index % 3) {
-    case 0:
-      return 499;
-    case 1:
-      return 799;
-    default:
-      return 999;
-  }
-}
 
 class RestaurantListSection extends ConsumerWidget {
   const RestaurantListSection({super.key});
@@ -97,7 +59,7 @@ class _ShopsList extends StatelessWidget {
           child: Row(
             children: [
               const Text(
-                'Restaurants Near You',
+                'Retailers Near You',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
@@ -105,17 +67,8 @@ class _ShopsList extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              Text(
-                '${shops.length} places',
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(width: 8),
               InkWell(
-                onTap: () => FilterBottomSheet.show(context),
+                onTap: () => ModernFilterBottomSheet.show(context),
                 borderRadius: BorderRadius.circular(8),
                 child: Container(
                   padding:
@@ -170,37 +123,26 @@ class _ShopCard extends StatelessWidget {
   const _ShopCard({required this.shop, required this.index});
 
   Color get _offerColor {
-    final above = _offerAbove(index);
-    if (above >= 999) return const Color(0xFF7B2FF7);
-    if (above >= 799) return const Color(0xFF1565C0);
+    if (shop.offer.contains('200')) return const Color(0xFF7B2FF7);
+    if (shop.offer.contains('150')) return const Color(0xFF1565C0);
     return const Color(0xFF68B92E);
   }
 
   String get _heroImage => _heroImages[index % _heroImages.length];
-  String get _cuisine => _cuisineTypes[index % _cuisineTypes.length];
-
-  // Generate a deterministic rating from shop ID
-  double get _rating {
-    final code = shop.id.codeUnits.fold<int>(0, (a, b) => a + b);
-    return 3.8 + (code % 9) * 0.1; // 3.8 – 4.6
-  }
-
-  int get _reviews {
-    final code = shop.id.codeUnits.fold<int>(0, (a, b) => a + b);
-    return 600 + (code % 40) * 100; // realistic range
-  }
+  String get _cuisine => shop.cuisine.isNotEmpty ? shop.cuisine : 'Seafood';
 
   String get _deliveryTime {
-    final mins = 50 + (index * 5) % 40;
-    return '$mins–${mins + 15} mins';
+    if (shop.deliveryTime != '30-45 mins') return shop.deliveryTime;
+    final mins = 15 + (index * 5) % 20;
+    return '$mins–${mins + 10} mins';
   }
 
   double get _distance {
     final code = shop.id.codeUnits.fold<int>(0, (a, b) => a + b);
-    return ((code % 50) + 5) / 10.0; // 0.5 – 5.4 km
+    return ((code % 30) + 5) / 10.0; // 0.5 – 3.4 km
   }
 
-  bool get _isFeatured => index < 3;
+  bool get _isFeatured => shop.isFeatured;
 
   @override
   Widget build(BuildContext context) {
@@ -234,7 +176,7 @@ class _ShopCard extends StatelessWidget {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.grey.shade200),
+              border: Border.all(color: Colors.grey.shade300, width: 1),
             ),
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -307,20 +249,7 @@ class _ShopCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  // Bookmark
-                  Positioned(
-                    top: 10,
-                    right: 12,
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.9),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.bookmark_border,
-                          size: 16, color: Colors.black54),
-                    ),
-                  ),
+
                   // Featured badge
                   if (_isFeatured)
                     Positioned(
@@ -391,7 +320,7 @@ class _ShopCard extends StatelessWidget {
                           Text(
                             shop.rating > 0
                                 ? shop.rating.toStringAsFixed(1)
-                                : _rating.toStringAsFixed(1),
+                                : 'New',
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 12,
@@ -401,11 +330,14 @@ class _ShopCard extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const SizedBox(width: 6),
-                    Text(
-                      _formatReviews(_reviews),
-                      style: const TextStyle(fontSize: 11, color: Colors.grey),
-                    ),
+                    if (shop.ratingsCount > 0) ...[
+                      const SizedBox(width: 6),
+                      Text(
+                        _formatReviews(shop.ratingsCount),
+                        style:
+                            const TextStyle(fontSize: 11, color: Colors.grey),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -457,28 +389,30 @@ class _ShopCard extends StatelessWidget {
               ),
 
               // ── Offer Strip ──────────────────────────────────────────────
-              Padding(
-                padding: const EdgeInsets.fromLTRB(14, 8, 14, 14),
-                child: Row(
-                  children: [
-                    Icon(Icons.local_offer_outlined,
-                        size: 14, color: _offerColor),
-                    const SizedBox(width: 5),
-                    Expanded(
-                      child: Text(
-                        _offerText(index),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: _offerColor,
-                          fontWeight: FontWeight.w600,
+              if (shop.offer.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 8, 14, 14),
+                  child: Row(
+                    children: [
+                      Icon(Icons.local_offer_outlined,
+                          size: 14, color: _offerColor),
+                      const SizedBox(width: 5),
+                      Expanded(
+                        child: Text(
+                          shop.offer,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: _offerColor,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
+              if (shop.offer.isEmpty) const SizedBox(height: 14),
             ]),
           ),
         ),
@@ -538,7 +472,7 @@ class _ShopsLoadingState extends StatelessWidget {
         const Padding(
           padding: EdgeInsets.fromLTRB(16, 20, 16, 12),
           child: Text(
-            'Restaurants Near You',
+            'Retailers Near You',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w800,
@@ -711,7 +645,7 @@ class _ShopsEmptyState extends StatelessWidget {
             const Icon(Icons.storefront_outlined, size: 56, color: Colors.grey),
             const SizedBox(height: 12),
             const Text(
-              'No restaurants found',
+              'No Retailer Found',
               style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,

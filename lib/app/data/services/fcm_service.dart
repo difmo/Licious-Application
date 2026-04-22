@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -12,7 +13,6 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 }
 
 /// Centralized service for Firebase Cloud Messaging (FCM) integration.
-/// - Requests permission on startup
 /// - Gets/refreshes the device token
 /// - Sends the token to the backend
 /// - Handles foreground, background, and terminated notifications
@@ -32,6 +32,10 @@ class FCMService {
     description: 'Important notifications for orders, OTPs, and updates',
     importance: Importance.max,
   );
+
+  /// Stream to allow other parts of the app (like MainPage) to listen for specific FCM events
+  static final StreamController<RemoteMessage> onMessageReceived =
+      StreamController<RemoteMessage>.broadcast();
 
   // ── Initialise (call once from main.dart after Firebase.initializeApp) ────
 
@@ -54,15 +58,15 @@ class FCMService {
       requestSoundPermission: false,
     );
     await _localNotifications.initialize(
-      const InitializationSettings(
-          android: androidSettings, iOS: iosSettings),
+      const InitializationSettings(android: androidSettings, iOS: iosSettings),
     );
 
     // Request permission
-    await FCMService().requestPermission();
+    //    await FCMService().requestPermission();
 
     // Handle foreground messages — show as local notification
     FirebaseMessaging.onMessage.listen((message) {
+      onMessageReceived.add(message);
       FCMService()._showLocalNotification(message);
     });
   }
@@ -86,13 +90,30 @@ class FCMService {
   Future<String?> getToken() async {
     try {
       if (Platform.isIOS) {
-        // On iOS, APNS token must be ready before FCM token
         final apnsToken = await _messaging.getAPNSToken();
         if (apnsToken == null) return null;
       }
-      final token = await _messaging.getToken();
-      debugPrint('📱 FCM Token: $token');
-      return token;
+
+      // Try up to 3 times to mitigate SERVICE_NOT_AVAILABLE errors
+      for (int i = 0; i < 3; i++) {
+        try {
+          final token = await _messaging.getToken();
+          if (token != null) {
+            debugPrint('📱 FCM Token: $token');
+            return token;
+          }
+        } catch (e) {
+          final errStr = e.toString();
+          if (errStr.contains('SERVICE_NOT_AVAILABLE') && i < 2) {
+            debugPrint(
+                '🔄 FCM Service not available, retrying (${i + 1}/3)...');
+            await Future.delayed(Duration(seconds: 1 * (i + 1)));
+            continue;
+          }
+          rethrow;
+        }
+      }
+      return null;
     } catch (e) {
       debugPrint('❌ FCM getToken error: $e');
       return null;

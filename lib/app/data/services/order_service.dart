@@ -11,6 +11,7 @@ class OrderService {
   Future<Map<String, dynamic>> placeOrder({
     required Map<String, dynamic> deliveryAddress,
     required String paymentMethod,
+    List<Map<String, dynamic>>? items,
   }) async {
     try {
       final response = await _apiClient.post(
@@ -19,15 +20,18 @@ class OrderService {
           'deliveryAddress': deliveryAddress,
           'paymentMethod': paymentMethod,
           'orderType': 'One-time',
+          if (items != null) 'items': items,
         },
         requiresAuth: true,
       );
 
-      // ApiClient returns the response body as a Map.gterg
+      // ApiClient returns the response body as a Map.
       // If paymentStatus is Paid, or success is true, we consider it successful.
       return {
         'success': response['success'] ?? true,
         'order': response['order'] ?? response['data'],
+        'orderId': response['orderId'],
+        'razorpayOrderId': response['razorpayOrderId'],
         'message': response['message'],
       };
     } catch (e) {
@@ -101,6 +105,7 @@ class OrderService {
   Future<Map<String, dynamic>> placeSpotOrder({
     required Map<String, dynamic> deliveryAddress,
     required String paymentMethod,
+    List<Map<String, dynamic>>? items,
   }) async {
     try {
       final response = await _apiClient.post(
@@ -109,6 +114,7 @@ class OrderService {
           'deliveryAddress': deliveryAddress,
           'paymentMethod': paymentMethod,
           'orderType': 'One-time',
+          if (items != null) 'items': items,
         },
         requiresAuth: true,
       );
@@ -116,6 +122,8 @@ class OrderService {
       return {
         'success': response['success'] ?? true,
         'order': response['order'] ?? response['data'],
+        'orderId': response['orderId'],
+        'razorpayOrderId': response['razorpayOrderId'],
         'message': response['message'],
       };
     } catch (e) {
@@ -224,6 +232,54 @@ class OrderService {
       return {};
     }
   }
+
+  Future<Map<String, dynamic>> verifyOrderPayment({
+    required String orderId,
+    required String razorpayOrderId,
+    required String razorpayPaymentId,
+    required String razorpaySignature,
+  }) async {
+    try {
+      final response = await _apiClient.post(
+        '${ApiClient.baseUrl}/orders/verify-payment',
+        data: {
+          'orderId': orderId,
+          'razorpayOrderId': razorpayOrderId,
+          'razorpayPaymentId': razorpayPaymentId,
+          'razorpaySignature': razorpaySignature,
+        },
+        requiresAuth: true,
+      );
+      return response;
+    } catch (e) {
+      return {
+        'success': false,
+        'message': e.toString(),
+      };
+    }
+  }
+
+  Future<Map<String, dynamic>> cancelOrder(String orderId) async {
+    try {
+      final response = await _apiClient.post(
+        '${ApiClient.baseUrl}/orders/cancel',
+        data: {'orderId': orderId},
+        requiresAuth: true,
+      );
+      return response;
+    } catch (e) {
+      // If the specific cancel endpoint doesn't exist, we try the status update as fallback
+      try {
+        return await _apiClient.patch(
+          '${ApiClient.baseUrl}/orders/status',
+          data: {'orderId': orderId, 'status': 'Cancelled'},
+          requiresAuth: true,
+        );
+      } catch (e2) {
+        return {'success': false, 'message': e2.toString()};
+      }
+    }
+  }
 }
 
 final orderServiceProvider = Provider<OrderService>((ref) {
@@ -231,6 +287,19 @@ final orderServiceProvider = Provider<OrderService>((ref) {
 });
 
 final myOrdersProvider = FutureProvider.autoDispose<List<dynamic>>((ref) {
+  // Watch socket movements to trigger a refresh
+  final socket = ref.watch(socketServiceProvider);
+  
+  // Define callback for removal during disposal
+  void handleUpdate(_) {
+    debugPrint('🔔 myOrdersProvider: Real-time update detected.');
+    // Check if the provider is still active before invalidating
+    ref.invalidateSelf();
+  }
+
+  socket.onOrderUpdate(handleUpdate);
+  ref.onDispose(() => socket.offOrderUpdate(handleUpdate));
+
   return ref.watch(orderServiceProvider).getMyOrders();
 });
 
@@ -243,13 +312,16 @@ class ActiveOrdersNotifier extends AsyncNotifier<List<dynamic>> {
   Future<List<dynamic>> build() async {
     // Listen for real-time order status updates from socket
     final socket = ref.watch(socketServiceProvider);
-    socket.onOrderUpdate((data) {
+    
+    void handleUpdate(_) {
       debugPrint('🔔 ActiveOrdersNotifier: Order update received, refreshing...');
       ref.invalidateSelf();
-    });
+    }
+
+    socket.onOrderUpdate(handleUpdate);
 
     ref.onDispose(() {
-      socket.offOrderUpdate();
+      socket.offOrderUpdate(handleUpdate);
     });
 
     return _fetchActiveOrders();
@@ -266,8 +338,11 @@ class ActiveOrdersNotifier extends AsyncNotifier<List<dynamic>> {
 
       return history.where((o) {
         final status = (o['status'] ?? '').toString().toLowerCase();
-        // The user specifically wants orders that are NOT "delivered"
-        return status != 'delivered';
+        // Return only orders that are neither delivered, cancelled, nor stuck in payment pending
+        return status != 'delivered' && 
+               status != 'cancelled' && 
+               status != 'payment pending' &&
+               status != 'failed';
       }).toList();
     } catch (e) {
       debugPrint('Error in _fetchActiveOrders: $e');

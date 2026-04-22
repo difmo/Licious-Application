@@ -41,6 +41,26 @@ class AddressService {
       requiresAuth: true,
     );
   }
+  Future<Map<String, dynamic>> updateAddress(String id, Map<String, dynamic> data) async {
+    try {
+      // The backend does not appear to have a PUT /address/:id endpoint (returns 404).
+      // We simulate an update by deleting the old address and saving the new one.
+      await deleteAddress(id);
+      return await _client.post(
+        '${ApiClient.baseUrl}/address',
+        data: data,
+        requiresAuth: true,
+      );
+    } catch (e) {
+      if (e is ApiException) {
+        throw e;
+      }
+      return {
+        'success': false,
+        'message': e.toString(),
+      };
+    }
+  }
 }
 
 final addressServiceProvider = Provider<AddressService>((ref) {

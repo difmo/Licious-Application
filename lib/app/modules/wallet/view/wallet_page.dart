@@ -2,25 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../routes/app_routes.dart';
 import '../../../data/services/wallet_service.dart';
+import '../../../data/services/db_service.dart';
 
-// Provider for wallet balance
-final walletBalanceProvider = FutureProvider.autoDispose<double>((ref) async {
-  final result = await ref.read(walletServiceProvider).getBalance();
-  return (result['balance'] as num?)?.toDouble() ?? 0.0;
-});
-
-// Provider for transaction history
-final walletHistoryProvider =
-    FutureProvider.autoDispose<List<dynamic>>((ref) async {
-  return ref.read(walletServiceProvider).getTransactionHistory();
-});
+import '../provider/wallet_provider.dart';
 
 class WalletPage extends ConsumerWidget {
   const WalletPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final balanceAsync = ref.watch(walletBalanceProvider);
+    final cart = CartProviderScope.of(context);
+    final balance = cart.walletBalance;
     final historyAsync = ref.watch(walletHistoryProvider);
 
     return Scaffold(
@@ -35,7 +27,7 @@ class WalletPage extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
-              ref.invalidate(walletBalanceProvider);
+              CartProviderScope.read(context).syncWallet();
               ref.invalidate(walletHistoryProvider);
             },
           ),
@@ -46,11 +38,7 @@ class WalletPage extends ConsumerWidget {
         child: Column(
           children: [
             // Balance card
-            balanceAsync.when(
-              data: (balance) => _buildBalanceCard(balance),
-              loading: () => _buildBalanceCard(null),
-              error: (_, __) => _buildBalanceCard(0.0),
-            ),
+            _buildBalanceCard(balance),
             const SizedBox(height: 30),
             _buildActionButtons(context),
             const SizedBox(height: 30),
@@ -144,7 +132,7 @@ class WalletPage extends ConsumerWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.grey.shade200),
+          border: Border.all(color: Colors.grey.shade300, width: 1),
         ),
         child: Column(
           children: [
@@ -229,7 +217,7 @@ class _TransactionItem extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: Colors.grey.shade300, width: 1),
       ),
       child: Row(
         children: [

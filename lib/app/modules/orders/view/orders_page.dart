@@ -3,7 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/services/order_service.dart';
 import '../../../data/services/socket_service.dart';
+import './order_tracking_page.dart';
+import '../../../data/services/db_service.dart';
+import '../../../data/models/product_model.dart';
 import '../../auth/provider/auth_provider.dart';
+import '../../../../core/utils/logger.dart';
 
 // Local provider removed, using shared provider from order_service.dart
 
@@ -306,7 +310,8 @@ class _LiveOrderCardState extends State<_LiveOrderCard>
     return items.map((i) {
       final p = i['product'];
       final name = p is Map ? p['name']?.toString() ?? 'Item' : 'Item';
-      return '${i['quantity']}x $name';
+      final weight = i['weightLabel']?.toString() ?? '';
+      return '${i['quantity']}x $name${weight.isNotEmpty ? " ($weight)" : ""}';
     }).join(', ');
   }
 
@@ -358,20 +363,131 @@ class _LiveOrderCardState extends State<_LiveOrderCard>
     return '';
   }
 
+  void _handleReorder() {
+    try {
+      HapticFeedback.mediumImpact();
+      final items = widget.order['items'] as List<dynamic>? ?? [];
+      if (items.isEmpty) {
+        AppLogger.w('OrdersPage: Attempted to reorder an empty order.');
+        return;
+      }
+
+      AppLogger.i('OrdersPage: Reordering ${items.length} items from order ${widget.order['orderId']}');
+      
+      final cart = CartProviderScope.read(context);
+
+      // Check if current cart has a different shop
+      if (cart.items.isNotEmpty) {
+        final orderShopId = (widget.order['retailerId'] ?? widget.order['shopId'] ?? '').toString();
+        if (orderShopId.isNotEmpty && !cart.isSameShop(orderShopId)) {
+          _showShopConflictDialog(context, cart, () => _processReorder(cart, items));
+          return;
+        }
+      }
+
+      _processReorder(cart, items);
+    } catch (e, stack) {
+      AppLogger.e('OrdersPage: Reorder error', e, stack);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to reorder: $e'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  void _processReorder(CartProvider cart, List<dynamic> items) {
+    for (final item in items) {
+      final p = item['product'] as Map<String, dynamic>? ?? {};
+      final qty = (item['quantity'] as num?)?.toInt() ?? 1;
+
+      // Extract details robustly
+      final productId = (p['_id'] ?? p['id'] ?? '').toString();
+      final title = (p['name'] ?? 'Product').toString();
+      final unitPrice = (item['price'] ?? p['price'] as num?)?.toDouble() ?? 0.0;
+      final category = (p['category'] ?? 'Shrimp').toString();
+      
+      if (productId.isEmpty) {
+        AppLogger.w('OrdersPage: Skipping item with empty product ID');
+        continue;
+      }
+
+      final cartItem = CartItem(
+        id: productId,
+        title: title,
+        unitPrice: unitPrice,
+        subtitle: category, // Standardized subtitle to match RestaurantMenuPage
+        image: (p['images'] is List && p['images'].isNotEmpty
+            ? p['images'].first.toString()
+            : (p['image'] ?? '').toString()),
+        category: category,
+        shopId: (widget.order['retailerId'] ?? widget.order['shopId'] ?? '').toString(),
+        shopName: (widget.order['retailerName'] ?? widget.order['shopName'] ?? '').toString(),
+        variantId: (item['variantId'] ?? p['variantId'])?.toString(),
+        weightLabel: (item['weightLabel'] ?? p['weightLabel'] ?? '').toString(),
+        quantity: qty,
+      );
+      
+      cart.addToCart(cartItem);
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Added your order items back to cart!'),
+        backgroundColor: Color(0xFF114F3B),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _showShopConflictDialog(BuildContext context, CartProvider cart, VoidCallback onConfirm) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Clear Cart?'),
+        content: const Text('Your cart contains items from another shop. Clear it to reorder this order?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('No')),
+          TextButton(
+            onPressed: () {
+              cart.clearCart();
+              Navigator.pop(ctx);
+              onConfirm();
+            },
+            child: const Text('Clear & Reorder', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onDoubleTap: () {
-        HapticFeedback.mediumImpact();
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Added to cart for reorder!'),
-          backgroundColor: Color(0xFF114F3B),
-        ));
+        if (_isDelivered) {
+          _handleReorder();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Order is still active!'),
+            backgroundColor: Color(0xFFE67E22),
+          ));
+        }
         _controller.forward().then((_) => _controller.reverse());
       },
       onTapDown: (_) => _controller.forward(),
       onTapUp: (_) => _controller.reverse(),
       onTapCancel: () => _controller.reverse(),
+      onTap: () {
+        if (_isDelivered) {
+          _handleReorder();
+        } else {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => OrderTrackingPage(order: widget.order),
+            ),
+          );
+        }
+      },
       child: AnimatedBuilder(
         animation: _scaleAnimation,
         builder: (context, child) =>

@@ -16,7 +16,7 @@ class SearchShop {
     this.image = '',
     this.location = '',
     this.isShopActive = true,
-    this.rating = 4.5,
+    this.rating = 0.0,
     this.deliveryTime = '30-45 mins',
   });
 
@@ -28,7 +28,9 @@ class SearchShop {
       image: (json['image'] ?? json['logo'] ?? json['banner'] ?? '').toString(),
       location: (json['location'] ?? json['address'] ?? '').toString(),
       isShopActive: json['isShopActive'] ?? json['isActive'] ?? true,
-      rating: (json['rating'] as num?)?.toDouble() ?? 4.5,
+      rating: (json['rating'] as num?)?.toDouble() ?? 
+              (json['avgRating'] as num?)?.toDouble() ?? 
+              (json['shopRating'] as num?)?.toDouble() ?? 0.0,
       deliveryTime: (json['deliveryTime'] ?? '30-45 mins').toString(),
     );
   }
@@ -45,6 +47,8 @@ class SearchProduct {
   final String shopId;
   final String shopName;
   final bool isShopActive;
+  final double rating;
+  final int ratingsCount;
 
   const SearchProduct({
     required this.id,
@@ -56,6 +60,8 @@ class SearchProduct {
     required this.shopId,
     required this.shopName,
     this.isShopActive = true,
+    this.rating = 0.0,
+    this.ratingsCount = 0,
   });
 
   bool get isAvailable => stockStatus == 'In Stock';
@@ -105,6 +111,10 @@ class SearchProduct {
       shopId: shopId,
       shopName: shopName,
       isShopActive: isShopActiveRetailer,
+      rating: (json['rating'] as num?)?.toDouble() ?? 
+              (json['avgRating'] as num?)?.toDouble() ?? 0.0,
+      ratingsCount: (json['ratingsCount'] as num?)?.toInt() ?? 
+                    (json['reviewsCount'] as num?)?.toInt() ?? 0,
     );
   }
 }

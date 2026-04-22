@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import '../view/filter_page.dart';
+import '../view/filtered_products_page.dart';
 import '../../../widgets/bounce_widget.dart';
 
 class FilterBar extends StatefulWidget {
@@ -30,7 +30,7 @@ class _FilterBarState extends State<FilterBar> {
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const FilterPage()),
+                MaterialPageRoute(builder: (_) => const FilteredProductsPage()),
               );
             },
           ),

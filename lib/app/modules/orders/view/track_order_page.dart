@@ -6,6 +6,8 @@ import 'package:geolocator/geolocator.dart';
 import '../../../data/services/socket_service.dart';
 import '../../../data/services/notification_service.dart';
 import '../../../data/services/order_service.dart';
+import '../../../data/models/food_models.dart';
+import '../../profile/widgets/order_review_dialog.dart';
 
 /// Maps every backend status string → a 0-based step index (0 = just placed).
 int _statusToStep(String status) {
@@ -79,6 +81,7 @@ class _TrackOrderPageState extends ConsumerState<TrackOrderPage>
   // Socket callbacks
   late void Function(dynamic) _onOrderUpdate;
   late void Function(dynamic) _onRiderAssigned;
+  late void Function(dynamic) _onOrderDelivered;
 
   // Pulse animation for the live dot
   late AnimationController _pulseCtrl;
@@ -201,10 +204,14 @@ class _TrackOrderPageState extends ConsumerState<TrackOrderPage>
           }
         }
       });
+    };
 
-      if (statusStr.toLowerCase() == 'delivered') {
-        Future.delayed(const Duration(milliseconds: 500), _showDeliverySuccess);
-      }
+    _onOrderDelivered = (dynamic data) {
+      if (!mounted) return;
+      setState(() {
+        _currentStatus = 'Delivered';
+      });
+      Future.delayed(const Duration(milliseconds: 500), _showDeliverySuccess);
     };
 
     _onRiderAssigned = (data) {
@@ -221,6 +228,7 @@ class _TrackOrderPageState extends ConsumerState<TrackOrderPage>
 
     socketService.onOrderUpdate(_onOrderUpdate);
     socketService.onRiderAssigned(_onRiderAssigned);
+    socketService.onOrderDelivered(_onOrderDelivered);
   }
 
   void _checkProximity(LatLng riderPos) {
@@ -241,48 +249,38 @@ class _TrackOrderPageState extends ConsumerState<TrackOrderPage>
     }
   }
 
-  void _showDeliverySuccess() {
+  Future<void> _showDeliverySuccess() async {
     if (!mounted) return;
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.check_circle_rounded,
-                color: Color(0xFF68B92E), size: 72),
-            const SizedBox(height: 16),
-            const Text('Order Delivered!',
-                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 22)),
-            const SizedBox(height: 8),
-            const Text('Enjoy your fresh shrimp! 🦐',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey)),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context); // close dialog
-                  Navigator.pop(context); // back to active orders
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF114F3B),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                ),
-                child: const Text('Back to Home',
-                    style: TextStyle(
-                        color: Colors.white, fontWeight: FontWeight.bold)),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+    
+    try {
+      final orderService = ref.read(orderServiceProvider);
+      final rawOrder = await orderService.getOrderById(widget.orderId);
+      
+      if (mounted && rawOrder.isNotEmpty) {
+        final order = UserOrder.fromJson(rawOrder);
+        
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => OrderReviewDialog(order: order),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error showing review dialog in tracking: $e');
+      // Fallback to simple success dialog if fetch fails
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text('Order Delivered!'),
+            content: const Text('Thank you for ordering with us.'),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK'))
+            ],
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -292,6 +290,7 @@ class _TrackOrderPageState extends ConsumerState<TrackOrderPage>
     socketService.leaveOrderRoom(widget.orderId);
     socketService.offOrderUpdate(_onOrderUpdate);
     socketService.offRiderAssigned(_onRiderAssigned);
+    socketService.offOrderDelivered(_onOrderDelivered);
     _mapController?.dispose();
     super.dispose();
   }

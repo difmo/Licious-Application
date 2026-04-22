@@ -50,7 +50,7 @@ class SubscriptionService {
             message: json['message']?.toString() ??
                 'Failed to load user subscriptions');
       }
-      final data = json['subscriptions'] as List<dynamic>? ?? [];
+      final data = (json['subscriptions'] ?? json['data']) as List<dynamic>? ?? [];
       return data
           .map((e) => UserSubscription.fromJson(e as Map<String, dynamic>))
           .toList();
@@ -64,6 +64,8 @@ class SubscriptionService {
     required String productId,
     required String frequency,
     required int quantity,
+    String? variantId,
+    String? weightLabel,
     List<String> customDays = const [],
     DateTime? startDate,
   }) async {
@@ -72,6 +74,8 @@ class SubscriptionService {
         'productId': productId,
         'frequency': frequency,
         'quantity': quantity,
+        if (variantId != null) 'variantId': variantId,
+        if (weightLabel != null) 'weightLabel': weightLabel,
         'customDays': customDays,
         'startDate': startDate?.toIso8601String(),
       };
@@ -109,19 +113,17 @@ class SubscriptionService {
     }
   }
 
-  /// Schedule vacation (pause delivery for a range).
+  /// Schedule vacation with a list of specific dates (YYYY-MM-DD format).
   Future<Map<String, dynamic>> updateVacation({
     required String subscriptionId,
-    required DateTime startDate,
-    required DateTime endDate,
+    required List<String> vacationDates,
   }) async {
     try {
       final json = await _client.post(
         '${ApiClient.subscriptionBaseUrl}/vacation',
         data: {
           'subscriptionId': subscriptionId,
-          'startDate': startDate.toIso8601String(),
-          'endDate': endDate.toIso8601String(),
+          'vacationDates': vacationDates,
         },
         requiresAuth: true,
       );
@@ -131,6 +133,49 @@ class SubscriptionService {
       };
     } catch (e) {
       return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  /// Cancel a subscription entirely.
+  Future<bool> cancelSubscription(String subscriptionId) async {
+    try {
+      final json = await _client.post(
+        '${ApiClient.subscriptionBaseUrl}/cancel',
+        data: {
+          'subscriptionId': subscriptionId,
+        },
+        requiresAuth: true,
+      );
+      return json['success'] as bool? ?? false;
+    } catch (e) {
+      return false;
+    }
+  }
+  /// Update status for ALL active subscriptions at once (Vacation Toggle).
+  Future<bool> updateAllStatus(String status) async {
+    try {
+      final json = await _client.patch(
+        '${ApiClient.subscriptionBaseUrl}/status-all',
+        data: {'status': status},
+        requiresAuth: true,
+      );
+      return json['success'] as bool? ?? false;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Add or remove vacation dates for ALL active subscriptions (Bulk Skip).
+  Future<bool> updateAllVacationDate(List<String> dates, String action) async {
+    try {
+      final json = await _client.patch(
+        '${ApiClient.subscriptionBaseUrl}/vacation-all-date',
+        data: {'dates': dates, 'action': action},
+        requiresAuth: true,
+      );
+      return json['success'] as bool? ?? false;
+    } catch (e) {
+      return false;
     }
   }
 }

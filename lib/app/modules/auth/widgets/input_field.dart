@@ -14,6 +14,7 @@ class InputField extends StatefulWidget {
   final VoidCallback? onToggleVisibility;
   final TextInputType keyboardType;
   final TextEditingController? controller;
+  final int? maxLength;
 
   const InputField({
     super.key,
@@ -25,7 +26,9 @@ class InputField extends StatefulWidget {
     this.onToggleVisibility,
     this.keyboardType = TextInputType.text,
     this.controller,
+    this.maxLength,
   });
+
 
   @override
   State<InputField> createState() => _InputFieldState();
@@ -53,10 +56,13 @@ class _InputFieldState extends State<InputField> {
           controller: widget.controller,
           obscureText: widget.obscureText,
           keyboardType: widget.keyboardType,
+          maxLength: widget.maxLength,
           style: const TextStyle(fontSize: 15, color: Color(0xFF1A1A1A)),
           decoration: InputDecoration(
+            counterText: "",
             hintText: widget.hintText,
             prefixIcon: Icon(widget.prefixIcon, size: 20),
+
             suffixIcon: widget.isPassword
                 ? GestureDetector(
                     onTap: widget.onToggleVisibility,
@@ -69,6 +75,22 @@ class _InputFieldState extends State<InputField> {
                     ),
                   )
                 : null,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
+            ),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            filled: true,
+            fillColor: Colors.grey.shade50,
           ),
         ),
       ],

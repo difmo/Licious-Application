@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:dio/dio.dart';
+import '../../../core/utils/logger.dart';
 import '../../../core/api/api_provider.dart';
 import '../../../core/storage/secure_storage_service.dart';
 
@@ -12,7 +13,8 @@ import '../../../core/storage/secure_storage_service.dart';
 class SocketService {
   static const String _orderUpdateEvent = 'orderUpdate';
   static const String _riderAssignedEvent = 'riderAssigned';
-  static const String _newOrderEvent = 'newOrderAssigned'; // rider receives new order
+  static const String _newOrderEvent =
+      'newOrderAssigned'; // rider receives new order
 
   io.Socket? _socket;
   bool _initialized = false;
@@ -37,8 +39,8 @@ class SocketService {
     if (_initialized && (_socket?.connected ?? false)) return;
 
     final token = await storage.getAccessToken();
-    final baseUrl = dotenv.maybeGet('SOCKET_URL') ??
-        'https://shrimpbite-socket-server.onrender.com';
+    final baseUrl =
+        dotenv.maybeGet('SOCKET_URL') ?? 'https://api.shrimpbite.in';
     final apiBaseUrl = dotenv.maybeGet('API_BASE_URL') ?? '';
 
     // 1. Poke Render (both API and Socket URLs) to wake up
@@ -48,8 +50,8 @@ class SocketService {
     }
 
     // Give the server more time to boot up if it's cold
-    debugPrint('⏳ Giving Render 12s head start to boot...');
-    await Future.delayed(const Duration(seconds: 12));
+    debugPrint('⏳ Giving Render 30s head start to boot...');
+    await Future.delayed(const Duration(seconds: 30));
 
     _socket?.disconnect();
     _socket?.dispose();
@@ -57,39 +59,54 @@ class SocketService {
     final Map<String, dynamic> headers =
         token != null ? {'Authorization': 'Bearer $token'} : {};
 
-    debugPrint('🔌 Initializing socket with autoConnect...');
+    debugPrint('🔌 Initializing socket for $baseUrl ...');
     _socket = io.io(
       baseUrl,
       <String, dynamic>{
-        'transports': ['polling', 'websocket'],
+        'transports': ['websocket', 'polling'], // favor websocket for health
         'autoConnect': true,
         'extraHeaders': headers,
         'reconnection': true,
-        'reconnectionAttempts': 30, // Increase for very slow cold starts
-        'reconnectionDelay': 8000,
-        'timeout': 180000, // 3 minutes timeout
+        'reconnectionAttempts': 100, // Be persistent with free tier
+        'reconnectionDelay': 5000,
+        'timeout': 60000, // Reduce timeout so it retries faster
       },
     );
 
-
+    _socket!.on('connecting',
+        (_) => AppLogger.d('🔄 SocketService connecting to $baseUrl...'));
     _socket!.onConnect((_) {
-      debugPrint('✅ SocketService connected');
+      AppLogger.i('✅ SocketService connected to $baseUrl');
       _flushQueue();
     });
-    _socket!.onDisconnect((_) => debugPrint('🔌 SocketService disconnected'));
+    _socket!.onDisconnect((_) => AppLogger.w('🔌 SocketService disconnected'));
     _socket!.onConnectError((err) {
-      debugPrint('⚠️ SocketService connect error: $err');
+      if (err.toString().contains('SocketException')) {
+        AppLogger.e('⚠️ Socket DNS/Network error: Ensure device is online.');
+      } else {
+        AppLogger.e('⚠️ SocketService connect error: $err');
+      }
     });
-    _socket!.onError((err) => debugPrint('💥 SocketService error: $err'));
+    _socket!.onError((err) {
+      if (!err.toString().contains('SocketException')) {
+        AppLogger.e('💥 SocketService error: $err');
+      }
+    });
 
     // Reconnection logs
-    _socket!.onReconnect((_) => debugPrint('♻️ SocketService reconnected'));
-    _socket!.onReconnectAttempt((count) =>
-        debugPrint('🔄 SocketService reconnection attempt: $count'));
-    _socket!.onReconnectError(
-        (err) => debugPrint('❌ SocketService reconnection error: $err'));
+    _socket!.onReconnect((_) => AppLogger.i('♻️ SocketService reconnected'));
+    _socket!.onReconnectAttempt((count) {
+      if (count % 5 == 0) { // Log only every 5th attempt to keep the console clean
+        AppLogger.d('🔄 SocketService reconnection attempt: $count');
+      }
+    });
+    _socket!.onReconnectError((err) {
+      if (!err.toString().contains('SocketException')) {
+        AppLogger.e('❌ SocketService reconnection error: $err');
+      }
+    });
     _socket!.onReconnectFailed(
-        (_) => debugPrint('🛑 SocketService reconnection failed'));
+        (_) => AppLogger.f('🛑 SocketService reconnection failed'));
 
     _initialized = true;
   }
@@ -177,6 +194,20 @@ class SocketService {
     }
   }
 
+  /// `orderDelivered` — explicitly fires when a rider marks the order as delivered.
+  /// Payload: `{ "status": "Delivered", "orderId": "ORD-..." }`
+  void onOrderDelivered(void Function(dynamic) callback) {
+    _socket?.on('orderDelivered', callback);
+  }
+
+  void offOrderDelivered([void Function(dynamic)? callback]) {
+    if (callback != null) {
+      _socket?.off('orderDelivered', callback);
+    } else {
+      _socket?.off('orderDelivered');
+    }
+  }
+
   /// `riderAssigned` — fires when a rider is assigned to a user's order.
   /// Payload: `{ riderId, riderName, riderPhone, orderId }`
   void onRiderAssigned(void Function(dynamic) callback) {
@@ -216,6 +247,20 @@ class SocketService {
       _socket?.off('shopStatusUpdate', callback);
     } else {
       _socket?.off('shopStatusUpdate');
+    }
+  }
+
+  /// `walletUpdate` — fires when the backend processes a transaction or top-up
+  /// Payload: `{ balance: 500.0 }`
+  void onWalletUpdate(void Function(dynamic) callback) {
+    _socket?.on('walletUpdate', callback);
+  }
+
+  void offWalletUpdate([void Function(dynamic)? callback]) {
+    if (callback != null) {
+      _socket?.off('walletUpdate', callback);
+    } else {
+      _socket?.off('walletUpdate');
     }
   }
 

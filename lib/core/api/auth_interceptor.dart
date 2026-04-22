@@ -1,32 +1,22 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 import '../storage/secure_storage_service.dart';
-
-// Interface so the interceptor can trigger a global logout
-abstract class AuthLogoutCallback {
-  void onForceLogout(String reason);
-}
+import '../utils/logger.dart';
 
 class AuthInterceptor extends QueuedInterceptor {
   final Dio _dio;
   final SecureStorageService _storage;
-  final AuthLogoutCallback? _logoutCallback;
   
-  // Static stream for force logouts to be listened by AuthStore or UI
+  // Stream to notify UI of forced logout
   static final _logoutController = StreamController<String>.broadcast();
   static Stream<String> get onForceLogoutStream => _logoutController.stream;
   
-  // Track refresh progress to avoid parallel refresh attempts
   static bool _isRefreshing = false;
-  
-  // Custom Dio for refreshing to avoid interceptor recursion
   late final Dio _refreshDio;
 
-  AuthInterceptor(this._dio, this._storage, {AuthLogoutCallback? logoutCallback}) 
-      : _logoutCallback = logoutCallback {
+  AuthInterceptor(this._dio, this._storage) {
     _refreshDio = Dio(BaseOptions(baseUrl: _dio.options.baseUrl));
-    _refreshDio.interceptors.add(LogInterceptor(requestBody: true, responseBody: true));
+    // Log for refresh requests selectively or via logger
   }
 
   @override
@@ -51,14 +41,12 @@ class AuthInterceptor extends QueuedInterceptor {
     final bool requiresAuth = err.requestOptions.extra['requiresAuth'] ?? false;
     final bool is401 = err.response?.statusCode == 401;
 
-    if (is401 && requiresAuth) {
-      if (err.requestOptions.path.contains('/auth/refresh')) {
-         return handler.next(err);
-      }
-
+    // Only attempt refresh if it's a 401 on an authenticated request, AND it's not the refresh request itself
+    if (is401 && requiresAuth && !err.requestOptions.path.contains('/auth/refresh')) {
       final refreshToken = await _storage.getRefreshToken();
+      
       if (refreshToken == null || refreshToken.isEmpty) {
-        _onRefreshFailed('No refresh token available');
+        _performLogout('No refresh token available');
         return handler.next(err);
       }
 
@@ -68,31 +56,32 @@ class AuthInterceptor extends QueuedInterceptor {
         if (!_isRefreshing) {
           _isRefreshing = true;
           try {
-            debugPrint('AuthInterceptor: Refreshing access token...');
+            AppLogger.d('AuthInterceptor: Refreshing access token...');
+            // In many backends, it's /app/auth/refresh or /auth/refresh
             final response = await _refreshDio.post('/app/auth/refresh', data: {
               'refreshToken': refreshToken,
             });
 
             if (response.statusCode == 200) {
-              newAccessToken = response.data['accessToken'] ?? response.data['token'];
+              newAccessToken = response.data['accessToken'];
               final newRefreshToken = response.data['refreshToken'] ?? refreshToken;
 
               await _storage.saveTokens(
                 access: newAccessToken!,
                 refresh: newRefreshToken,
               );
-              debugPrint('AuthInterceptor: Refresh successful.');
+              AppLogger.i('AuthInterceptor: Token refresh successful.');
             } else {
-               throw Exception('Refresh failed status: ${response.statusCode}');
+              throw Exception('Refresh failed with status: ${response.statusCode}');
             }
           } finally {
             _isRefreshing = false;
           }
         } else {
-          debugPrint('AuthInterceptor: Waiting for existing refresh...');
-          for (int i = 0; i < 10; i++) {
-             await Future.delayed(const Duration(milliseconds: 500));
-             if (!_isRefreshing) break;
+          // Wait for the on-going refresh
+          AppLogger.d('AuthInterceptor: Waiting for existing refresh to complete...');
+          while (_isRefreshing) {
+            await Future.delayed(const Duration(milliseconds: 200));
           }
           newAccessToken = await _storage.getAccessToken();
         }
@@ -101,26 +90,26 @@ class AuthInterceptor extends QueuedInterceptor {
           final opts = err.requestOptions;
           opts.headers['Authorization'] = 'Bearer $newAccessToken';
           
+          // Retry the original request
           final retryResponse = await _dio.fetch(opts);
           return handler.resolve(retryResponse);
         } else {
-          _onRefreshFailed('Token refresh failed');
+          _performLogout('Token refresh failed');
           return handler.next(err);
         }
       } catch (e) {
-        debugPrint('AuthInterceptor: Refresh FAILED - $e');
-        _onRefreshFailed('Exception during token refresh: $e');
+        AppLogger.e('AuthInterceptor: Token refresh exception', e);
+        _performLogout('Session expired or refresh failed');
         return handler.next(err);
       }
     }
     return handler.next(err);
   }
 
-  void _onRefreshFailed(String reason) {
-    debugPrint('AuthInterceptor: FORCE LOGOUT TRIGGERED - $reason');
-    _storage.clearAll();
+  void _performLogout(String reason) async {
+    AppLogger.w('AuthInterceptor: Logout triggered - $reason');
+    await _storage.clearAll();
     _logoutController.add(reason);
-    _logoutCallback?.onForceLogout(reason);
   }
 }
 

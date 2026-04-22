@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-import '../../../core/constants/app_colors.dart';
-import '../../../data/services/location_service.dart';
-import '../../../data/services/geocoding_service.dart';
+import 'package:licius_application/app/core/constants/app_colors.dart';
+import 'package:licius_application/app/data/services/location_service.dart';
+import 'package:licius_application/app/data/services/geocoding_service.dart';
 
 class LocationPickerScreen extends ConsumerStatefulWidget {
   /// Optional initial coordinate to center the map on.
@@ -25,7 +25,7 @@ class _LocationPickerScreenState extends ConsumerState<LocationPickerScreen> {
   
   // State variables for selection
   LatLng? _selectedLocation;
-  Set<Marker> _markers = {};
+  bool _isCameraMoving = false;
   
   // States
   bool _isLoading = true;
@@ -91,7 +91,7 @@ class _LocationPickerScreenState extends ConsumerState<LocationPickerScreen> {
         // Still set a fallback so the map can render
         _selectedLocation = _defaultFallbackLocation;
       });
-      _updateMarker(_defaultFallbackLocation);
+
     } finally {
       setState(() {
         _isLoading = false;
@@ -106,22 +106,34 @@ class _LocationPickerScreenState extends ConsumerState<LocationPickerScreen> {
   Future<void> _updateSelectedLocation(LatLng location) async {
     setState(() {
       _selectedLocation = location;
+      _latCtrl.text = location.latitude.toString();
+      _lngCtrl.text = location.longitude.toString();
+    });
+    _moveCamera(location);
+    // Explicitly trigger the address fetch immediately
+    _onCameraIdle();
+  }
+
+  void _onCameraMove(CameraPosition position) {
+    setState(() {
+      _selectedLocation = position.target;
+      _isCameraMoving = true;
+      _latCtrl.text = position.target.latitude.toString();
+      _lngCtrl.text = position.target.longitude.toString();
+    });
+  }
+
+  Future<void> _onCameraIdle() async {
+    if (_selectedLocation == null) return;
+    setState(() {
+      _isCameraMoving = false;
       _isMapLoading = true;
     });
 
-    // Update lat/lng fields immediately
-    _latCtrl.text = location.latitude.toString();
-    _lngCtrl.text = location.longitude.toString();
-
-    // Move map marker
-    _updateMarker(location);
-    _moveCamera(location);
-
-    // Call geocoding service to fetch address
     final geoService = ref.read(geocodingServiceProvider);
     final addressData = await geoService.getAddressFromLatLng(
-      location.latitude,
-      location.longitude,
+      _selectedLocation!.latitude,
+      _selectedLocation!.longitude,
     );
 
     if (addressData != null && mounted) {
@@ -138,19 +150,6 @@ class _LocationPickerScreenState extends ConsumerState<LocationPickerScreen> {
         _isMapLoading = false;
       });
     }
-  }
-
-  void _updateMarker(LatLng pos) {
-    setState(() {
-      _markers = {
-        Marker(
-          markerId: const MarkerId('selected_location'),
-          position: pos,
-          infoWindow: const InfoWindow(title: 'Selected Delivery Location'),
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-        ),
-      };
-    });
   }
 
   Future<void> _moveCamera(LatLng pos) async {
@@ -198,7 +197,7 @@ class _LocationPickerScreenState extends ConsumerState<LocationPickerScreen> {
         centerTitle: true,
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.accentGreen))
+          ? Center(child: CircularProgressIndicator(color: AppColors.accentGreen))
           : Column(
               children: [
                 // ── Map Section (Flexible) ──────────────────────────────────
@@ -211,7 +210,6 @@ class _LocationPickerScreenState extends ConsumerState<LocationPickerScreen> {
                           target: _selectedLocation ?? _defaultFallbackLocation,
                           zoom: 15.0,
                         ),
-                        markers: _markers,
                         onMapCreated: (GoogleMapController controller) {
                           if (!_mapControllerCompleter.isCompleted) {
                             _mapControllerCompleter.complete(controller);
@@ -219,10 +217,25 @@ class _LocationPickerScreenState extends ConsumerState<LocationPickerScreen> {
                           _mapController = controller;
                         },
                         onTap: _onMapTapped,
+                        onCameraMove: _onCameraMove,
+                        onCameraIdle: _onCameraIdle,
                         myLocationEnabled: true,
-                        myLocationButtonEnabled: false,
+                        myLocationButtonEnabled: true,
                         zoomControlsEnabled: false,
                       ),
+                      
+                      // Center Pin
+                      const Center(
+                        child: Padding(
+                          padding: EdgeInsets.only(bottom: 35.0),
+                          child: Icon(
+                            Icons.location_on,
+                            size: 44,
+                            color: AppColors.accentGreen,
+                          ),
+                        ),
+                      ),
+
                       
                       if (_isMapLoading)
                         const Positioned(
@@ -242,19 +255,6 @@ class _LocationPickerScreenState extends ConsumerState<LocationPickerScreen> {
                           ),
                         ),
 
-                      // Floating "My Location" Button
-                      Positioned(
-                        bottom: 16,
-                        right: 16,
-                        child: FloatingActionButton(
-                          mini: true,
-                          heroTag: 'map_my_loc',
-                          backgroundColor: Colors.white,
-                          foregroundColor: AppColors.accentGreen,
-                          onPressed: _initLocation,
-                          child: const Icon(Icons.my_location_rounded, size: 22),
-                        ),
-                      ),
                     ],
                   ),
                 ),

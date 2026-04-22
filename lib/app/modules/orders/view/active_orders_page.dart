@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../data/services/order_service.dart';
-import 'track_order_page.dart';
+import './order_tracking_page.dart';
 
 class ActiveOrdersPage extends ConsumerStatefulWidget {
   const ActiveOrdersPage({super.key});
@@ -172,11 +173,32 @@ class _ActiveOrderCard extends StatelessWidget {
         (order['totalAmount'] ?? order['grandTotal'] ?? order['total'] ?? 0)
             .toDouble();
 
+    String orderDate = '';
+    final rawDate = order['createdAt'] ?? order['date'] ?? order['orderDate'];
+    if (rawDate != null) {
+      try {
+        final DateTime dt = DateTime.parse(rawDate.toString()).toLocal();
+        orderDate = '${dt.day}/${dt.month}/${dt.year} at ${dt.hour > 12 ? dt.hour - 12 : (dt.hour == 0 ? 12 : dt.hour)}:${dt.minute.toString().padLeft(2, '0')} ${dt.hour >= 12 ? 'PM' : 'AM'}';
+      } catch (_) {}
+    }
+
     // Items
     final items = order['items'] as List? ?? [];
-    final String itemsSummary = items.isNotEmpty
-        ? items.map((i) => i['name'] ?? i['productName'] ?? 'Item').join(', ')
-        : 'See details';
+    String itemsSummary = 'See details';
+    if (items.isNotEmpty) {
+      final first = items.first;
+      final product = first['product'];
+      final name = (product is Map && product['name'] != null)
+          ? product['name'].toString()
+          : (first['name'] ?? first['productName'] ?? 'Item').toString();
+      final qty = first['quantity']?.toString() ?? '1';
+
+      if (items.length > 1) {
+        itemsSummary = '${qty}x $name & ${items.length - 1} more';
+      } else {
+        itemsSummary = '${qty}x $name';
+      }
+    }
 
     // Rider info
     final rider = order['rider'] ?? order['riderId'];
@@ -203,48 +225,49 @@ class _ActiveOrderCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: Colors.grey.shade200),
       ),
-      child: InkWell(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => TrackOrderPage(
-                orderId: (order['orderId'] ?? order['_id'] ?? order['id'] ?? '')
-                    .toString(),
-                status: status,
-                deliveryAddress: deliveryAddressMap is Map
-                    ? Map<String, dynamic>.from(deliveryAddressMap)
-                    : null,
-              ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Top colored header ──────────────────────────────────────────
+          Container(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+            decoration: BoxDecoration(
+              color: statusInfo['bg'] as Color,
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(24)),
             ),
-          );
-        },
-        borderRadius: BorderRadius.circular(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Top colored header ──────────────────────────────────────────
-            Container(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-              decoration: BoxDecoration(
-                color: statusInfo['bg'] as Color,
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(24)),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Order #$orderId',
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w900,
-                              fontSize: 15,
-                              color: Colors.white)),
-                    ],
-                  ),
-                  Container(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Order #$orderId',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 15,
+                            color: Colors.white)),
+                    if (orderDate.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text('Placed: $orderDate',
+                            style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500)),
+                      ),
+                  ],
+                ),
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => OrderTrackingPage(order: order),
+                      ),
+                    );
+                  },
+                  child: Container(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                     decoration: BoxDecoration(
@@ -260,36 +283,41 @@ class _ActiveOrderCard extends StatelessWidget {
                           fontSize: 11),
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
+          ),
 
-            // ── Items summary ────────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-              child: Row(
-                children: [
-                  const Icon(Icons.set_meal_outlined,
-                      size: 18, color: Color(0xFF68B92E)),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(itemsSummary,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w500,
-                            fontSize: 13,
-                            color: Color(0xFF1A1A1A))),
-                  ),
-                ],
-              ),
+          // ── Items summary ────────────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+            child: Row(
+              children: [
+                const Icon(Icons.set_meal_outlined,
+                    size: 18, color: Color(0xFF68B92E)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(itemsSummary,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w500,
+                          fontSize: 13,
+                          color: Color(0xFF1A1A1A))),
+                ),
+              ],
             ),
+          ),
 
-            const SizedBox(height: 12),
+          const SizedBox(height: 12),
 
-            // ── Location ─────────────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+          // ── Location ─────────────────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: GestureDetector(
+              onTap: () {
+                // Absorb tap: do not open the track order page
+              },
               child: Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
@@ -320,85 +348,86 @@ class _ActiveOrderCard extends StatelessWidget {
                 ),
               ),
             ),
+          ),
 
-            const SizedBox(height: 12),
+          const SizedBox(height: 12),
 
-            // ── Rider chip (if assigned) ─────────────────────────────────────
-            if (riderName.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF0F4EC),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 16,
-                        backgroundColor: const Color(0xFF114F3B),
-                        child: Text(
-                          riderName.isNotEmpty
-                              ? riderName[0].toUpperCase()
-                              : 'R',
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold),
-                        ),
+          // ── Rider chip (if assigned) ─────────────────────────────────────
+          if (riderName.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0F4EC),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 16,
+                      backgroundColor: const Color(0xFF114F3B),
+                      child: Text(
+                        riderName.isNotEmpty ? riderName[0].toUpperCase() : 'R',
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold),
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(riderName,
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold, fontSize: 13)),
-                            const Text('Your delivery partner',
-                                style: TextStyle(
-                                    fontSize: 11, color: Colors.black54)),
-                          ],
-                        ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(riderName,
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 13)),
+                          const Text('Your delivery partner',
+                              style: TextStyle(
+                                  fontSize: 11, color: Colors.black54)),
+                        ],
                       ),
-                      if (riderPhone.isNotEmpty)
-                        GestureDetector(
-                          onTap: () {
-                            HapticFeedback.lightImpact();
-                            // open dialer
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF114F3B),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Icon(Icons.call,
-                                color: Colors.white, size: 16),
+                    ),
+                    if (riderPhone.isNotEmpty)
+                      GestureDetector(
+                        onTap: () async {
+                          HapticFeedback.lightImpact();
+                          final url = Uri.parse('tel:$riderPhone');
+                          if (await canLaunchUrl(url)) {
+                            await launchUrl(url);
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF114F3B),
+                            borderRadius: BorderRadius.circular(10),
                           ),
+                          child: const Icon(Icons.call,
+                              color: Colors.white, size: 16),
                         ),
-                    ],
-                  ),
+                      ),
+                  ],
                 ),
               ),
-
-            // ── Footer ───────────────────────────────────────────────────────
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
-              child: Row(
-                children: [
-                  Text('₹${total.toStringAsFixed(0)}',
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w900,
-                          fontSize: 20,
-                          color: Color(0xFF114F3B))),
-                ],
-              ),
             ),
-          ],
-        ),
+
+          // ── Footer ───────────────────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+            child: Row(
+              children: [
+                Text('₹${total.toStringAsFixed(0)}',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 20,
+                        color: Color(0xFF114F3B))),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
