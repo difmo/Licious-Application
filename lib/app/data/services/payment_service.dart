@@ -15,8 +15,6 @@ class PaymentService {
     required Function(PaymentFailureResponse) onFailure,
     required Function(ExternalWalletResponse) onExternalWallet,
   }) {
-    // Clear any previously registered listeners first to prevent
-    // duplicate event firings (e.g., on hot reload or re-init).
     _razorpay.clear();
     _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, onSuccess);
     _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, onFailure);
@@ -50,7 +48,7 @@ class PaymentService {
 
       // 2. Open Razorpay Checkout
       var options = {
-        'key': 'rzp_test_SUXGPUpcFjOpXn', // Using the test key provided
+        'key': 'rzp_test_SUXGPUpcFjOpXn',
         'amount': (amount * 100).toInt(),
         'name': 'Shrimpbite',
         'order_id': orderId,
