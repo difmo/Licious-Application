@@ -210,10 +210,10 @@ class ApiClient {
       await SecureStorageService().getAccessToken();
   static Future<void> saveTokens({required String access, String? refresh}) async {
     final storage = SecureStorageService();
-    await storage.saveTokens(
-      access: access,
-      refresh: refresh ?? (await storage.getRefreshToken()) ?? '',
-    );
+    await storage.saveAccessToken(access);
+    if (refresh != null && refresh.isNotEmpty) {
+      await storage.saveRefreshToken(refresh);
+    }
   }
 
   static Future<void> saveToken(String token) async {

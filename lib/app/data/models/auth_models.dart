@@ -93,8 +93,8 @@ class AuthResponseModel {
     return AuthResponseModel(
       success: json['success'] ?? false,
       message: json['message'] ?? '',
-      token: json['token'] ?? json['accessToken'] ?? json['idToken'],
-      refreshToken: json['refreshToken'],
+      token: json['token'] ?? json['accessToken'] ?? json['access_token'] ?? json['idToken'],
+      refreshToken: json['refreshToken'] ?? json['refresh_token'],
       otp: json['otp']?.toString(),
       data: (json['data'] ?? json['user'] ?? json['profile']) is Map<String, dynamic>
           ? UserModel.fromJson((json['data'] ?? json['user'] ?? json['profile']) as Map<String, dynamic>)

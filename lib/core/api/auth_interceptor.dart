@@ -63,8 +63,9 @@ class AuthInterceptor extends QueuedInterceptor {
             });
 
             if (response.statusCode == 200) {
-              newAccessToken = response.data['accessToken'];
-              final newRefreshToken = response.data['refreshToken'] ?? refreshToken;
+              final data = response.data;
+              newAccessToken = data['accessToken'] ?? data['access_token'];
+              final newRefreshToken = data['refreshToken'] ?? data['refresh_token'] ?? refreshToken;
 
               await _storage.saveTokens(
                 access: newAccessToken!,
@@ -106,10 +107,20 @@ class AuthInterceptor extends QueuedInterceptor {
     return handler.next(err);
   }
 
+  static bool _isLoggingOut = false;
+
   void _performLogout(String reason) async {
-    AppLogger.w('AuthInterceptor: Logout triggered - $reason');
-    await _storage.clearAll();
-    _logoutController.add(reason);
+    if (_isLoggingOut) return;
+    _isLoggingOut = true;
+    
+    try {
+      AppLogger.w('AuthInterceptor: Logout triggered - $reason');
+      await _storage.clearAll();
+      _logoutController.add(reason);
+    } finally {
+      // Reset after a delay to allow UI to transition
+      Future.delayed(const Duration(seconds: 2), () => _isLoggingOut = false);
+    }
   }
 }
 

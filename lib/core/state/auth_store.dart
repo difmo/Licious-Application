@@ -262,7 +262,7 @@ class AuthStore extends Notifier<AuthState> {
         
         final user = response.data ?? UserModel.placeholder(phoneNumber);
         final access = response.token ?? ''; 
-        final refresh = response.refreshToken ?? '';
+        final refresh = response.refreshToken ?? (await _storage.getRefreshToken()) ?? '';
 
         await _persistAuth(user, access, refresh);
         unawaited(syncFcmToken());

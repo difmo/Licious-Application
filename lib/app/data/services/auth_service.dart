@@ -86,7 +86,10 @@ class AuthService {
       if (response.success &&
           response.token != null &&
           response.token!.isNotEmpty) {
-        await ApiClient.saveToken(response.token!);
+        await ApiClient.saveTokens(
+          access: response.token!,
+          refresh: response.refreshToken,
+        );
       }
       return response;
     } on ApiException catch (e) {
@@ -116,7 +119,10 @@ class AuthService {
       if (response.success &&
           response.token != null &&
           response.token!.isNotEmpty) {
-        await ApiClient.saveToken(response.token!);
+        await ApiClient.saveTokens(
+          access: response.token!,
+          refresh: response.refreshToken,
+        );
       }
       return response;
     } on ApiException catch (e) {
