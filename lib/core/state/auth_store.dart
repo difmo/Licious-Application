@@ -181,6 +181,17 @@ class AuthStore extends Notifier<AuthState> {
       // 1. Sanitize: Remove all spaces, dashes, parentheses
       String formattedPhone = phoneNumber.replaceAll(RegExp(r'[\s\-\(\)]'), '');
       
+      // Apple Test Account Bypass
+      if (formattedPhone == '1234512345' || formattedPhone == '1002003004') {
+        AppLogger.i('AuthStore: Bypassing Firebase Auth for test account: $formattedPhone');
+        state = state.copyWith(
+          status: AuthStatus.initial,
+          successMessage: 'OTP sent to your phone via SMS',
+          verificationId: 'bypass_verification_id',
+        );
+        return;
+      }
+
       // 2. Intelligent Auto-Prefixing for India (default)
       if (formattedPhone.length == 10 && !formattedPhone.startsWith('+')) {
         formattedPhone = '+91$formattedPhone';
@@ -320,6 +331,14 @@ class AuthStore extends Notifier<AuthState> {
       return;
     }
 
+    // Apple Test Account Bypass
+    String formattedPhone = phoneNumber.replaceAll(RegExp(r'[\s\-\(\)]'), '');
+    if ((formattedPhone == '1234512345' || formattedPhone == '1002003004') && otp == '123456') {
+      AppLogger.i('AuthStore: Bypassing Firebase Verify OTP for test account: $formattedPhone');
+      await _verifyBackendOtpBypass(formattedPhone, otp);
+      return;
+    }
+
     // 1. Create credential from SMS code
     PhoneAuthCredential credential = PhoneAuthProvider.credential(
       verificationId: verificationId,
@@ -328,6 +347,44 @@ class AuthStore extends Notifier<AuthState> {
 
     // 2. Delegate to helper
     await _signInWithFirebaseCredential(phoneNumber, credential);
+  }
+
+  Future<void> _verifyBackendOtpBypass(String phoneNumber, String otp) async {
+    if (state.status == AuthStatus.loading || state.status == AuthStatus.authenticated) {
+       return;
+    }
+
+    try {
+      state = state.copyWith(status: AuthStatus.loading, error: null);
+
+      final fcmToken = await FCMService().getToken();
+      final response = await ref.read(authServiceProvider).verifyFirebaseOtp(
+            phoneNumber: phoneNumber,
+            idToken: "",
+            fcmToken: fcmToken,
+          );
+
+      if (response.success) {
+        AppLogger.i('AuthStore: Authentication SUCCESS (Bypass) for $phoneNumber');
+        
+        final user = response.data ?? UserModel.placeholder(phoneNumber);
+        final access = response.token ?? ''; 
+        final refresh = response.refreshToken ?? '';
+
+        await _persistAuth(user, access, refresh);
+        unawaited(syncFcmToken());
+      } else {
+        AppLogger.w('AuthStore: verification result - FAILED: ${response.message}');
+        if (state.status != AuthStatus.authenticated) {
+            state = AuthState.unauthenticated(error: _handleAuthError(response.message));
+        }
+      }
+    } catch (e, stack) {
+      AppLogger.e('AuthStore: Error finalizing test sign-in', e, stack);
+      if (state.status != AuthStatus.authenticated) {
+          state = AuthState.unauthenticated(error: _handleAuthError(e));
+      }
+    }
   }
 
   Future<void> logout() async {
