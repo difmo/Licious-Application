@@ -56,11 +56,18 @@ class _HomeBannerState extends State<HomeBanner> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        SizedBox(
-          height: 180,
-          child: PageView.builder(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final double width = constraints.maxWidth;
+        final bool isTablet = width > 600;
+        final double bannerHeight = isTablet ? 280 : 180;
+        final double horizontalPadding = isTablet ? 32.0 : 16.0;
+
+        return Column(
+          children: [
+            SizedBox(
+              height: bannerHeight,
+              child: PageView.builder(
             controller: _pageController,
             onPageChanged: (int page) {
               setState(() {
@@ -71,7 +78,7 @@ class _HomeBannerState extends State<HomeBanner> {
             physics: const BouncingScrollPhysics(),
             itemBuilder: (context, index) {
               return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
                 child: BounceWidget(
                   onTap: () {
                     // Tap action for banner
@@ -89,7 +96,7 @@ class _HomeBannerState extends State<HomeBanner> {
                           Image.asset(
                             _bannerImages[index],
                             width: double.infinity,
-                            height: 180,
+                            height: bannerHeight,
                             fit: BoxFit.cover,
                             cacheHeight: 460, // Fixed: optimization for memory (Physical pixels ~180 * 2.55)
                             errorBuilder: (context, error, stackTrace) =>
@@ -143,7 +150,9 @@ class _HomeBannerState extends State<HomeBanner> {
             ),
           ),
         ),
-      ],
-    ).animate().fadeIn(duration: 500.ms, curve: Curves.easeIn);
+          ],
+        ).animate().fadeIn(duration: 500.ms, curve: Curves.easeIn);
+      },
+    );
   }
 }

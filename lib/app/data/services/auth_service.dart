@@ -100,39 +100,6 @@ class AuthService {
     }
   }
 
-  // ── Verify Firebase OTP (Preferred) ───────────────────────────────────────────
-  Future<AuthResponseModel> verifyFirebaseOtp({
-    required String phoneNumber,
-    required String idToken,
-    String? fcmToken,
-  }) async {
-    try {
-      final data = await _client.post(
-        '${ApiClient.otpBaseUrl}/verify-firebase',
-        data: {
-          'phoneNumber': phoneNumber,
-          'idToken': idToken,
-          if (fcmToken != null) 'fcmToken': fcmToken,
-        },
-      );
-      final response = AuthResponseModel.fromJson(data);
-      if (response.success &&
-          response.token != null &&
-          response.token!.isNotEmpty) {
-        await ApiClient.saveTokens(
-          access: response.token!,
-          refresh: response.refreshToken,
-        );
-      }
-      return response;
-    } on ApiException catch (e) {
-      return AuthResponseModel(success: false, message: e.message);
-    } catch (e) {
-      return AuthResponseModel(
-          success: false, message: 'Unexpected error: ${e.toString()}');
-    }
-  }
-
   // ── Profile ───────────────────────────────────────────────────────────────
   Future<AuthResponseModel> getProfile() async {
     try {
@@ -206,5 +173,29 @@ class AuthService {
   // ── Logout ────────────────────────────────────────────────────────────────
   Future<void> logout() async {
     await ApiClient.clearToken();
+  }
+
+  // ── Delete Account ─────────────────────────────────────────────────────────
+  Future<AuthResponseModel> deleteAccount({
+    required String name,
+    required String email,
+    required String reason,
+  }) async {
+    try {
+      final json = await _client.post(
+        '${ApiClient.baseUrl}/delete-account-request',
+        data: {
+          'name': name,
+          'email': email,
+          'region': reason,
+        },
+        requiresAuth: true,
+      );
+      return AuthResponseModel.fromJson(json);
+    } on ApiException catch (e) {
+      return AuthResponseModel(success: false, message: e.message);
+    } catch (e) {
+      return AuthResponseModel(success: false, message: e.toString());
+    }
   }
 }

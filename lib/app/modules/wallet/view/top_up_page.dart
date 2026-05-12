@@ -5,7 +5,6 @@ import '../../../data/services/payment_service.dart';
 import '../../../data/services/wallet_service.dart';
 import '../../../data/services/db_service.dart';
 import '../../../core/constants/app_colors.dart';
-import './wallet_page.dart';
 import '../provider/wallet_provider.dart';
 
 class TopUpPage extends ConsumerStatefulWidget {

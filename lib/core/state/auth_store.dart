@@ -8,7 +8,6 @@ import '../storage/secure_storage_service.dart';
 import '../api/auth_interceptor.dart';
 import '../../app/data/network/api_client.dart';
 import '../../app/data/services/fcm_service.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../utils/logger.dart';
 
 // Unified Auth Provider for the app
@@ -51,13 +50,14 @@ class AuthState {
     String? otp,
     String? verificationId,
     bool clearVerificationId = false,
+    bool clearOtp = false,
   }) {
     return AuthState(
       status: status ?? this.status,
       user: user ?? this.user,
       error: error ?? this.error,
       successMessage: successMessage ?? this.successMessage,
-      otp: otp ?? this.otp,
+      otp: clearOtp ? null : (otp ?? this.otp),
       verificationId:
           clearVerificationId ? null : (verificationId ?? this.verificationId),
     );
@@ -77,7 +77,8 @@ class AuthStore extends Notifier<AuthState> {
     _logoutSubscription = AuthInterceptor.onForceLogoutStream.listen((reason) {
       // Don't kill the session if we are in the middle of verifying (phone verification id exists)
       if (state.verificationId != null || state.status == AuthStatus.loading) {
-        AppLogger.d('AuthStore: Ignoring force logout during active auth flow.');
+        AppLogger.d(
+            'AuthStore: Ignoring force logout during active auth flow.');
         return;
       }
       AppLogger.w('AuthStore: Force logout triggered. Reason: $reason');
@@ -94,11 +95,12 @@ class AuthStore extends Notifier<AuthState> {
   Future<void> init() async {
     // Avoid double loading
     if (state.status == AuthStatus.loading) return;
-    
+
     state = AuthState.loading();
 
     try {
       final String? token = await _storage.getAccessToken();
+      final String? refreshToken = await _storage.getRefreshToken();
       final String? cachedUserJson = await _storage.getUser();
 
       if (token != null && token.isNotEmpty) {
@@ -122,10 +124,12 @@ class AuthStore extends Notifier<AuthState> {
           await _storage.saveUser(jsonEncode(response.data!.toJson()));
           state = AuthState.authenticated(response.data!);
         } else {
-          AppLogger.e('AuthStore: Background refresh failed: ${response.message}');
-          
+          AppLogger.e(
+              'AuthStore: Background refresh failed: ${response.message}');
+
           // If explicitly unauthorized, clear the session
-          if (response.message.contains('401') || response.message.contains('Unauthorized')) {
+          if (response.message.contains('401') ||
+              response.message.contains('Unauthorized')) {
             AppLogger.w('AuthStore: Credentials invalid. Clearing session.');
             await logout();
           }
@@ -140,7 +144,8 @@ class AuthStore extends Notifier<AuthState> {
     }
   }
 
-  Future<void> _persistAuth(UserModel user, String access, String refresh) async {
+  Future<void> _persistAuth(
+      UserModel user, String access, String refresh) async {
     await _storage.saveTokens(access: access, refresh: refresh);
     await _storage.saveUser(jsonEncode(user.toJson()));
     state = AuthState.authenticated(user);
@@ -153,16 +158,20 @@ class AuthStore extends Notifier<AuthState> {
 
   /// Calls the detection API. Returns the action ("otp" only now).
   /// Does NOT change auth state — it's a pure lookup.
-  Future<CheckUserResponseModel?> checkUser({required String phoneNumber}) async {
+  Future<CheckUserResponseModel?> checkUser(
+      {required String phoneNumber}) async {
     try {
-      return await ref.read(authServiceProvider).checkUser(phoneNumber: phoneNumber);
+      return await ref
+          .read(authServiceProvider)
+          .checkUser(phoneNumber: phoneNumber);
     } catch (e) {
       debugPrint('AuthStore.checkUser error: $e');
       return null;
     }
   }
 
-  Future<void> sendOtp({required String phoneNumber, bool force = false}) async {
+  Future<void> sendOtp(
+      {required String phoneNumber, bool force = false}) async {
     // Only skip if we already have a verificationId (OTP sent)
     // or if we are actively in a loading state specifically triggered by this store's auth flow
     if (state.status == AuthStatus.loading) {
@@ -171,16 +180,36 @@ class AuthStore extends Notifier<AuthState> {
     }
 
     if (!force && state.verificationId != null) {
-      AppLogger.d('AuthStore: Skipping redundant OTP request (session already active).');
+      AppLogger.d(
+          'AuthStore: Skipping redundant OTP request (session already active).');
       return;
     }
 
     state = state.copyWith(
-        status: AuthStatus.loading, error: null, clearVerificationId: true);
+      status: AuthStatus.loading,
+      error: null,
+      clearVerificationId: true,
+      clearOtp: true,
+    );
     try {
       // 1. Sanitize: Remove all spaces, dashes, parentheses
       String formattedPhone = phoneNumber.replaceAll(RegExp(r'[\s\-\(\)]'), '');
-      
+
+      // Apple Test Account Bypass (Handle both raw and +91 prefixed)
+      if (formattedPhone == '1234512345' ||
+          formattedPhone == '+911234512345' ||
+          formattedPhone == '1002003004' ||
+          formattedPhone == '+911002003004') {
+        AppLogger.i(
+            'AuthStore: Bypassing Firebase Auth for test account: $formattedPhone');
+        state = state.copyWith(
+          status: AuthStatus.initial,
+          successMessage: 'OTP sent to your phone via SMS',
+          verificationId: 'bypass_verification_id',
+        );
+        return;
+      }
+
       // 2. Intelligent Auto-Prefixing for India (default)
       if (formattedPhone.length == 10 && !formattedPhone.startsWith('+')) {
         formattedPhone = '+91$formattedPhone';
@@ -188,127 +217,56 @@ class AuthStore extends Notifier<AuthState> {
           formattedPhone.startsWith('91')) {
         formattedPhone = '+$formattedPhone';
       } else if (!formattedPhone.startsWith('+')) {
-        // Fallback: If it still lacks +, assume +91 or warn? 
+        // Fallback: If it still lacks +, assume +91 or warn?
         // For now, if it's missing +, we add + as a last resort if it looks like E.164 without prefix
         if (formattedPhone.length > 5) {
-           formattedPhone = '+$formattedPhone';
+          formattedPhone = '+$formattedPhone';
         }
       }
 
-      AppLogger.d('AuthStore: Requesting OTP for "$formattedPhone" (Length: ${formattedPhone.length})');
+      AppLogger.d(
+          'AuthStore: Requesting OTP for "$formattedPhone" (Length: ${formattedPhone.length})');
 
-      await FirebaseAuth.instance.verifyPhoneNumber(
-        phoneNumber: formattedPhone,
-        verificationCompleted: (PhoneAuthCredential credential) async {
-          // Automatic SMS code retrieval or instant verification
-          AppLogger.i('AuthStore: Phone verification completed automatically.');
-          await _signInWithFirebaseCredential(formattedPhone, credential);
-        },
-        verificationFailed: (FirebaseAuthException e) {
-          AppLogger.e(
-              'AuthStore: Phone verification failed: ${e.code} - ${e.message}');
-          state = AuthState.unauthenticated(
-              error: e.message ?? 'Phone verification failed');
-        },
-        codeSent: (String verificationId, int? resendToken) {
-          AppLogger.i('AuthStore: Code sent to $formattedPhone. Verification ID: $verificationId');
-          state = state.copyWith(
-            status: AuthStatus.initial,
-            successMessage: 'OTP sent to your phone via SMS',
-            verificationId: verificationId,
-          );
-        },
-        codeAutoRetrievalTimeout: (String verificationId) {
-          state = state.copyWith(verificationId: verificationId);
-        },
-      );
+      final backendResponse = await ref
+          .read(authServiceProvider)
+          .sendOtp(phoneNumber: formattedPhone);
+
+      if (backendResponse.success) {
+        AppLogger.i('AuthStore: OTP sent successfully via backend.');
+        state = state.copyWith(
+          status: AuthStatus.initial,
+          successMessage: 'OTP sent to your phone via SMS',
+          verificationId: 'backend_session', // Dummy ID to satisfy UI logic
+          otp: backendResponse.otp,
+        );
+      } else {
+        AppLogger.e(
+            'AuthStore: Backend OTP request failed: ${backendResponse.message}');
+        state = AuthState.unauthenticated(error: backendResponse.message);
+      }
     } catch (e) {
       state = AuthState.unauthenticated(error: e.toString());
     }
   }
 
-  /// Private helper to finalize login with a Firebase credential
-  Future<void> _signInWithFirebaseCredential(
-      String phoneNumber, PhoneAuthCredential credential) async {
-    // Prevent concurrent verification attempts
-    if (state.status == AuthStatus.loading || state.status == AuthStatus.authenticated) {
-       AppLogger.d('AuthStore: Ignoring verification request (already loading or authenticated).');
-       return;
-    }
-
-    try {
-      state = state.copyWith(status: AuthStatus.loading, error: null);
-
-      // 1. Sign in to Firebase to get the idToken
-      final userCredential =
-          await FirebaseAuth.instance.signInWithCredential(credential);
-      final firebaseIdToken = await userCredential.user?.getIdToken();
-
-      if (firebaseIdToken == null) {
-        state = AuthState.unauthenticated(error: 'Failed to access Firebase');
-        return;
-      }
-
-      // 2. Verify on backend and get Shrimpbite JWT
-      final fcmToken = await FCMService().getToken();
-      final response = await ref.read(authServiceProvider).verifyFirebaseOtp(
-            phoneNumber: phoneNumber,
-            idToken: firebaseIdToken,
-            fcmToken: fcmToken,
-          );
-
-      if (response.success) {
-        AppLogger.i('AuthStore: Authentication SUCCESS for $phoneNumber');
-        
-        final user = response.data ?? UserModel.placeholder(phoneNumber);
-        final access = response.token ?? ''; 
-        final refresh = response.refreshToken ?? (await _storage.getRefreshToken()) ?? '';
-
-        await _persistAuth(user, access, refresh);
-        unawaited(syncFcmToken());
-      } else {
-        AppLogger.w('AuthStore: verification result - FAILED: ${response.message}');
-        if (state.status != AuthStatus.authenticated) {
-            state = AuthState.unauthenticated(error: _handleAuthError(response.message));
-        }
-      }
-    } catch (e, stack) {
-      AppLogger.e('AuthStore: Error finalizing Firebase sign-in', e, stack);
-      if (state.status != AuthStatus.authenticated) {
-          state = AuthState.unauthenticated(error: _handleAuthError(e));
-      }
-    }
-  }
-
   String _handleAuthError(dynamic e) {
-    if (e is FirebaseAuthException) {
-      switch (e.code) {
-        case 'invalid-verification-code':
-          return 'The OTP you entered is invalid. Please check and try again.';
-        case 'session-expired':
-          return 'This OTP session has expired. Please request a new one.';
-        case 'too-many-requests':
-          return 'Too many login attempts. Please try again later.';
-        default:
-          return e.message ?? 'Authentication failed. Please try again.';
-      }
-    }
-    
     final msg = e.toString();
-    if (msg.contains('invalid-verification-code') || msg.contains('invalid OTP')) {
+    if (msg.contains('invalid-verification-code') ||
+        msg.contains('invalid OTP')) {
       return 'The OTP you entered is incorrect.';
     }
     if (msg.contains('session-expired')) {
       return 'OTP has expired. Please resend code.';
     }
-    
-    // Clean up generic Firebase prefix if present
+
+    // Clean up generic error prefix if present
     return msg.replaceFirst(RegExp(r'\[.*?\] '), '');
   }
 
   Future<void> verifyOtp(
       {required String phoneNumber, required String otp}) async {
-    if (state.status == AuthStatus.authenticated || state.status == AuthStatus.loading) {
+    if (state.status == AuthStatus.authenticated ||
+        state.status == AuthStatus.loading) {
       AppLogger.d('AuthStore: Skipping verifyOtp (status: ${state.status}).');
       return;
     }
@@ -320,14 +278,97 @@ class AuthStore extends Notifier<AuthState> {
       return;
     }
 
-    // 1. Create credential from SMS code
-    PhoneAuthCredential credential = PhoneAuthProvider.credential(
-      verificationId: verificationId,
-      smsCode: otp,
-    );
+    // Apple Test Account Bypass
+    String formattedPhone = phoneNumber.replaceAll(RegExp(r'[\s\-\(\)]'), '');
+    if ((formattedPhone == '1234512345' || formattedPhone == '1002003004') &&
+        otp == '123456') {
+      AppLogger.i(
+          'AuthStore: Bypassing Firebase Verify OTP for test account: $formattedPhone');
+      await _verifyBackendOtpBypass(formattedPhone, otp);
+      return;
+    }
 
-    // 2. Delegate to helper
-    await _signInWithFirebaseCredential(phoneNumber, credential);
+    // Switch to Backend Verify OTP to avoid Firebase dependencies and reCAPTCHA
+    try {
+      state = state.copyWith(status: AuthStatus.loading, error: null);
+
+      final fcmToken = await FCMService().getToken();
+      final response = await ref.read(authServiceProvider).verifyOtp(
+            phoneNumber: phoneNumber,
+            otp: otp,
+          );
+
+      if (response.success) {
+        AppLogger.i(
+            'AuthStore: Backend Authentication SUCCESS for $phoneNumber');
+
+        final user = response.data ?? UserModel.placeholder(phoneNumber);
+        final access = response.token ?? '';
+        final refresh = response.refreshToken ?? '';
+
+        if (refresh.isEmpty) {
+          AppLogger.w(
+              'AuthStore: No refresh token received in backend response.');
+        }
+
+        await _persistAuth(user, access, refresh);
+        unawaited(syncFcmToken());
+      } else {
+        AppLogger.w(
+            'AuthStore: Backend verification FAILED: ${response.message}');
+        state = AuthState.unauthenticated(
+            error: _handleAuthError(response.message));
+      }
+    } catch (e, stack) {
+      AppLogger.e('AuthStore: Error during backend verifyOtp', e, stack);
+      state = AuthState.unauthenticated(error: _handleAuthError(e));
+    }
+  }
+
+  Future<void> _verifyBackendOtpBypass(String phoneNumber, String otp) async {
+    if (state.status == AuthStatus.loading ||
+        state.status == AuthStatus.authenticated) {
+      return;
+    }
+
+    try {
+      state = state.copyWith(status: AuthStatus.loading, error: null);
+
+      final fcmToken = await FCMService().getToken();
+      final response = await ref.read(authServiceProvider).verifyOtp(
+            phoneNumber: phoneNumber,
+            otp: otp,
+          );
+
+      if (response.success) {
+        AppLogger.i(
+            'AuthStore: Authentication SUCCESS (Bypass) for $phoneNumber');
+
+        final user = response.data ?? UserModel.placeholder(phoneNumber);
+        final access = response.token ?? '';
+        final refresh = response.refreshToken ?? '';
+
+        if (refresh.isEmpty) {
+          AppLogger.w(
+              'AuthStore: No refresh token received in bypass response.');
+        }
+
+        await _persistAuth(user, access, refresh);
+        unawaited(syncFcmToken());
+      } else {
+        AppLogger.w(
+            'AuthStore: verification result - FAILED: ${response.message}');
+        if (state.status != AuthStatus.authenticated) {
+          state = AuthState.unauthenticated(
+              error: _handleAuthError(response.message));
+        }
+      }
+    } catch (e, stack) {
+      AppLogger.e('AuthStore: Error finalizing test sign-in', e, stack);
+      if (state.status != AuthStatus.authenticated) {
+        state = AuthState.unauthenticated(error: _handleAuthError(e));
+      }
+    }
   }
 
   Future<void> logout() async {
@@ -347,10 +388,37 @@ class AuthStore extends Notifier<AuthState> {
   Future<void> syncFcmToken() async {
     final user = state.user;
     if (user == null || user.id == 'placeholder') return;
-    
+
     final fcmToken = await FCMService().getToken();
     if (fcmToken != null) {
       await ref.read(authServiceProvider).updateFcmToken(fcmToken: fcmToken);
+    }
+  }
+
+  Future<AuthResponseModel> deleteAccount({String? reason}) async {
+    final user = state.user;
+    if (user == null) {
+      return AuthResponseModel(success: false, message: 'User not found');
+    }
+
+    state = state.copyWith(status: AuthStatus.loading);
+    try {
+      final response = await ref.read(authServiceProvider).deleteAccount(
+            name: user.fullName,
+            email: user.email,
+            reason: reason ?? 'deleat account',
+          );
+      if (response.success) {
+        await logout();
+      } else {
+        state = state.copyWith(
+            status: AuthStatus.authenticated, error: response.message);
+      }
+      return response;
+    } catch (e) {
+      state =
+          state.copyWith(status: AuthStatus.authenticated, error: e.toString());
+      return AuthResponseModel(success: false, message: e.toString());
     }
   }
 }

@@ -581,7 +581,7 @@ class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
                   children: [
                     Expanded(
                       child: Text(
-                        'Recent Notifications (${unreadCount} new)',
+                        'Recent Notifications ($unreadCount new)',
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
@@ -624,7 +624,7 @@ class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
                   ],
                 ),
                 const SizedBox(height: 8),
-                ...list.map((n) => _buildIncomingNotificationItem(n)).toList(),
+                ...list.map((n) => _buildIncomingNotificationItem(n)),
                 const SizedBox(height: 80), // Padding for scrollability
               ],
             ),
@@ -889,7 +889,7 @@ class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
                 children: [
                   Switch(
                     value: _makeDefaultCard,
-                    activeColor: const Color(0xFF68B92E),
+                    activeThumbColor: const Color(0xFF68B92E),
                     activeTrackColor: const Color(0xFF68B92E).withValues(alpha: 0.3),
                     inactiveThumbColor: Colors.grey.shade400,
                     inactiveTrackColor: Colors.grey.shade200,

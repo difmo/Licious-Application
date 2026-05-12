@@ -128,10 +128,12 @@ class _ShippingAddressPageState extends ConsumerState<ShippingAddressPage> {
       final service = cart.addressService!;
 
       String combinedAddress = '';
-      if (_nameCtrl.text.trim().isNotEmpty)
+      if (_nameCtrl.text.trim().isNotEmpty) {
         combinedAddress += 'Name: ${_nameCtrl.text.trim()}, ';
-      if (_phoneCtrl.text.trim().isNotEmpty)
+      }
+      if (_phoneCtrl.text.trim().isNotEmpty) {
         combinedAddress += 'Phone: ${_phoneCtrl.text.trim()}, ';
+      }
       combinedAddress += _fullAddressCtrl.text.trim();
 
       final result = await service.saveAddress(
@@ -674,7 +676,7 @@ class _ShippingAddressPageState extends ConsumerState<ShippingAddressPage> {
                         color: Color(0xFF1B2D1F))),
                 Switch(
                   value: _useProfileDetails,
-                  activeColor: AppColors.accentGreen,
+                  activeThumbColor: AppColors.accentGreen,
                   activeTrackColor: const Color(0xFFEBFFD7),
                   onChanged: (v) {
                     setState(() {

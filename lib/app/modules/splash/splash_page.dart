@@ -43,9 +43,9 @@ class _SplashPageState extends ConsumerState<SplashPage>
       ref.read(authProvider.notifier).init();
     });
 
-    // Enforce a minimum display time for the splash screen (0.5 seconds)
+    // Enforce a minimum display time for the splash screen (1.5 seconds)
     // and then navigate based on current state.
-    Future.delayed(const Duration(milliseconds: 500), () {
+    Future.delayed(const Duration(milliseconds: 1500), () {
       if (!mounted) return;
       setState(() => _minimumTimePassed = true);
       _handleNavigation(ref.read(authProvider));
@@ -53,22 +53,14 @@ class _SplashPageState extends ConsumerState<SplashPage>
   }
 
   void _handleNavigation(AuthState state) {
-    if (!mounted || _navigated) return;
+    if (!mounted || _navigated || !_minimumTimePassed) return;
 
-    // Instant jump for authenticated users to avoid seeing splash/login transition
     if (state is AuthAuthenticated) {
       _navigated = true;
       _syncAndNavigate(state);
-      return;
-    }
-
-    // Only wait for minimum time for unauthenticated flow
-    if (!_minimumTimePassed) return;
-
-    if (state is AuthUnauthenticated || state is AuthError) {
-      _navigated = true;
-      Navigator.pushReplacementNamed(context, AppRoutes.login);
-    } else if (state is AuthSuccess) {
+    } else if (state is AuthUnauthenticated ||
+        state is AuthError ||
+        state is AuthSuccess) {
       _navigated = true;
       Navigator.pushReplacementNamed(context, AppRoutes.login);
     }
@@ -93,7 +85,7 @@ class _SplashPageState extends ConsumerState<SplashPage>
     if (auth.user.role == 'rider') {
       Navigator.pushReplacementNamed(context, AppRoutes.riderHome);
     } else {
-      // REGULAR USER: Direct to Home. 
+      // REGULAR USER: Direct to Home.
       // Location permission will be asked contextually when adding an address.
       Navigator.pushReplacementNamed(context, AppRoutes.home);
     }

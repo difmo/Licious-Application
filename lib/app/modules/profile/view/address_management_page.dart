@@ -31,92 +31,97 @@ class AddressManagementPage extends ConsumerWidget {
           ),
         ),
       ),
-      body: Column(
-        children: [
-          const SizedBox(height: 12),
-          // Add New Address Button
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: InkWell(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (_) => const SelectDeliveryAddressScreen(isFromProfile: true)),
-                ).then((_) => cart.loadAddresses());
-              },
-              borderRadius: BorderRadius.circular(16),
-              child: Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1000),
+          child: Column(
+            children: [
+              const SizedBox(height: 12),
+              // Add New Address Button
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: InkWell(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const SelectDeliveryAddressScreen(isFromProfile: true)),
+                    ).then((_) => cart.loadAddresses());
+                  },
                   borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4)),
-                  ],
-                ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.add, color: Color(0xFF68B92E), size: 24),
-                    SizedBox(width: 12),
-                    Text(
-                      'Add New Address',
-                      style: TextStyle(
-                        color: Color(0xFF68B92E),
-                        fontWeight: FontWeight.w900,
-                        fontSize: 17,
-                      ),
-                    ),
-                    Spacer(),
-                    Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          
-          const SizedBox(height: 32),
-          
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: const Text(
-                'Saved Addresses',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w900,
-                  color: Color(0xFF1A1A1A),
-                ),
-              ),
-            ),
-          ),
-          
-          const SizedBox(height: 16),
-          
-          Expanded(
-            child: addresses.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.location_off_outlined, size: 64, color: Colors.grey.shade300),
-                        const SizedBox(height: 16),
-                        const Text('No saved addresses yet', style: TextStyle(color: Colors.grey, fontSize: 16)),
+                  child: Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4)),
                       ],
                     ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    itemCount: addresses.length,
-                    itemBuilder: (context, index) {
-                      final addr = addresses[index];
-                      final isSelected = cart.selectedAddressIndex == index;
-                      return _buildAddressCard(context, cart, addr, index, isSelected);
-                    },
+                    child: const Row(
+                      children: [
+                        Icon(Icons.add, color: Color(0xFF68B92E), size: 24),
+                        SizedBox(width: 12),
+                        Text(
+                          'Add New Address',
+                          style: TextStyle(
+                            color: Color(0xFF68B92E),
+                            fontWeight: FontWeight.w900,
+                            fontSize: 17,
+                          ),
+                        ),
+                        Spacer(),
+                        Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+                      ],
+                    ),
                   ),
+                ),
+              ),
+              
+              const SizedBox(height: 32),
+              
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: const Text(
+                    'Saved Addresses',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF1A1A1A),
+                    ),
+                  ),
+                ),
+              ),
+              
+              const SizedBox(height: 16),
+              
+              Expanded(
+                child: addresses.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.location_off_outlined, size: 64, color: Colors.grey.shade300),
+                            const SizedBox(height: 16),
+                            const Text('No saved addresses yet', style: TextStyle(color: Colors.grey, fontSize: 16)),
+                          ],
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        itemCount: addresses.length,
+                        itemBuilder: (context, index) {
+                          final addr = addresses[index];
+                          final isSelected = cart.selectedAddressIndex == index;
+                          return _buildAddressCard(context, cart, addr, index, isSelected);
+                        },
+                      ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

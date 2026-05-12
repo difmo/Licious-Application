@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../data/services/location_service.dart';
 import '../../../data/services/db_service.dart';
 import '../../../data/models/food_models.dart';
 import '../view/select_delivery_address_screen.dart';

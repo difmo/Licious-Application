@@ -119,8 +119,9 @@ class _OrderCard extends ConsumerWidget {
     if (items.isEmpty) return 'Order';
     final first = items.first;
     final product = first['product'];
-    if (product is Map && product['name'] != null)
+    if (product is Map && product['name'] != null) {
       return product['name'].toString();
+    }
     return 'Order';
   }
 

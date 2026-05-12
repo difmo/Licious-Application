@@ -98,7 +98,7 @@ class _OrderReviewDialogState extends State<OrderReviewDialog> {
                         ],
                       ),
                     );
-                  }).toList(),
+                  }),
                 ],
               ),
             ),
