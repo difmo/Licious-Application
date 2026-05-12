@@ -1068,8 +1068,12 @@ class _ListTileItem extends ConsumerWidget {
   }
 
   void _showDeleteAccountDialog(
-      BuildContext context, models.UserModel user, WidgetRef ref) {
+      BuildContext context, models.UserModel user, WidgetRef ref) async {
     String? selectedReason;
+    final nameController = TextEditingController(text: user.fullName);
+    final emailController = TextEditingController(text: user.email);
+    final mobileController = TextEditingController(text: user.phoneNumber);
+
     final List<String> reasons = [
       "I don't use this app anymore",
       "I found a better alternative",
@@ -1079,71 +1083,74 @@ class _ListTileItem extends ConsumerWidget {
       "Other",
     ];
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) => StatefulBuilder(
-        builder: (context, setModalState) => SafeArea(
-          child: Padding(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(context).viewInsets.bottom,
-              left: 24,
-              right: 24,
-              top: 24,
-            ),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Delete Account',
-                        style: TextStyle(
-                          color: Colors.red,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.close, color: Colors.grey),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'We are sorry to see you go. Please let us know why you want to delete your account.',
-                    style: TextStyle(color: Colors.black54, fontSize: 14),
-                  ),
-                  const SizedBox(height: 20),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade50,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey.shade200),
-                    ),
-                    child: Column(
+    try {
+      await showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        useSafeArea: true,
+        backgroundColor: Colors.white,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        builder: (context) => StatefulBuilder(
+          builder: (context, setModalState) => SafeArea(
+            child: Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+                left: 24,
+                right: 24,
+                top: 24,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        _buildInfoRow(
-                            Icons.person_outline, 'Name', user.fullName),
-                        const Divider(height: 24),
-                        _buildInfoRow(
-                            Icons.email_outlined, 'Email', user.email),
-                        const Divider(height: 24),
-                        _buildInfoRow(Icons.phone_android_outlined, 'Mobile',
-                            user.phoneNumber),
+                        const Text(
+                          'Delete Account',
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.pop(context),
+                          icon: const Icon(Icons.close, color: Colors.grey),
+                        ),
                       ],
                     ),
-                  ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'We are sorry to see you go. Please let us know why you want to delete your account.',
+                      style: TextStyle(color: Colors.black54, fontSize: 14),
+                    ),
+                    const SizedBox(height: 20),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.shade200),
+                      ),
+                      child: Column(
+                        children: [
+                          _buildInfoRow(
+                              Icons.person_outline, 'Name', nameController),
+                          const Divider(height: 24),
+                          _buildInfoRow(Icons.email_outlined, 'Email',
+                              emailController,
+                              keyboardType: TextInputType.emailAddress),
+                          const Divider(height: 24),
+                          _buildInfoRow(Icons.phone_android_outlined, 'Mobile',
+                              mobileController,
+                              keyboardType: TextInputType.phone),
+                        ],
+                      ),
+                    ),
                   const SizedBox(height: 24),
                   const Text(
                     'Select a reason:',
@@ -1239,22 +1246,42 @@ class _ListTileItem extends ConsumerWidget {
         ),
       ),
     );
+    } finally {
+      nameController.dispose();
+      emailController.dispose();
+      mobileController.dispose();
+    }
   }
 
-  Widget _buildInfoRow(IconData icon, String label, String value) {
+  Widget _buildInfoRow(IconData icon, String label,
+      TextEditingController controller,
+      {TextInputType? keyboardType}) {
     return Row(
       children: [
         Icon(icon, size: 20, color: const Color(0xFF114F3B)),
         const SizedBox(width: 12),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label,
-                style: const TextStyle(fontSize: 12, color: Colors.grey)),
-            Text(value,
-                style:
-                    const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-          ],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label,
+                  style: const TextStyle(fontSize: 12, color: Colors.grey)),
+              TextField(
+                controller: controller,
+                keyboardType: keyboardType,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+                decoration: const InputDecoration(
+                  isDense: true,
+                  contentPadding: EdgeInsets.symmetric(vertical: 4),
+                  border: InputBorder.none,
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     );

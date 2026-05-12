@@ -6,7 +6,7 @@ class CommonButton extends StatelessWidget {
   final Color backgroundColor;
   final Color textColor;
   final double borderRadius;
-  final double height;
+  final double? height;
   final Widget? icon;
   final bool isLoading;
   final EdgeInsetsGeometry? padding;
@@ -19,7 +19,7 @@ class CommonButton extends StatelessWidget {
     this.backgroundColor = const Color(0xFF438E5A),
     this.textColor = Colors.white,
     this.borderRadius = 8.0,
-    this.height = 54.0,
+    this.height,
     this.icon,
     this.isLoading = false,
     this.padding,
@@ -65,14 +65,16 @@ class CommonButton extends StatelessWidget {
             ],
           );
 
+    Widget button = ElevatedButton(
+      style: style,
+      onPressed: isLoading ? null : onPressed,
+      child: widgetContent,
+    );
+
     return SizedBox(
       width: double.infinity,
-      height: height,
-      child: ElevatedButton(
-        style: style,
-        onPressed: isLoading ? null : onPressed,
-        child: widgetContent,
-      ),
+      height: height ?? 54.0,
+      child: button,
     );
   }
 }

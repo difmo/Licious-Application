@@ -102,7 +102,7 @@ class AuthStore extends Notifier<AuthState> {
       final String? refreshToken = await _storage.getRefreshToken();
       final String? cachedUserJson = await _storage.getUser();
 
-      if (token != null && token.isNotEmpty && refreshToken != null && refreshToken.isNotEmpty) {
+      if (token != null && token.isNotEmpty) {
         // OPTIMISTIC RESTORE: Use cached user if available to show Home instantly
         if (cachedUserJson != null) {
           try {

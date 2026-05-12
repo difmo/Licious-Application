@@ -370,6 +370,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
                                 isLoading: _isChecking,
                                 backgroundColor: const Color(0xFF2E7D32),
                                 borderRadius: 28,
+                                height: isTablet ? 64 : 54,
                                 padding: isTablet
                                     ? const EdgeInsets.symmetric(vertical: 20)
                                     : null,
@@ -396,6 +397,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
                                       'Fresh', isTablet),
                                 ],
                               ),
+                              const SizedBox(height: 60),
                             ],
                           ),
                         ),

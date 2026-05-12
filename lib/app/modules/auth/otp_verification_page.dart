@@ -268,6 +268,7 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
                             onPressed: isBusy ? null : _verifyOtp,
                             backgroundColor: const Color(0xFF2E7D32),
                             borderRadius: 28,
+                            height: isTablet ? 64 : 54,
                             isLoading: isBusy,
                             padding: isTablet
                                 ? const EdgeInsets.symmetric(vertical: 20)
@@ -279,6 +280,7 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
                           );
                         },
                       ),
+                      const SizedBox(height: 60),
                     ],
                   ),
                 ),
