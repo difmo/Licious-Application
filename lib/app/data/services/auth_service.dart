@@ -201,4 +201,28 @@ class AuthService {
   Future<void> logout() async {
     await ApiClient.clearToken();
   }
+
+  // ── Delete Account ─────────────────────────────────────────────────────────
+  Future<AuthResponseModel> deleteAccount({
+    required String name,
+    required String email,
+    required String reason,
+  }) async {
+    try {
+      final json = await _client.post(
+        '${ApiClient.baseUrl}/delete-account-request',
+        data: {
+          'name': name,
+          'email': email,
+          'region': reason,
+        },
+        requiresAuth: true,
+      );
+      return AuthResponseModel.fromJson(json);
+    } on ApiException catch (e) {
+      return AuthResponseModel(success: false, message: e.message);
+    } catch (e) {
+      return AuthResponseModel(success: false, message: e.toString());
+    }
+  }
 }

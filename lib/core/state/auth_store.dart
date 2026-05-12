@@ -410,6 +410,33 @@ class AuthStore extends Notifier<AuthState> {
       await ref.read(authServiceProvider).updateFcmToken(fcmToken: fcmToken);
     }
   }
+
+  Future<AuthResponseModel> deleteAccount({String? reason}) async {
+    final user = state.user;
+    if (user == null) {
+      return AuthResponseModel(success: false, message: 'User not found');
+    }
+
+    state = state.copyWith(status: AuthStatus.loading);
+    try {
+      final response = await ref.read(authServiceProvider).deleteAccount(
+            name: user.fullName,
+            email: user.email,
+            reason: reason ?? 'deleat account',
+          );
+      if (response.success) {
+        await logout();
+      } else {
+        state = state.copyWith(
+            status: AuthStatus.authenticated, error: response.message);
+      }
+      return response;
+    } catch (e) {
+      state =
+          state.copyWith(status: AuthStatus.authenticated, error: e.toString());
+      return AuthResponseModel(success: false, message: e.toString());
+    }
+  }
 }
 
 final authStoreProvider = NotifierProvider<AuthStore, AuthState>(() {

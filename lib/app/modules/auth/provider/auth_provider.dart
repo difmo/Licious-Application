@@ -102,6 +102,13 @@ class AuthNotifier extends Notifier<AuthState> {
   }
   
   void reset() => ref.invalidate(core.authStoreProvider);
+
+  Future<bool> deleteAccount({String? reason}) async {
+    final response = await ref
+        .read(core.authStoreProvider.notifier)
+        .deleteAccount(reason: reason);
+    return response.success;
+  }
 }
 
 final authProvider = NotifierProvider<AuthNotifier, AuthState>(() {

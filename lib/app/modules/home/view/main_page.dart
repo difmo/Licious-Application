@@ -253,7 +253,7 @@ class _MainPageState extends ConsumerState<MainPage> {
         },
         child: Scaffold(
           backgroundColor: Colors.white,
-          extendBody: true,
+          extendBody: false,
           body: Stack(
             children: [
               Positioned.fill(
@@ -264,7 +264,7 @@ class _MainPageState extends ConsumerState<MainPage> {
               ),
               if (showSummary)
                 Positioned(
-                  bottom: 110, // Just above the custom bottom bar (height ~100)
+                  bottom: 20, // Just above the custom bottom bar
                   left: 0,
                   right: 0,
                   child: CartSummaryBar(cart: cart),
@@ -278,67 +278,70 @@ class _MainPageState extends ConsumerState<MainPage> {
   }
 
   Widget _buildCustomBottomBar() {
-    return Container(
-      height: 90,
-      decoration: const BoxDecoration(color: Colors.transparent),
-      child: Stack(
-        alignment: Alignment.bottomCenter,
-        clipBehavior: Clip.none,
-        children: [
-          // Background Bar
-          Container(
-            height: 75,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(24)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 15,
-                  offset: const Offset(0, -5),
-                ),
-              ],
+    return SafeArea(
+      bottom: true,
+      child: Container(
+        height: 90,
+        decoration: const BoxDecoration(color: Colors.transparent),
+        child: Stack(
+          alignment: Alignment.bottomCenter,
+          clipBehavior: Clip.none,
+          children: [
+            // Background Bar
+            Container(
+              height: 75,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(24)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 15,
+                    offset: const Offset(0, -5),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildNavItem(0, Icons.home_filled, 'Home'),
+                  _buildNavItem(1, Icons.local_shipping_outlined, 'Daily'),
+                  const SizedBox(width: 60), // Space for FAB
+                  _buildNavItem(3, Icons.wallet_rounded, 'Wallet'),
+                  _buildNavItem(4, Icons.person_rounded, 'Profile'),
+                ],
+              ),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildNavItem(0, Icons.home_filled, 'Home'),
-                _buildNavItem(1, Icons.local_shipping_outlined, 'Daily'),
-                const SizedBox(width: 60), // Space for FAB
-                _buildNavItem(3, Icons.wallet_rounded, 'Wallet'),
-                _buildNavItem(4, Icons.person_rounded, 'Profile'),
-              ],
-            ),
-          ),
-          // Central FAB (Cart) - Green circle as per project identity
-          Positioned(
-            top: 0,
-            child: GestureDetector(
-              onTap: () => _controller.changePage(2),
-              child: Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF68B92E),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF68B92E).withValues(alpha: 0.3),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.shopping_cart_outlined,
-                  color: Colors.white,
-                  size: 28,
+            // Central FAB (Cart) - Green circle as per project identity
+            Positioned(
+              top: 0,
+              child: GestureDetector(
+                onTap: () => _controller.changePage(2),
+                child: Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF68B92E),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF68B92E).withValues(alpha: 0.3),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.shopping_cart_outlined,
+                    color: Colors.white,
+                    size: 28,
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
