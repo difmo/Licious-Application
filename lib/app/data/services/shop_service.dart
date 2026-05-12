@@ -72,12 +72,15 @@ class ShopService {
       if (minPrice != null) queryParams['minPrice'] = minPrice.toString();
       if (maxPrice != null) queryParams['maxPrice'] = maxPrice.toString();
       if (minRating != null) queryParams['minRating'] = minRating.toString();
-      if (hasDiscount != null)
+      if (hasDiscount != null) {
         queryParams['hasDiscount'] = hasDiscount.toString();
-      if (freeShipping != null)
+      }
+      if (freeShipping != null) {
         queryParams['freeShipping'] = freeShipping.toString();
-      if (sameDayDelivery != null)
+      }
+      if (sameDayDelivery != null) {
         queryParams['sameDayDelivery'] = sameDayDelivery.toString();
+      }
       if (category != null) queryParams['category'] = category;
       if (sortBy != null) queryParams['sortBy'] = sortBy;
       if (search != null) queryParams['search'] = search;

@@ -97,36 +97,6 @@ class AuthService {
     }
   }
 
-  // ── Verify Firebase OTP (Preferred) ───────────────────────────────────────────
-  Future<AuthResponseModel> verifyFirebaseOtp({
-    required String phoneNumber,
-    required String idToken,
-    String? fcmToken,
-  }) async {
-    try {
-      final data = await _client.post(
-        '${ApiClient.otpBaseUrl}/verify-firebase',
-        data: {
-          'phoneNumber': phoneNumber,
-          'idToken': idToken,
-          if (fcmToken != null) 'fcmToken': fcmToken,
-        },
-      );
-      final response = AuthResponseModel.fromJson(data);
-      if (response.success &&
-          response.token != null &&
-          response.token!.isNotEmpty) {
-        await ApiClient.saveToken(response.token!);
-      }
-      return response;
-    } on ApiException catch (e) {
-      return AuthResponseModel(success: false, message: e.message);
-    } catch (e) {
-      return AuthResponseModel(
-          success: false, message: 'Unexpected error: ${e.toString()}');
-    }
-  }
-
   // ── Profile ───────────────────────────────────────────────────────────────
   Future<AuthResponseModel> getProfile() async {
     try {

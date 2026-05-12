@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/food_models.dart';
-import '../../../data/services/wallet_service.dart';
 import 'package:intl/intl.dart';
 
 import '../provider/wallet_provider.dart';

@@ -53,7 +53,7 @@ class AddressService {
       );
     } catch (e) {
       if (e is ApiException) {
-        throw e;
+        rethrow;
       }
       return {
         'success': false,

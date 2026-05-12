@@ -314,7 +314,7 @@ class _SubscriptionCardState extends ConsumerState<_SubscriptionCard> {
                     ),
                     Switch(
                       value: isActive,
-                      activeColor: AppColors.accentGreen,
+                      activeThumbColor: AppColors.accentGreen,
                       activeTrackColor: AppColors.accentGreen.withValues(alpha: 0.3),
                       inactiveThumbColor: Colors.grey.shade400,
                       inactiveTrackColor: Colors.grey.shade200,

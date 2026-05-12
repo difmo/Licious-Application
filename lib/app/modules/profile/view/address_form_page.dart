@@ -31,13 +31,13 @@ class _AddressFormPageState extends State<AddressFormPage> {
     String name = '';
     if (nameMatch != null) {
       name = nameMatch.group(1)!;
-      tempStreet = tempStreet.replaceAll(nameMatch.group(0)! + ', ', '').replaceAll(nameMatch.group(0)!, '');
+      tempStreet = tempStreet.replaceAll('${nameMatch.group(0)!}, ', '').replaceAll(nameMatch.group(0)!, '');
     }
     final phoneMatch = RegExp(r'Phone:\s*([^,]+)').firstMatch(tempStreet);
     String phone = '';
     if (phoneMatch != null) {
       phone = phoneMatch.group(1)!;
-      tempStreet = tempStreet.replaceAll(phoneMatch.group(0)! + ', ', '').replaceAll(phoneMatch.group(0)!, '');
+      tempStreet = tempStreet.replaceAll('${phoneMatch.group(0)!}, ', '').replaceAll(phoneMatch.group(0)!, '');
     }
 
     _titleCtrl = TextEditingController(text: widget.address?.title ?? '');

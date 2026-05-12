@@ -23,39 +23,44 @@ class HomePage extends ConsumerWidget {
         backgroundColor: Colors.white,
         body: SafeArea(
           bottom: false,
-          child: RefreshIndicator(
-            onRefresh: () async {
-              // Capture provider before any awaits
-              final cart = CartProviderScope.of(context);
-              await ref.read(shopsListProvider.notifier).refresh();
-              
-              // Proactively refresh other related data if needed
-              cart.loadAddresses();
-              cart.syncWallet();
-            },
-            color: const Color(0xFF68B92E),
-            child: CustomScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              slivers: [
-                // Header: Location & Search
-                const SliverToBoxAdapter(child: HomeHeader()),
-
-                const SliverToBoxAdapter(child: SizedBox(height: 16)),
-
-                // Banner (Horizontal Scrolling Carousel)
-                const SliverToBoxAdapter(child: HomeBanner()),
-
-                const SliverToBoxAdapter(child: SizedBox(height: 8)),
-
-                // Restaurants Section
-                const SliverToBoxAdapter(child: RestaurantListSection()),
-
-                // Footer
-                const SliverToBoxAdapter(child: AnimatedFooterText()),
-
-                // Bottom Spacing for Navigation Bar
-                const SliverPadding(padding: EdgeInsets.only(bottom: 100)),
-              ],
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1000),
+              child: RefreshIndicator(
+                onRefresh: () async {
+                  // Capture provider before any awaits
+                  final cart = CartProviderScope.of(context);
+                  await ref.read(shopsListProvider.notifier).refresh();
+                  
+                  // Proactively refresh other related data if needed
+                  cart.loadAddresses();
+                  cart.syncWallet();
+                },
+                color: const Color(0xFF68B92E),
+                child: CustomScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  slivers: [
+                    // Header: Location & Search
+                    const SliverToBoxAdapter(child: HomeHeader()),
+    
+                    const SliverToBoxAdapter(child: SizedBox(height: 16)),
+    
+                    // Banner (Horizontal Scrolling Carousel)
+                    const SliverToBoxAdapter(child: HomeBanner()),
+    
+                    const SliverToBoxAdapter(child: SizedBox(height: 8)),
+    
+                    // Restaurants Section
+                    const SliverToBoxAdapter(child: RestaurantListSection()),
+    
+                    // Footer
+                    const SliverToBoxAdapter(child: AnimatedFooterText()),
+    
+                    // Bottom Spacing for Navigation Bar
+                    const SliverPadding(padding: EdgeInsets.only(bottom: 100)),
+                  ],
+                ),
+              ),
             ),
           ),
         ),

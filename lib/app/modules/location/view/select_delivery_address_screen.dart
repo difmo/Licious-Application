@@ -839,7 +839,7 @@ class _SelectDeliveryAddressScreenState
                                 color: Color(0xFF1A1A1A))),
                         Switch(
                           value: _useProfileDetails,
-                          activeColor: AppColors.accentGreen,
+                          activeThumbColor: AppColors.accentGreen,
                           activeTrackColor: const Color(0xFFEBFFD7),
                           onChanged: (v) {
                             setState(() {

@@ -9,6 +9,8 @@ class CommonButton extends StatelessWidget {
   final double height;
   final Widget? icon;
   final bool isLoading;
+  final EdgeInsetsGeometry? padding;
+  final TextStyle? textStyle;
 
   const CommonButton({
     super.key,
@@ -20,6 +22,8 @@ class CommonButton extends StatelessWidget {
     this.height = 54.0,
     this.icon,
     this.isLoading = false,
+    this.padding,
+    this.textStyle,
   });
 
   @override
@@ -31,7 +35,7 @@ class CommonButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(borderRadius),
       ),
       elevation: 0,
-      padding: icon != null ? const EdgeInsets.symmetric(vertical: 16) : null,
+      padding: padding ?? (icon != null ? const EdgeInsets.symmetric(vertical: 16) : null),
     );
 
     final widgetContent = isLoading
@@ -53,7 +57,7 @@ class CommonButton extends StatelessWidget {
               ],
               Text(
                 text,
-                style: TextStyle(
+                style: textStyle ?? TextStyle(
                   fontSize: icon != null ? 15 : 16,
                   fontWeight: FontWeight.w600,
                 ),

@@ -37,7 +37,7 @@ class ReviewService {
   }) async {
     try {
       final response = await _client.post(
-        '${ApiClient.reviewBaseUrl}',
+        ApiClient.reviewBaseUrl,
         data: {
           'product': productId,
           'rating': rating,

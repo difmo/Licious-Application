@@ -897,7 +897,7 @@ class _PlanItemWidgetState extends ConsumerState<_PlanItemWidget> {
                 ])),
             Switch(
               value: isActive,
-              activeColor: const Color(0xFF68B92E),
+              activeThumbColor: const Color(0xFF68B92E),
               activeTrackColor: const Color(0xFF68B92E).withValues(alpha: 0.3),
               inactiveThumbColor: Colors.grey.shade400,
               inactiveTrackColor: Colors.grey.shade200,
@@ -912,10 +912,11 @@ class _PlanItemWidgetState extends ConsumerState<_PlanItemWidget> {
                 final ok = await ref
                     .read(subscriptionServiceProvider)
                     .updateStatus(widget.sub.id, val ? 'Active' : 'Paused');
-                if (ok)
+                if (ok) {
                   ref.invalidate(mySubscriptionsProvider);
-                else
+                } else {
                   setState(() => _optimisticIsActive = null);
+                }
               },
             ),
           ],

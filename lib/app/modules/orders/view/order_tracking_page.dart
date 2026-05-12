@@ -488,7 +488,7 @@ class _OrderTrackingPageState extends ConsumerState<OrderTrackingPage> {
               ],
             ),
           );
-        }).toList(),
+        }),
       ],
     );
   }
