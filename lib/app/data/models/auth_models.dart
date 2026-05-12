@@ -93,15 +93,16 @@ class AuthResponseModel {
     return AuthResponseModel(
       success: json['success'] ?? false,
       message: json['message'] ?? '',
-<<<<<<< HEAD
-      token: json['token'] ?? json['accessToken'] ?? json['access_token'] ?? json['idToken'],
-=======
-      token: json['token'] ?? json['accessToken'] ?? json['idToken'] ?? json['access_token'],
->>>>>>> ran-new
+      token: json['token'] ??
+          json['accessToken'] ??
+          json['idToken'] ??
+          json['access_token'],
       refreshToken: json['refreshToken'] ?? json['refresh_token'],
       otp: json['otp']?.toString(),
-      data: (json['data'] ?? json['user'] ?? json['profile']) is Map<String, dynamic>
-          ? UserModel.fromJson((json['data'] ?? json['user'] ?? json['profile']) as Map<String, dynamic>)
+      data: (json['data'] ?? json['user'] ?? json['profile'])
+              is Map<String, dynamic>
+          ? UserModel.fromJson((json['data'] ?? json['user'] ?? json['profile'])
+              as Map<String, dynamic>)
           : null,
     );
   }

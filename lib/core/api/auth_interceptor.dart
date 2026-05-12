@@ -6,11 +6,11 @@ import '../utils/logger.dart';
 class AuthInterceptor extends QueuedInterceptor {
   final Dio _dio;
   final SecureStorageService _storage;
-  
+
   // Stream to notify UI of forced logout
   static final _logoutController = StreamController<String>.broadcast();
   static Stream<String> get onForceLogoutStream => _logoutController.stream;
-  
+
   static bool _isRefreshing = false;
   late final Dio _refreshDio;
 
@@ -20,9 +20,10 @@ class AuthInterceptor extends QueuedInterceptor {
   }
 
   @override
-  void onRequest(RequestOptions options, RequestInterceptorHandler handler) async {
+  void onRequest(
+      RequestOptions options, RequestInterceptorHandler handler) async {
     final bool requiresAuth = options.extra['requiresAuth'] ?? false;
-    
+
     if (!requiresAuth) {
       return handler.next(options);
     }
@@ -42,9 +43,11 @@ class AuthInterceptor extends QueuedInterceptor {
     final bool is401 = err.response?.statusCode == 401;
 
     // Only attempt refresh if it's a 401 on an authenticated request, AND it's not the refresh request itself
-    if (is401 && requiresAuth && !err.requestOptions.path.contains('/auth/refresh')) {
+    if (is401 &&
+        requiresAuth &&
+        !err.requestOptions.path.contains('/auth/refresh')) {
       final refreshToken = await _storage.getRefreshToken();
-      
+
       if (refreshToken == null || refreshToken.isEmpty) {
         _performLogout('No refresh token available');
         return handler.next(err);
@@ -63,14 +66,12 @@ class AuthInterceptor extends QueuedInterceptor {
             });
 
             if (response.statusCode == 200) {
-<<<<<<< HEAD
-              final data = response.data;
-              newAccessToken = data['accessToken'] ?? data['access_token'];
-              final newRefreshToken = data['refreshToken'] ?? data['refresh_token'] ?? refreshToken;
-=======
-              newAccessToken = response.data['accessToken'] ?? response.data['token'] ?? response.data['access_token'];
-              final newRefreshToken = response.data['refreshToken'] ?? response.data['refresh_token'] ?? refreshToken;
->>>>>>> ran-new
+              newAccessToken = response.data['accessToken'] ??
+                  response.data['token'] ??
+                  response.data['access_token'];
+              final newRefreshToken = response.data['refreshToken'] ??
+                  response.data['refresh_token'] ??
+                  refreshToken;
 
               await _storage.saveTokens(
                 access: newAccessToken!,
@@ -78,14 +79,16 @@ class AuthInterceptor extends QueuedInterceptor {
               );
               AppLogger.i('AuthInterceptor: Token refresh successful.');
             } else {
-              throw Exception('Refresh failed with status: ${response.statusCode}');
+              throw Exception(
+                  'Refresh failed with status: ${response.statusCode}');
             }
           } finally {
             _isRefreshing = false;
           }
         } else {
           // Wait for the on-going refresh
-          AppLogger.d('AuthInterceptor: Waiting for existing refresh to complete...');
+          AppLogger.d(
+              'AuthInterceptor: Waiting for existing refresh to complete...');
           while (_isRefreshing) {
             await Future.delayed(const Duration(milliseconds: 200));
           }
@@ -95,7 +98,7 @@ class AuthInterceptor extends QueuedInterceptor {
         if (newAccessToken != null) {
           final opts = err.requestOptions;
           opts.headers['Authorization'] = 'Bearer $newAccessToken';
-          
+
           // Retry the original request
           final retryResponse = await _dio.fetch(opts);
           return handler.resolve(retryResponse);
@@ -117,7 +120,7 @@ class AuthInterceptor extends QueuedInterceptor {
   void _performLogout(String reason) async {
     if (_isLoggingOut) return;
     _isLoggingOut = true;
-    
+
     try {
       AppLogger.w('AuthInterceptor: Logout triggered - $reason');
       await _storage.clearAll();
@@ -128,6 +131,3 @@ class AuthInterceptor extends QueuedInterceptor {
     }
   }
 }
-
-
-
