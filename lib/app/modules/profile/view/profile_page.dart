@@ -30,41 +30,53 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: () => ref.refresh(auth.userProfileProvider.future),
-          color: const Color(0xFF114F3B),
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding:
-                const EdgeInsets.symmetric(horizontal: 20.0, vertical: 20.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                profileAsync.when(
-                  data: (user) => _ProfileHeader(user: user),
-                  loading: () => const _ProfileHeaderSkeleton(),
-                  error: (e, _) => Center(child: Text('Error: $e')),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isTablet = constraints.maxWidth > 700;
+            final contentWidth = isTablet ? 1000.0 : constraints.maxWidth;
+
+            return Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: contentWidth),
+                child: RefreshIndicator(
+                  onRefresh: () => ref.refresh(auth.userProfileProvider.future),
+                  color: const Color(0xFF114F3B),
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20.0, vertical: 20.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        profileAsync.when(
+                          data: (user) => _ProfileHeader(user: user),
+                          loading: () => const _ProfileHeaderSkeleton(),
+                          error: (e, _) => Center(child: Text('Error: $e')),
+                        ),
+                        const SizedBox(height: 30),
+                        const _ActiveOrdersAndSubscriptions(),
+                        const SizedBox(height: 24),
+                        const Text(
+                          'Quick Actions',
+                          style: TextStyle(
+                              color: Color(0xFF114F3B),
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 12),
+                        const _QuickActionsRow(),
+                        const SizedBox(height: 24),
+                        const _ListTilesSection(),
+                        const SizedBox(height: 32),
+                        const _SignOutButton(),
+                        const SizedBox(height: 100),
+                      ],
+                    ),
+                  ),
                 ),
-                const SizedBox(height: 30),
-                const _ActiveOrdersAndSubscriptions(),
-                const SizedBox(height: 24),
-                const Text(
-                  'Quick Actions',
-                  style: TextStyle(
-                      color: Color(0xFF114F3B),
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 12),
-                const _QuickActionsRow(),
-                const SizedBox(height: 24),
-                const _ListTilesSection(),
-                const SizedBox(height: 32),
-                const _SignOutButton(),
-                const SizedBox(height: 100),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         ),
       ),
     );
@@ -588,52 +600,58 @@ class _ListTileItem extends ConsumerWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      builder: (context) => Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 600),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Help & Support',
-                  style: TextStyle(
-                    color: Color(0xFF114F3B),
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Help & Support',
+                      style: TextStyle(
+                        color: Color(0xFF114F3B),
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close, color: Colors.grey),
+                    ),
+                  ],
                 ),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close, color: Colors.grey),
+                const SizedBox(height: 20),
+                _SupportItem(
+                  icon: Icons.email_outlined,
+                  label: 'Email',
+                  value: 'info@shrimpbite.in',
+                  onTap: () =>
+                      launchUrl(Uri.parse('mailto:info@shrimpbite.in')),
                 ),
+                const SizedBox(height: 16),
+                _SupportItem(
+                  icon: Icons.call_outlined,
+                  label: 'Phone',
+                  value: '+91 9148949909',
+                  onTap: () => launchUrl(Uri.parse('tel:+919148949909')),
+                ),
+                const SizedBox(height: 16),
+                const _SupportItem(
+                  icon: Icons.location_on_outlined,
+                  label: 'Address',
+                  value:
+                      'Aqua AVP Shrimp Farmers Pride Pvt Ltd IVRI Road, Yelahanka, Bangalore, Karnataka, India',
+                ),
+                const SizedBox(height: 20),
               ],
             ),
-            const SizedBox(height: 20),
-            _SupportItem(
-              icon: Icons.email_outlined,
-              label: 'Email',
-              value: 'info@shrimpbite.in',
-              onTap: () => launchUrl(Uri.parse('mailto:info@shrimpbite.in')),
-            ),
-            const SizedBox(height: 16),
-            _SupportItem(
-              icon: Icons.call_outlined,
-              label: 'Phone',
-              value: '+91 9148949909',
-              onTap: () => launchUrl(Uri.parse('tel:+919148949909')),
-            ),
-            const SizedBox(height: 16),
-            const _SupportItem(
-              icon: Icons.location_on_outlined,
-              label: 'Address',
-              value:
-                  'Aqua AVP Shrimp Farmers Pride Pvt Ltd IVRI Road, Yelahanka, Bangalore, Karnataka, India',
-            ),
-            const SizedBox(height: 20),
-          ],
+          ),
         ),
       ),
     );
@@ -641,150 +659,286 @@ class _ListTileItem extends ConsumerWidget {
 
   void _showSubscriptionGuideModal(BuildContext context) {
     showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.8,
-        minChildSize: 0.5,
-        maxChildSize: 0.95,
-        expand: false,
-        builder: (context, scrollController) => Container(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Subscription Details',
-                    style: TextStyle(
-                      color: Color(0xFF114F3B),
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close, color: Colors.grey),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Expanded(
-                child: ListView(
-                  controller: scrollController,
-                  children: [
-                    const Text(
-                      'Welcome to ShrimpBite! To ensure you get the freshest seafood exactly when you want it, please review how our scheduling and billing work.',
-                      style: TextStyle(
-                          color: Colors.grey, height: 1.4, fontSize: 13),
-                    ),
-                    const SizedBox(height: 24),
-                    _buildSectionHeader('🗓️ 1. Flexible Subscription Plans'),
-                    _buildBullet('Daily: ', 'Fresh delivery every single day.'),
-                    _buildBullet('Alternative Days: ',
-                        'Delivery every other day (Gap of 1 day).'),
-                    _buildBullet('Custom Weekdays: ',
-                        'Pick specific days (e.g., only Mondays, Wednesdays, and Fridays).'),
-                    const SizedBox(height: 20),
-                    _buildSectionHeader(
-                        '🏖️ 2. Vacation Mode (Pause Delivery)'),
-                    const Text(
-                      'Going away? You can pause your deliveries without canceling your subscription.',
-                      style: TextStyle(color: Colors.black87, fontSize: 13),
-                    ),
-                    const SizedBox(height: 8),
-                    _buildBullet(
-                        'Vacation ON: ', 'All upcoming deliveries are paused.'),
-                    _buildBullet('Vacation OFF: ',
-                        'Deliveries resume based on your original schedule.'),
-                    const SizedBox(height: 20),
-                    _buildSectionHeader('⏰ 3. The 8:00 PM "Cut-off" Rule'),
-                    const Text(
-                      'This is the most important rule for making changes. Our shop owners start prepping your fresh catch by 8:00 PM every night.',
-                      style: TextStyle(color: Colors.black87, fontSize: 13),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                          color: const Color(0xFFEBFFD7).withOpacity(0.5),
-                          borderRadius: BorderRadius.circular(12)),
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.white,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        builder: (context) => Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 600),
+                child: DraggableScrollableSheet(
+                  initialChildSize: 0.8,
+                  minChildSize: 0.5,
+                  maxChildSize: 0.95,
+                  expand: false,
+                  builder: (context, scrollController) => Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 16),
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildBullet('Before 8:00 PM: ', 'Starts Tomorrow'),
-                          _buildBullet(
-                              'After 8:00 PM: ', 'Starts Day After Tomorrow'),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'Why the delay? To guarantee maximum freshness and stock availability, we finalize all orders by 8:00 PM. Late-night changes happen after the next day\'s prep is already complete.',
-                      style: TextStyle(
-                          color: Colors.grey,
-                          fontSize: 12,
-                          fontStyle: FontStyle.italic),
-                    ),
-                    const SizedBox(height: 12),
-                    const Text('Real-World Examples:',
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 13)),
-                    const SizedBox(height: 4),
-                    _buildBullet('Morning: ',
-                        '"10:00 AM Monday. I turn Vacation ON. My Tuesday delivery is paused."'),
-                    _buildBullet('Night: ',
-                        '"9:30 PM Monday. I turn Vacation ON. Since it\'s past 8:00 PM, my Tuesday delivery is already packed. My vacation starts Wednesday."'),
-                    const SizedBox(height: 20),
-                    _buildSectionHeader('💳 4. Wallet & Payments'),
-                    const Text(
-                      'We believe in a "No Delivery = No Charge" policy.',
-                      style: TextStyle(
-                          color: Colors.black87,
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    _buildBullet('One-time Orders: ',
-                        'Charged instantly when you checkout.'),
-                    _buildBullet('Subscriptions: ',
-                        'Money is deducted automatically from your wallet at 12:01 AM on the day of delivery.'),
-                    _buildBullet('Vacation Rule: ',
-                        'If Vacation Mode is active, no money is deducted.'),
-                    const SizedBox(height: 12),
-                    const Text('Refunds & Credits',
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
-                            color: Color(0xFF114F3B))),
-                    const SizedBox(height: 4),
-                    _buildBullet('Weight Adjustments: ',
-                        'If you pay for 1kg but we deliver 900g, the difference is credited back to your wallet instantly.'),
-                    _buildBullet('Cancellations: ',
-                        'Approved cancellations are refunded immediately to your Shrimpbite Wallet.'),
-                    const SizedBox(height: 20),
-                    _buildSectionHeader('⚠️ 5. Important Notes'),
-                    _buildBullet('Low Balance: ',
-                        'If your wallet doesn\'t have enough funds at midnight, the delivery will be skipped, and you’ll receive a "Low Balance" notification.',
-                        isWarning: true),
-                    _buildBullet('Missed Cut-off: ',
-                        'If you forget to turn on Vacation Mode before 8:00 PM, the system will charge and deliver the next day\'s order as planned.',
-                        isWarning: true),
-                    const SizedBox(height: 40),
-                  ],
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'Subscription Details',
+                                  style: TextStyle(
+                                    color: Color(0xFF114F3B),
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                IconButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  icon: const Icon(Icons.close,
+                                      color: Colors.grey),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Expanded(
+                              child: ListView(
+                                controller: scrollController,
+                                children: [
+                                  const Text(
+                                    'Welcome to ShrimpBite! To ensure you get the freshest seafood exactly when you want it, please review how our scheduling and billing work.',
+                                    style: TextStyle(
+                                        color: Colors.grey,
+                                        height: 1.4,
+                                        fontSize: 13),
+                                  ),
+                                  const SizedBox(height: 24),
+                                  _buildSectionHeader(
+                                      '🗓️ 1. Flexible Subscription Plans'),
+                                  _buildBullet('Daily: ',
+                                      'Fresh delivery every single day.'),
+                                  _buildBullet('Alternative Days: ',
+                                      'Delivery every other day (Gap of 1 day).'),
+                                  _buildBullet('Custom Weekdays: ',
+                                      'Pick specific days (e.g., only Mondays, Wednesdays, and Fridays).'),
+                                  const SizedBox(height: 20),
+                                  _buildSectionHeader(
+                                      '🏖️ 2. Vacation Mode (Pause Delivery)'),
+                                  const Text(
+                                    'Going away? You can pause your deliveries without canceling your subscription.',
+                                    style: TextStyle(
+                                        color: Colors.black87, fontSize: 13),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  _buildBullet('Vacation ON: ',
+                                      'All upcoming deliveries are paused.'),
+                                  _buildBullet('Vacation OFF: ',
+                                      'Deliveries resume based on your original schedule.'),
+                                  const SizedBox(height: 20),
+                                  _buildSectionHeader(
+                                      '⏰ 3. The 8:00 PM "Cut-off" Rule'),
+                                  const Text(
+                                    'This is the most important rule for making changes. Our shop owners start prepping your fresh catch by 8:00 PM every night.',
+                                    style: TextStyle(
+                                        color: Colors.black87, fontSize: 13),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                        color: const Color(0xFFEBFFD7)
+                                            .withOpacity(0.5),
+                                        borderRadius:
+                                            BorderRadius.circular(12)),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        _buildBullet('Before 8:00 PM: ',
+                                            'Starts Tomorrow'),
+                                        _buildBullet('After 8:00 PM: ',
+                                            'Starts Day After Tomorrow'),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  const Text(
+                                    'Why the delay? To guarantee maximum freshness and stock availability, we finalize all orders by 8:00 PM. Late-night changes happen after the next day\'s prep is already complete.',
+                                    style: TextStyle(
+                                        color: Colors.grey,
+                                        fontSize: 12,
+                                        fontStyle: FontStyle.italic),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  const Text('Real-World Examples:',
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13)),
+                                  const SizedBox(height: 4),
+                                  _buildBullet('Morning: ',
+                                      '"10:00 AM Monday. I turn Vacation ON. My Tuesday delivery is paused."'),
+                                  _buildBullet('Night: ',
+                                      '"9:30 PM Monday. I turn Vacation ON. Since it\'s past 8:00 PM, my Tuesday delivery is already packed. My vacation starts Wednesday."'),
+                                  const SizedBox(height: 20),
+                                  _buildSectionHeader(
+                                      '💳 4. Wallet & Payments'),
+                                  const Text(
+                                    'We believe in a "No Delivery = No Charge" policy.',
+                                    style: TextStyle(
+                                        color: Colors.black87,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  _buildBullet('One-time Orders: ',
+                                      'Charged instantly when you checkout.'),
+                                  _buildBullet('Subscriptions: ',
+                                      'Money is deducted automatically from your wallet at 12:01 AM on the day of delivery.'),
+                                  _buildBullet('Vacation Rule: ',
+                                      'If Vacation Mode is active, no money is deducted.'),
+                                  const SizedBox(height: 12),
+                                  const Text('Refunds & Credits',
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                          color: Color(0xFF114F3B))),
+                                  const SizedBox(height: 4),
+                                  _buildBullet('Weight Adjustments: ',
+                                      'If you pay for 1kg but we deliver 900g, the difference is credited back to your wallet instantly.'),
+                                  _buildBullet('Cancellations: ',
+                                      'Approved cancellations are refunded immediately to your Shrimpbite Wallet.'),
+                                  const SizedBox(height: 20),
+                                  _buildSectionHeader('⚠️ 5. Important Notes'),
+                                  _buildBullet('Low Balance: ',
+                                      'If your wallet doesn\'t have enough funds at midnight, the delivery will be skipped, and you’ll receive a "Low Balance" notification.',
+                                      isWarning: true),
+                                  _buildBullet('Missed Cut-off: ',
+                                      'If you forget to turn on Vacation Mode before 8:00 PM, the system will charge and deliver the next day\'s order as planned.',
+                                      isWarning: true),
+                                  const SizedBox(height: 40),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Expanded(
+                              child: ListView(
+                                controller: scrollController,
+                                children: [
+                                  const Text(
+                                    'Welcome to ShrimpBite! To ensure you get the freshest seafood exactly when you want it, please review how our scheduling and billing work.',
+                                    style: TextStyle(
+                                        color: Colors.grey,
+                                        height: 1.4,
+                                        fontSize: 13),
+                                  ),
+                                  const SizedBox(height: 24),
+                                  _buildSectionHeader(
+                                      '🗓️ 1. Flexible Subscription Plans'),
+                                  _buildBullet('Daily: ',
+                                      'Fresh delivery every single day.'),
+                                  _buildBullet('Alternative Days: ',
+                                      'Delivery every other day (Gap of 1 day).'),
+                                  _buildBullet('Custom Weekdays: ',
+                                      'Pick specific days (e.g., only Mondays, Wednesdays, and Fridays).'),
+                                  const SizedBox(height: 20),
+                                  _buildSectionHeader(
+                                      '🏖️ 2. Vacation Mode (Pause Delivery)'),
+                                  const Text(
+                                    'Going away? You can pause your deliveries without canceling your subscription.',
+                                    style: TextStyle(
+                                        color: Colors.black87, fontSize: 13),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  _buildBullet('Vacation ON: ',
+                                      'All upcoming deliveries are paused.'),
+                                  _buildBullet('Vacation OFF: ',
+                                      'Deliveries resume based on your original schedule.'),
+                                  const SizedBox(height: 20),
+                                  _buildSectionHeader(
+                                      '⏰ 3. The 8:00 PM "Cut-off" Rule'),
+                                  const Text(
+                                    'This is the most important rule for making changes. Our shop owners start prepping your fresh catch by 8:00 PM every night.',
+                                    style: TextStyle(
+                                        color: Colors.black87, fontSize: 13),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                        color: const Color(0xFFEBFFD7)
+                                            .withOpacity(0.5),
+                                        borderRadius:
+                                            BorderRadius.circular(12)),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        _buildBullet('Before 8:00 PM: ',
+                                            'Starts Tomorrow'),
+                                        _buildBullet('After 8:00 PM: ',
+                                            'Starts Day After Tomorrow'),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  const Text(
+                                    'Why the delay? To guarantee maximum freshness and stock availability, we finalize all orders by 8:00 PM. Late-night changes happen after the next day\'s prep is already complete.',
+                                    style: TextStyle(
+                                        color: Colors.grey,
+                                        fontSize: 12,
+                                        fontStyle: FontStyle.italic),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  const Text('Real-World Examples:',
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13)),
+                                  const SizedBox(height: 4),
+                                  _buildBullet('Morning: ',
+                                      '"10:00 AM Monday. I turn Vacation ON. My Tuesday delivery is paused."'),
+                                  _buildBullet('Night: ',
+                                      '"9:30 PM Monday. I turn Vacation ON. Since it\'s past 8:00 PM, my Tuesday delivery is already packed. My vacation starts Wednesday."'),
+                                  const SizedBox(height: 20),
+                                  _buildSectionHeader(
+                                      '💳 4. Wallet & Payments'),
+                                  const Text(
+                                    'We believe in a "No Delivery = No Charge" policy.',
+                                    style: TextStyle(
+                                        color: Colors.black87,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  _buildBullet('One-time Orders: ',
+                                      'Charged instantly when you checkout.'),
+                                  _buildBullet('Subscriptions: ',
+                                      'Money is deducted automatically from your wallet at 12:01 AM on the day of delivery.'),
+                                  _buildBullet('Vacation Rule: ',
+                                      'If Vacation Mode is active, no money is deducted.'),
+                                  const SizedBox(height: 12),
+                                  const Text('Refunds & Credits',
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                          color: Color(0xFF114F3B))),
+                                  const SizedBox(height: 4),
+                                  _buildBullet('Weight Adjustments: ',
+                                      'If you pay for 1kg but we deliver 900g, the difference is credited back to your wallet instantly.'),
+                                  _buildBullet('Cancellations: ',
+                                      'Approved cancellations are refunded immediately to your Shrimpbite Wallet.'),
+                                  const SizedBox(height: 20),
+                                  _buildSectionHeader('⚠️ 5. Important Notes'),
+                                  _buildBullet('Low Balance: ',
+                                      'If your wallet doesn\'t have enough funds at midnight, the delivery will be skipped, and you’ll receive a "Low Balance" notification.',
+                                      isWarning: true),
+                                  _buildBullet('Missed Cut-off: ',
+                                      'If you forget to turn on Vacation Mode before 8:00 PM, the system will charge and deliver the next day\'s order as planned.',
+                                      isWarning: true),
+                                  const SizedBox(height: 40),
+                                ],
+                              ),
+                            ),
+                          ])),
                 ),
               ),
-            ],
-          ),
-        ),
-      ),
-    );
+            ));
   }
 
   Widget _buildSectionHeader(String title) {
@@ -979,9 +1133,11 @@ class _ListTileItem extends ConsumerWidget {
                     ),
                     child: Column(
                       children: [
-                        _buildInfoRow(Icons.person_outline, 'Name', user.fullName),
+                        _buildInfoRow(
+                            Icons.person_outline, 'Name', user.fullName),
                         const Divider(height: 24),
-                        _buildInfoRow(Icons.email_outlined, 'Email', user.email),
+                        _buildInfoRow(
+                            Icons.email_outlined, 'Email', user.email),
                         const Divider(height: 24),
                         _buildInfoRow(Icons.phone_android_outlined, 'Mobile',
                             user.phoneNumber),
@@ -999,7 +1155,8 @@ class _ListTileItem extends ConsumerWidget {
                   ),
                   const SizedBox(height: 8),
                   ...reasons.map((reason) => RadioListTile<String>(
-                        title: Text(reason, style: const TextStyle(fontSize: 14)),
+                        title:
+                            Text(reason, style: const TextStyle(fontSize: 14)),
                         value: reason,
                         groupValue: selectedReason,
                         activeColor: Colors.red,
@@ -1038,7 +1195,8 @@ class _ListTileItem extends ConsumerWidget {
                                         (route) => false,
                                       );
                                     } else if (!success && context.mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
                                         const SnackBar(
                                             content: Text(
                                                 'Failed to delete account. Please try again.')),

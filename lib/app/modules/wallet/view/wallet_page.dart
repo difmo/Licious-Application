@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../routes/app_routes.dart';
-import '../../../data/services/wallet_service.dart';
 import '../../../data/services/db_service.dart';
 
 import '../provider/wallet_provider.dart';

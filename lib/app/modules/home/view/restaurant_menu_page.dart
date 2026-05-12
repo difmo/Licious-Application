@@ -54,39 +54,47 @@ class RestaurantMenuPage extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
-      body: Stack(
-        children: [
-          ColorFiltered(
-            colorFilter: isShopActive
-                ? const ColorFilter.mode(Colors.transparent, BlendMode.multiply)
-                : const ColorFilter.mode(Colors.grey, BlendMode.saturation),
-            child: Opacity(
-              opacity: isShopActive ? 1.0 : 0.8,
-              child: CustomScrollView(
-                physics: const BouncingScrollPhysics(),
-                slivers: [
-                  // ── Hero App Bar ──────────────────────────────────────────────────
-                  SliverAppBar(
-                    expandedHeight: 220,
-                    pinned: true,
-                    backgroundColor: Colors.white,
-                    elevation: 0,
-                    leading: Padding(
-                      padding: const EdgeInsets.only(left: 12),
-                      child: CircleAvatar(
-                        backgroundColor: Colors.white.withValues(alpha: 0.9),
-                        child: IconButton(
-                          icon: const Icon(Icons.arrow_back,
-                              color: Colors.black87, size: 20),
-                          onPressed: () => Navigator.pop(context),
-                        ),
-                      ),
-                    ),
-                    actions: const [],
-                    flexibleSpace: FlexibleSpaceBar(
-                      background: _buildHeroBanner(currentShop),
-                    ),
-                  ),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isTablet = constraints.maxWidth > 700;
+          final contentWidth = isTablet ? 1000.0 : constraints.maxWidth;
+          
+          return Stack(
+            children: [
+              Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: contentWidth),
+                  child: ColorFiltered(
+                    colorFilter: isShopActive
+                        ? const ColorFilter.mode(Colors.transparent, BlendMode.multiply)
+                        : const ColorFilter.mode(Colors.grey, BlendMode.saturation),
+                    child: Opacity(
+                      opacity: isShopActive ? 1.0 : 0.8,
+                      child: CustomScrollView(
+                        physics: const BouncingScrollPhysics(),
+                        slivers: [
+                          // ── Hero App Bar ──────────────────────────────────────────────────
+                          SliverAppBar(
+                            expandedHeight: isTablet ? 300 : 220,
+                            pinned: true,
+                            backgroundColor: Colors.white,
+                            elevation: 0,
+                            leading: Padding(
+                              padding: const EdgeInsets.only(left: 12),
+                              child: CircleAvatar(
+                                backgroundColor: Colors.white.withValues(alpha: 0.9),
+                                child: IconButton(
+                                  icon: const Icon(Icons.arrow_back,
+                                      color: Colors.black87, size: 20),
+                                  onPressed: () => Navigator.pop(context),
+                                ),
+                              ),
+                            ),
+                            actions: const [],
+                            flexibleSpace: FlexibleSpaceBar(
+                              background: _buildHeroBanner(currentShop),
+                            ),
+                          ),
 
                   // ── Restaurant Info Card ────────────────────────────────────────
                   SliverToBoxAdapter(
@@ -269,8 +277,8 @@ class RestaurantMenuPage extends ConsumerWidget {
 
                   // ── Products Grid ─────────────────────────────────────────────
                   productsAsync.when(
-                    loading: () => const SliverToBoxAdapter(
-                      child: _ProductsLoadingGrid(),
+                    loading: () => SliverToBoxAdapter(
+                      child: _ProductsLoadingGrid(isTablet: isTablet),
                     ),
                     error: (err, _) => SliverToBoxAdapter(
                       child: _ProductsErrorState(
@@ -284,13 +292,21 @@ class RestaurantMenuPage extends ConsumerWidget {
                         return const SliverToBoxAdapter(
                             child: _ProductsEmptyState());
                       }
+                      
+                      // Calculate responsive grid parameters
+                      int crossAxisCount = 2;
+                      if (constraints.maxWidth > 900) {
+                        crossAxisCount = 4;
+                      } else if (constraints.maxWidth > 600) {
+                        crossAxisCount = 3;
+                      }
+                      
                       return SliverPadding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         sliver: SliverGrid(
-                          gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            childAspectRatio: 0.7,
+                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: crossAxisCount,
+                            childAspectRatio: isTablet ? 0.75 : 0.7,
                             crossAxisSpacing: 12,
                             mainAxisSpacing: 12,
                           ),
@@ -312,40 +328,47 @@ class RestaurantMenuPage extends ConsumerWidget {
                     },
                   ),
 
-                  const SliverPadding(padding: EdgeInsets.only(bottom: 120)),
-                ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               ),
-            ),
-          ),
 
-          // ── Floating Back Button (Above Grayscale) ────────────────────────
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 10,
-            left: 12,
-            child: CircleAvatar(
-              backgroundColor: Colors.white.withValues(alpha: 0.9),
-              child: IconButton(
-                icon: const Icon(Icons.arrow_back,
-                    color: Colors.black87, size: 20),
-                onPressed: () => Navigator.pop(context),
+              // ── Floating Back Button (Above Grayscale) ────────────────────────
+              Positioned(
+                top: MediaQuery.of(context).padding.top + 10,
+                left: isTablet ? (constraints.maxWidth - contentWidth) / 2 + 12 : 12,
+                child: CircleAvatar(
+                  backgroundColor: Colors.white.withValues(alpha: 0.9),
+                  child: IconButton(
+                    icon: const Icon(Icons.arrow_back,
+                        color: Colors.black87, size: 20),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ),
               ),
-            ),
-          ),
 
-          if (cart.itemCount > 0 && isShopActive)
-            Positioned(
-              bottom:
-                  30, // Positioned near bottom since this page doesn't have a persistent bottom bar like MainPage
-              left: 0,
-              right: 0,
-              child: CartSummaryBar(
-                cart: cart,
-                onTap: () {
-                  Navigator.pushNamed(context, AppRoutes.cart);
-                },
-              ),
-            ),
-        ],
+              if (cart.itemCount > 0 && isShopActive)
+                Positioned(
+                  bottom: 30,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 1000),
+                      child: CartSummaryBar(
+                        cart: cart,
+                        onTap: () {
+                          Navigator.pushNamed(context, AppRoutes.cart);
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -907,7 +930,8 @@ class _FavoriteHeartState extends ConsumerState<_FavoriteHeart>
 // ── Products Loading Grid ─────────────────────────────────────────────────────
 
 class _ProductsLoadingGrid extends StatelessWidget {
-  const _ProductsLoadingGrid();
+  final bool isTablet;
+  const _ProductsLoadingGrid({required this.isTablet});
 
   @override
   Widget build(BuildContext context) {
@@ -916,13 +940,13 @@ class _ProductsLoadingGrid extends StatelessWidget {
       child: GridView.builder(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          childAspectRatio: 0.78,
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: isTablet ? 3 : 2,
+          childAspectRatio: isTablet ? 0.78 : 0.7,
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
         ),
-        itemCount: 4,
+        itemCount: 6,
         itemBuilder: (_, __) => const _ProductShimmerCard(),
       ),
     );

@@ -89,11 +89,12 @@ class OrderService {
           requiresAuth: true,
         );
         if (fallback is List) return fallback;
-        if (fallback is Map)
+        if (fallback is Map) {
           return fallback['orders'] ??
               fallback['data'] ??
               fallback['history'] ??
               [];
+        }
       } catch (e2) {
         debugPrint('Fallback /orders/my also failed: $e2');
       }

@@ -1,8 +1,8 @@
+import 'dart:io';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:sms_autofill/sms_autofill.dart';
 import '../../widgets/common_button.dart';
 import 'provider/auth_provider.dart';
 import 'otp_verification_page.dart';
@@ -60,38 +60,7 @@ class _LoginPageState extends ConsumerState<LoginPage>
           icon: Icons.check_circle,
         );
       }
-      
-      // Prompt for phone number hint ONLY ON FIRST INSTALL/RUN
-      // Otherwise, stay quiet unless user taps the phone icon manually
-      if (_phoneController.text.isEmpty) {
-        final prefs = await SharedPreferences.getInstance();
-        final bool hasBeenPrompted = prefs.getBool('phone_hint_prompted') ?? false;
-        
-        if (!hasBeenPrompted) {
-          _fillPhoneHint();
-          await prefs.setBool('phone_hint_prompted', true);
-        }
-      }
     });
-  }
-
-  Future<void> _fillPhoneHint() async {
-    try {
-      final String? hint = await SmsAutoFill().hint;
-      if (hint != null && hint.isNotEmpty) {
-        if (!mounted) return;
-        // Clean and take last 10 digits
-        final cleaned = hint.replaceAll(RegExp(r'\D'), '');
-        final last10 = cleaned.length >= 10 
-            ? cleaned.substring(cleaned.length - 10) 
-            : cleaned;
-        setState(() {
-          _phoneController.text = last10;
-        });
-      }
-    } catch (e) {
-      debugPrint('Error getting phone hint: $e');
-    }
   }
 
   @override
@@ -170,26 +139,31 @@ class _LoginPageState extends ConsumerState<LoginPage>
 
     if (result != null && result.success) {
       // Pre-trigger OTP session immediately (non-blocking)
-      // The verification page's initState will check if a session is already in progress
-      ref.read(authProvider.notifier).sendOtp(phoneNumber: formatted);
+      // Only send if we don't already have a valid session in progress
+      final authState = ref.read(authProvider);
+      if (authState is! AuthAuthenticated && authState is! AuthSuccess) {
+        ref.read(authProvider.notifier).sendOtp(phoneNumber: formatted);
+      }
     }
 
-    if (!mounted) return;
-    setState(() => _isChecking = false);
-
     if (result == null || !result.success) {
+      setState(() => _isChecking = false);
       _showSnackBar(result?.message ?? 'Could not connect. Try again.',
           backgroundColor: Colors.red);
       return;
     }
 
-    // All users (customer and rider) now use Firebase OTP flow
-    Navigator.push(
+    // All users (customer and rider) now use Backend OTP flow
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => OtpVerificationPage(phoneNumber: formatted),
       ),
     );
+
+    if (mounted) {
+      setState(() => _isChecking = false);
+    }
   }
 
   Future<void> _launchURL(String url) async {
@@ -206,205 +180,246 @@ class _LoginPageState extends ConsumerState<LoginPage>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        child: Column(
-          children: [
-            // ── Top Header with Brand Image ──
-            Stack(
-              children: [
-                SizedBox(
-                  height: 320,
-                  width: double.infinity,
-                  child: Image.asset(
-                    'assets/images/image copy 5.png',
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Container(
-                      color: const Color(0xFF114F3B),
-                      child: const Center(
-                        child: Icon(Icons.shopping_bag_outlined, size: 60, color: Colors.white24),
-                      ),
-                    ),
-                  ),
-                ),
-                Container(
-                  height: 320,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.bottomCenter,
-                      end: Alignment.topCenter,
-                      colors: [
-                        Colors.white,
-                        Colors.white.withOpacity(0.0),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final bool isTablet = constraints.maxWidth > 600;
+          final double contentWidth = isTablet ? 1000.0 : constraints.maxWidth;
+          final double topImageHeight = isTablet ? 450 : 320;
 
-            // ── Form Content ──
-            FadeTransition(
-              opacity: _fadeAnim,
-              child: SlideTransition(
-                position: _slideAnim,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(28, 0, 28, 48),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Premium Seafresh\nDelivered To You',
-                        style: TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.w900,
-                          color: Color(0xFF114F3B),
-                          height: 1.1,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        'Enter your mobile number to get started with OTP verification.',
-                        style: TextStyle(fontSize: 16, color: Colors.black54, height: 1.4),
-                      ),
-                      const SizedBox(height: 40),
-
-                      // Phone Number Input
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade50,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.grey.shade200),
-                        ),
-                        child: TextField(
-                          controller: _phoneController,
-                          keyboardType: TextInputType.phone,
-                          maxLength: 10,
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1.5),
-                          decoration: InputDecoration(
-                            counterText: '',
-                            hintText: '98765 43210',
-                            hintStyle: TextStyle(color: Colors.grey.shade400, letterSpacing: 1.5),
-                            prefixIcon: const Padding(
-                              padding: EdgeInsets.only(left: 16, right: 8),
-                              child: Text(
-                                '+91 ',
-                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
+          return Center(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: contentWidth),
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: Column(
+                  children: [
+                    // ── Top Header with Brand Image ──
+                    Stack(
+                      children: [
+                        SizedBox(
+                          height: topImageHeight,
+                          width: double.infinity,
+                          child: Image.asset(
+                            'assets/images/image copy 5.png',
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                Container(
+                              color: const Color(0xFF114F3B),
+                              child: const Center(
+                                child: Icon(Icons.shopping_bag_outlined,
+                                    size: 60, color: Colors.white24),
                               ),
                             ),
-                            suffixIcon: IconButton(
-                              icon: const Icon(Icons.contact_phone_outlined, color: Color(0xFF2E7D32), size: 20),
-                              onPressed: _fillPhoneHint,
-                              tooltip: 'Auto-fill phone number',
-                            ),
-                            prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
-                            border: InputBorder.none,
-                            contentPadding: const EdgeInsets.symmetric(vertical: 18),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Terms & Conditions Checkbox
-                      GestureDetector(
-                        onTap: () => setState(() => _agreeToTerms = !_agreeToTerms),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            SizedBox(
-                              height: 24,
-                              width: 24,
-                              child: Checkbox(
-                                value: _agreeToTerms,
-                                onChanged: (v) =>
-                                    setState(() => _agreeToTerms = v ?? false),
-                                activeColor: const Color(0xFF2E7D32),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                side: BorderSide(
-                                    color: Colors.grey.shade300, width: 2),
-                              ),
+                        Container(
+                          height: topImageHeight,
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.bottomCenter,
+                              end: Alignment.topCenter,
+                              colors: [
+                                Colors.white,
+                                Colors.white.withOpacity(0.0),
+                              ],
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: RichText(
-                                text: TextSpan(
-                                  text: 'I agree to the ',
-                                  style: const TextStyle(
-                                      fontSize: 13,
-                                      color: Colors.black54,
-                                      height: 1.5),
-                                  children: [
-                                    TextSpan(
-                                      text: 'Terms & Conditions',
-                                      style: const TextStyle(
-                                          color: Color(0xFF2E7D32),
-                                          fontWeight: FontWeight.bold),
-                                      recognizer: _termsRecognizer,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    // ── Form Content ──
+                    FadeTransition(
+                      opacity: _fadeAnim,
+                      child: SlideTransition(
+                        position: _slideAnim,
+                        child: Padding(
+                          padding: EdgeInsets.fromLTRB(
+                              isTablet ? 60 : 28, 0, isTablet ? 60 : 28, 48),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Premium Seafresh\nDelivered To You',
+                                style: TextStyle(
+                                  fontSize: isTablet ? 44 : 32,
+                                  fontWeight: FontWeight.w900,
+                                  color: const Color(0xFF114F3B),
+                                  height: 1.1,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                'Enter your mobile number to get started with OTP verification.',
+                                style: TextStyle(
+                                    fontSize: isTablet ? 18 : 16,
+                                    color: Colors.black54,
+                                    height: 1.4),
+                              ),
+                              const SizedBox(height: 40),
+
+                              // Phone Number Input
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade50,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border:
+                                      Border.all(color: Colors.grey.shade200),
+                                ),
+                                child: TextField(
+                                  controller: _phoneController,
+                                  keyboardType: TextInputType.phone,
+                                  maxLength: 10,
+                                  style: TextStyle(
+                                      fontSize: isTablet ? 22 : 18,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 1.5),
+                                  decoration: InputDecoration(
+                                    counterText: '',
+                                    hintText: '98765 43210',
+                                    hintStyle: TextStyle(
+                                        color: Colors.grey.shade400,
+                                        letterSpacing: 1.5),
+                                    prefixIcon: Padding(
+                                      padding: const EdgeInsets.only(
+                                          left: 16, right: 8),
+                                      child: Text(
+                                        '+91 ',
+                                        style: TextStyle(
+                                            fontSize: isTablet ? 22 : 18,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.black87),
+                                      ),
                                     ),
-                                    const TextSpan(
-                                        text: ' and ',
-                                        style: TextStyle(color: Colors.black54)),
-                                    TextSpan(
-                                      text: 'Privacy Policy',
-                                      style: const TextStyle(
-                                          color: Color(0xFF2E7D32),
-                                          fontWeight: FontWeight.bold),
-                                      recognizer: _privacyRecognizer,
+                                    prefixIconConstraints: const BoxConstraints(
+                                        minWidth: 0, minHeight: 0),
+                                    border: InputBorder.none,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                        vertical: 18),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 24),
+
+                              // Terms & Conditions Checkbox
+                              GestureDetector(
+                                onTap: () => setState(
+                                    () => _agreeToTerms = !_agreeToTerms),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    SizedBox(
+                                      height: 24,
+                                      width: 24,
+                                      child: Checkbox(
+                                        value: _agreeToTerms,
+                                        onChanged: (v) => setState(
+                                            () => _agreeToTerms = v ?? false),
+                                        activeColor: const Color(0xFF2E7D32),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(6),
+                                        ),
+                                        side: BorderSide(
+                                            color: Colors.grey.shade300,
+                                            width: 2),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: RichText(
+                                        text: TextSpan(
+                                          text: 'I agree to the ',
+                                          style: TextStyle(
+                                              fontSize: isTablet ? 15 : 13,
+                                              color: Colors.black54,
+                                              height: 1.5),
+                                          children: [
+                                            TextSpan(
+                                              text: 'Terms & Conditions',
+                                              style: const TextStyle(
+                                                  color: Color(0xFF2E7D32),
+                                                  fontWeight: FontWeight.bold),
+                                              recognizer: _termsRecognizer,
+                                            ),
+                                            const TextSpan(
+                                                text: ' and ',
+                                                style: TextStyle(
+                                                    color: Colors.black54)),
+                                            TextSpan(
+                                              text: 'Privacy Policy',
+                                              style: const TextStyle(
+                                                  color: Color(0xFF2E7D32),
+                                                  fontWeight: FontWeight.bold),
+                                              recognizer: _privacyRecognizer,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
                                     ),
                                   ],
                                 ),
                               ),
-                            ),
-                          ],
+                              const SizedBox(height: 44),
+
+                              // Continue button
+                              CommonButton(
+                                text: 'Send OTP',
+                                onPressed: _continue,
+                                isLoading: _isChecking,
+                                backgroundColor: const Color(0xFF2E7D32),
+                                borderRadius: 28,
+                                padding: isTablet
+                                    ? const EdgeInsets.symmetric(vertical: 20)
+                                    : null,
+                                textStyle: isTablet
+                                    ? const TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold)
+                                    : null,
+                              ),
+
+                              const SizedBox(height: 40),
+
+                              // Trust indicators
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  _trustItem(Icons.verified_user_outlined,
+                                      'Secure', isTablet),
+                                  SizedBox(width: isTablet ? 48 : 24),
+                                  _trustItem(
+                                      Icons.speed_outlined, 'Fast', isTablet),
+                                  SizedBox(width: isTablet ? 48 : 24),
+                                  _trustItem(Icons.local_shipping_outlined,
+                                      'Fresh', isTablet),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 44),
-
-                      // Continue button
-                      CommonButton(
-                        text: 'Send OTP',
-                        onPressed: _continue,
-                        isLoading: _isChecking,
-                        backgroundColor: const Color(0xFF2E7D32),
-                        borderRadius: 28,
-                      ),
-                      
-                      const SizedBox(height: 32),
-                      
-                      // Trust indicators
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          _trustItem(Icons.verified_user_outlined, 'Secure'),
-                          const SizedBox(width: 24),
-                          _trustItem(Icons.speed_outlined, 'Fast'),
-                          const SizedBox(width: 24),
-                          _trustItem(Icons.local_shipping_outlined, 'Fresh'),
-                        ],
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
 
-  Widget _trustItem(IconData icon, String label) {
+  Widget _trustItem(IconData icon, String label, bool isTablet) {
     return Row(
       children: [
-        Icon(icon, size: 16, color: Colors.grey.shade400),
+        Icon(icon, size: isTablet ? 20 : 16, color: Colors.grey.shade400),
         const SizedBox(width: 4),
         Text(
           label,
           style: TextStyle(
-              fontSize: 12,
+              fontSize: isTablet ? 15 : 12,
               color: Colors.grey.shade500,
               fontWeight: FontWeight.w600),
         ),

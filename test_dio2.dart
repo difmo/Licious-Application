@@ -3,7 +3,7 @@ void main() async {
   final dio = Dio(BaseOptions(baseUrl: 'https://api.shrimpbite.in/api'));
   try {
     await dio.get('/app/cart');
-  } on DioException catch (e) {
+  } on DioException {
     print('Requested URI: \${e.requestOptions.uri}');
   }
 }

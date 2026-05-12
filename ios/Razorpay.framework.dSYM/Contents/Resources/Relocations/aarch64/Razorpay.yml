@@ -1,0 +1,5 @@
+---
+triple:          'arm64-apple-darwin'
+binary-path:     'ios/Pods/razorpay-core-pod/Pod/core/Razorpay.xcframework/ios-arm64/Razorpay.framework/Razorpay'
+relocations:     []
+...

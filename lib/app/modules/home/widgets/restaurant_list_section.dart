@@ -97,15 +97,45 @@ class _ShopsList extends StatelessWidget {
             ],
           ),
         ),
-        ListView.builder(
-          padding: EdgeInsets.zero,
-          physics: const NeverScrollableScrollPhysics(),
-          shrinkWrap: true,
-          itemCount: shops.length,
-          itemBuilder: (context, index) {
-            return _ShopCard(
-              shop: shops[index],
-              index: index,
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final double width = constraints.maxWidth;
+            final int crossAxisCount = width > 950 ? 4 : (width > 700 ? 3 : (width > 480 ? 2 : 1));
+
+            if (crossAxisCount > 1) {
+              return GridView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                physics: const NeverScrollableScrollPhysics(),
+                shrinkWrap: true,
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: crossAxisCount,
+                  childAspectRatio: width > 900 ? 0.95 : (width > 700 ? 0.9 : 1.05),
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                ),
+                itemCount: shops.length,
+                itemBuilder: (context, index) {
+                  return _ShopCard(
+                    shop: shops[index],
+                    index: index,
+                    isGrid: true,
+                  );
+                },
+              );
+            }
+
+            return ListView.builder(
+              padding: EdgeInsets.zero,
+              physics: const NeverScrollableScrollPhysics(),
+              shrinkWrap: true,
+              itemCount: shops.length,
+              itemBuilder: (context, index) {
+                return _ShopCard(
+                  shop: shops[index],
+                  index: index,
+                  isGrid: false,
+                );
+              },
             );
           },
         ),
@@ -119,8 +149,13 @@ class _ShopsList extends StatelessWidget {
 class _ShopCard extends StatelessWidget {
   final ShopModel shop;
   final int index;
+  final bool isGrid;
 
-  const _ShopCard({required this.shop, required this.index});
+  const _ShopCard({
+    required this.shop,
+    required this.index,
+    this.isGrid = false,
+  });
 
   Color get _offerColor {
     if (shop.offer.contains('200')) return const Color(0xFF7B2FF7);
@@ -172,7 +207,9 @@ class _ShopCard extends StatelessWidget {
               ? const ColorFilter.mode(Colors.transparent, BlendMode.multiply)
               : const ColorFilter.mode(Colors.grey, BlendMode.saturation),
           child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            margin: isGrid
+                ? EdgeInsets.zero
+                : const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
@@ -426,7 +463,7 @@ class _ShopCard extends StatelessWidget {
     if (networkUrl.length > 5) {
       return Image.network(
         networkUrl,
-        height: 180,
+        height: isGrid ? 140 : 180,
         width: double.infinity,
         fit: BoxFit.cover,
         errorBuilder: (_, __, ___) => _localFallback(),
@@ -438,11 +475,11 @@ class _ShopCard extends StatelessWidget {
   Widget _localFallback() {
     return Image.asset(
       _heroImage,
-      height: 180,
+      height: isGrid ? 140 : 180,
       width: double.infinity,
       fit: BoxFit.cover,
       errorBuilder: (_, __, ___) => Container(
-        height: 180,
+        height: isGrid ? 140 : 180,
         color: Colors.grey.shade100,
         child: const Center(
           child: Icon(Icons.restaurant, size: 48, color: Colors.grey),
@@ -480,14 +517,42 @@ class _ShopsLoadingState extends StatelessWidget {
             ),
           ),
         ),
-        ...List.generate(3, (i) => const _ShopShimmerCard()),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final double width = constraints.maxWidth;
+            final int crossAxisCount = width > 950 ? 4 : (width > 700 ? 3 : (width > 480 ? 2 : 1));
+
+            if (crossAxisCount > 1) {
+              return GridView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                physics: const NeverScrollableScrollPhysics(),
+                shrinkWrap: true,
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: crossAxisCount,
+                  childAspectRatio: width > 900 ? 0.95 : (width > 700 ? 0.9 : 1.05),
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                ),
+                itemCount: 6,
+                itemBuilder: (context, index) {
+                  return const _ShopShimmerCard(isGrid: true);
+                },
+              );
+            }
+
+            return Column(
+              children: List.generate(3, (i) => const _ShopShimmerCard()),
+            );
+          },
+        ),
       ],
     );
   }
 }
 
 class _ShopShimmerCard extends StatefulWidget {
-  const _ShopShimmerCard();
+  final bool isGrid;
+  const _ShopShimmerCard({this.isGrid = false});
 
   @override
   State<_ShopShimmerCard> createState() => _ShopShimmerCardState();
@@ -519,7 +584,9 @@ class _ShopShimmerCardState extends State<_ShopShimmerCard>
     return AnimatedBuilder(
       animation: _anim,
       builder: (_, __) => Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        margin: widget.isGrid
+            ? EdgeInsets.zero
+            : const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
@@ -529,7 +596,7 @@ class _ShopShimmerCardState extends State<_ShopShimmerCard>
           children: [
             // Image placeholder
             Container(
-              height: 180,
+              height: widget.isGrid ? 140 : 180,
               decoration: BoxDecoration(
                 color: Colors.grey.withValues(alpha: _anim.value),
                 borderRadius:

@@ -63,8 +63,8 @@ class AuthInterceptor extends QueuedInterceptor {
             });
 
             if (response.statusCode == 200) {
-              newAccessToken = response.data['accessToken'];
-              final newRefreshToken = response.data['refreshToken'] ?? refreshToken;
+              newAccessToken = response.data['accessToken'] ?? response.data['token'] ?? response.data['access_token'];
+              final newRefreshToken = response.data['refreshToken'] ?? response.data['refresh_token'] ?? refreshToken;
 
               await _storage.saveTokens(
                 access: newAccessToken!,
