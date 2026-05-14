@@ -53,12 +53,20 @@ class _LoginPageState extends ConsumerState<LoginPage>
     // Show "verified" toast only when arriving from OTP verification
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final args = ModalRoute.of(context)?.settings.arguments;
-      if (args is Map && args['verified'] == true) {
-        _showSnackBar(
-          'Login successful!',
-          backgroundColor: Colors.green.shade600,
-          icon: Icons.check_circle,
-        );
+      if (args is Map) {
+        if (args['verified'] == true) {
+          _showSnackBar(
+            'Login successful!',
+            backgroundColor: Colors.green.shade600,
+            icon: Icons.check_circle,
+          );
+        } else if (args['deleted'] == true) {
+          _showSnackBar(
+            'Account successfully deleted.',
+            backgroundColor: Colors.orange.shade800,
+            icon: Icons.info_outline,
+          );
+        }
       }
     });
   }

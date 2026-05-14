@@ -7,6 +7,7 @@ import '../../../data/services/subscription_service.dart';
 
 import '../widgets/cart_summary_bar.dart';
 import '../widgets/quantity_selector.dart';
+import '../../../core/utils/auth_guard.dart';
 
 class ProductDetailsPage extends ConsumerStatefulWidget {
   final Product product;
@@ -21,15 +22,17 @@ class _ProductDetailsPageState extends ConsumerState<ProductDetailsPage> {
   int _selectedVariantIndex = 0;
 
   void _showSubscriptionDrawer(BuildContext context, ProductVariant? selectedVariant) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => SubscriptionConfigDrawer(
-        product: widget.product,
-        selectedVariant: selectedVariant,
-      ),
-    );
+    AuthGuard.run(context, ref, () {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) => SubscriptionConfigDrawer(
+          product: widget.product,
+          selectedVariant: selectedVariant,
+        ),
+      );
+    });
   }
 
   @override
@@ -285,17 +288,18 @@ class _ProductDetailsPageState extends ConsumerState<ProductDetailsPage> {
                   const SizedBox(height: 12),
                   !isInCart
                       ? ElevatedButton(
-                          onPressed: () =>
-                              cart.addToCart(CartItem(
-                                id: product.id,
-                                title: product.name,
-                                unitPrice: selectedVariant?.price ?? product.price,
-                                subtitle: selectedVariant?.weightLabel ?? product.weight,
-                                image: product.image,
-                                category: product.category,
-                                variantId: selectedVariant?.id,
-                                weightLabel: selectedVariant?.weightLabel,
-                              )),
+                          onPressed: () => AuthGuard.run(context, ref, () {
+                                cart.addToCart(CartItem(
+                                  id: product.id,
+                                  title: product.name,
+                                  unitPrice: selectedVariant?.price ?? product.price,
+                                  subtitle: selectedVariant?.weightLabel ?? product.weight,
+                                  image: product.image,
+                                  category: product.category,
+                                  variantId: selectedVariant?.id,
+                                  weightLabel: selectedVariant?.weightLabel,
+                                ));
+                              }),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF68B92E),
                             foregroundColor: Colors.white,
@@ -327,7 +331,9 @@ class _ProductDetailsPageState extends ConsumerState<ProductDetailsPage> {
                                       color: Color(0xFF1A1A1A))),
                               QuantitySelector(
                                 quantity: cartItem.quantity,
-                                onIncrement: () => cart.increment(product.id, variantId: selectedVariant?.id),
+                                onIncrement: () => AuthGuard.run(context, ref, () {
+                                  cart.increment(product.id, variantId: selectedVariant?.id);
+                                }),
                                 onDecrement: () => cart.decrement(product.id, variantId: selectedVariant?.id),
                                 size: 40,
                               ),

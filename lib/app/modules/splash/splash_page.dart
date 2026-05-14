@@ -62,7 +62,7 @@ class _SplashPageState extends ConsumerState<SplashPage>
         state is AuthError ||
         state is AuthSuccess) {
       _navigated = true;
-      Navigator.pushReplacementNamed(context, AppRoutes.login);
+      Navigator.pushReplacementNamed(context, AppRoutes.home);
     }
   }
 

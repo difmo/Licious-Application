@@ -11,6 +11,9 @@ import 'package:licius_application/app/routes/app_routes.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:licius_application/app/core/constants/app_colors.dart';
 
+import 'package:licius_application/app/core/utils/auth_guard.dart';
+import 'package:licius_application/app/modules/auth/provider/auth_provider.dart' as auth;
+
 class SubscriptionPage extends ConsumerStatefulWidget {
   const SubscriptionPage({super.key});
 
@@ -89,72 +92,122 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
     final ordersAsync = ref.watch(myOrdersProvider);
     final cart = CartProviderScope.of(context);
     final balance = cart.walletBalance;
+    final isAuthenticated = ref.watch(auth.isAuthenticatedProvider);
 
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: () async {
-            ref.invalidate(mySubscriptionsProvider);
-            ref.invalidate(myOrdersProvider);
-            CartProviderScope.read(context).syncWallet();
-          },
-          color: const Color(0xFF68B92E),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              subscriptionsAsync.when(
-                data: (subs) => Column(
-                  children: [
-                    _buildHeader(balance, subs),
-                    _buildHorizontalCalendar(subs),
-                  ],
-                ),
-                loading: () => Column(
-                  children: [
-                    _buildHeader(balance, []),
-                    _buildHorizontalCalendar([]),
-                  ],
-                ),
-                error: (e, _) => Center(child: Text('Error: $e')),
-              ),
-              Expanded(
-                child: subscriptionsAsync.when(
-                  data: (subs) => ordersAsync.when(
-                    data: (orders) => SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        children: [
-                          Row(
+        child: !isAuthenticated 
+          ? _buildGuestView()
+          : RefreshIndicator(
+              onRefresh: () async {
+                ref.invalidate(mySubscriptionsProvider);
+                ref.invalidate(myOrdersProvider);
+                CartProviderScope.read(context).syncWallet();
+              },
+              color: const Color(0xFF68B92E),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  subscriptionsAsync.when(
+                    data: (subs) => Column(
+                      children: [
+                        _buildHeader(balance, subs),
+                        _buildHorizontalCalendar(subs),
+                      ],
+                    ),
+                    loading: () => Column(
+                      children: [
+                        _buildHeader(balance, []),
+                        _buildHorizontalCalendar([]),
+                      ],
+                    ),
+                    error: (e, _) => Center(child: Text('Error: $e')),
+                  ),
+                  Expanded(
+                    child: subscriptionsAsync.when(
+                      data: (subs) => ordersAsync.when(
+                        data: (orders) => SingleChildScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
                             children: [
-                              _buildVacationButton(subs),
-                              const SizedBox(width: 10),
-                              _buildPauseTomorrowButton(subs),
+                              Row(
+                                children: [
+                                  _buildVacationButton(subs),
+                                  const SizedBox(width: 10),
+                                  _buildPauseTomorrowButton(subs),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              _buildStatusCard(subs, orders),
+                              const SizedBox(height: 20),
+                              _buildYourPlans(subs),
+                              const SizedBox(height: 20),
                             ],
                           ),
-                          const SizedBox(height: 16),
-                          _buildStatusCard(subs, orders),
-                          const SizedBox(height: 20),
-                          _buildYourPlans(subs),
-                          const SizedBox(height: 20),
-                        ],
+                        ),
+                        loading: () => const Center(
+                            child: CircularProgressIndicator(
+                                color: Color(0xFF68B92E))),
+                        error: (e, _) =>
+                            Center(child: Text('Error loading orders: $e')),
                       ),
+                      loading: () => const Center(
+                          child:
+                              CircularProgressIndicator(color: Color(0xFF68B92E))),
+                      error: (e, _) => Center(child: Text('Error: $e')),
                     ),
-                    loading: () => const Center(
-                        child: CircularProgressIndicator(
-                            color: Color(0xFF68B92E))),
-                    error: (e, _) =>
-                        Center(child: Text('Error loading orders: $e')),
                   ),
-                  loading: () => const Center(
-                      child:
-                          CircularProgressIndicator(color: Color(0xFF68B92E))),
-                  error: (e, _) => Center(child: Text('Error: $e')),
-                ),
+                ],
               ),
-            ],
-          ),
+            ),
+      ),
+    );
+  }
+
+  Widget _buildGuestView() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: const Color(0xFF68B92E).withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.calendar_today_outlined, size: 64, color: Color(0xFF68B92E)),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Your Daily Freshness',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF1A1A1A)),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Login to set up subscriptions, manage your daily deliveries, and pause anytime.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey, fontSize: 16),
+            ),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: double.infinity,
+              height: 54,
+              child: ElevatedButton(
+                onPressed: () => AuthGuard.run(context, ref, () {}),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF68B92E),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  elevation: 0,
+                ),
+                child: const Text('Login / Signup', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              ),
+            ),
+          ],
         ),
       ),
     );

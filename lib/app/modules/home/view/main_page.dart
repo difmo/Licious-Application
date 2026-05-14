@@ -9,6 +9,7 @@ import '../controller/main_controller.dart';
 import '../../../data/services/db_service.dart';
 import '../../../data/services/socket_service.dart';
 import '../../../data/services/order_service.dart';
+import '../../../core/utils/auth_guard.dart';
 import '../../auth/provider/auth_provider.dart';
 import '../../profile/widgets/order_review_dialog.dart';
 import '../../../data/models/food_models.dart';
@@ -359,7 +360,6 @@ class _MainPageState extends ConsumerState<MainPage> {
     bool isSelected = _controller.currentIndex == index;
     return GestureDetector(
       onTap: () => _controller.changePage(index),
-      behavior: HitTestBehavior.opaque,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [

@@ -5,12 +5,15 @@ import '../../home/view/product_details_page.dart';
 import '../../home/controller/main_controller.dart';
 import '../../home/widgets/quantity_selector.dart';
 import 'shipping_address_page.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/utils/auth_guard.dart';
+import '../../auth/provider/auth_provider.dart';
 
-class CartPage extends StatelessWidget {
+class CartPage extends ConsumerWidget {
   const CartPage({super.key});
-
+  
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     // ... items ...
     final cart = CartProviderScope.of(context);
     final items = cart.items;
@@ -52,14 +55,14 @@ class CartPage extends StatelessWidget {
                   itemCount: items.length,
                   itemBuilder: (context, index) {
                     final item = items[index];
-                    return _buildCartItem(context, cart, item);
+                    return _buildCartItem(context, ref, cart, item);
                   },
                 ),
                 Positioned(
                   bottom: 0,
                   left: 0,
                   right: 0,
-                  child: _buildSummarySection(context, cart),
+                  child: _buildSummarySection(context, ref, cart),
                 ),
               ],
             ),
@@ -132,7 +135,7 @@ class CartPage extends StatelessWidget {
     );
   }
 
-  Widget _buildCartItem(BuildContext context, CartProvider cart, dynamic item) {
+  Widget _buildCartItem(BuildContext context, WidgetRef ref, CartProvider cart, dynamic item) {
     return GestureDetector(
       onTap: () {
         // Find the full product object to pass to details page
@@ -254,32 +257,34 @@ class CartPage extends StatelessWidget {
                   const SizedBox(height: 8),
                   TextButton(
                     onPressed: () {
-                      final product = cart.recommendedProducts.firstWhere(
-                        (p) => p.id == item.id,
-                        orElse: () => Product(
-                          id: item.id,
-                          name: item.title,
-                          image: item.image,
-                          price: item.unitPrice,
-                          weight: item.subtitle,
-                          category: '',
-                          description: '',
-                          whyChoose: [],
-                        ),
-                      );
-                      final selectedVariant = item.variantId != null 
-                          ? product.variants.firstWhere((v) => v.id == item.variantId, orElse: () => ProductVariant(id: item.variantId!, label: item.weightLabel ?? '', price: item.unitPrice, stock: 99, weightInKg: 0.5, weightValue: 0.5, weightUnit: 'Kg'))
-                          : null;
-                      showModalBottomSheet(
-                        context: context,
-                        isScrollControlled: true,
-                        backgroundColor: Colors.transparent,
-                        builder: (context) =>
-                            SubscriptionConfigDrawer(
-                              product: product,
-                              selectedVariant: selectedVariant,
-                            ),
-                      );
+                      AuthGuard.run(context, ref, () {
+                        final product = cart.recommendedProducts.firstWhere(
+                          (p) => p.id == item.id,
+                          orElse: () => Product(
+                            id: item.id,
+                            name: item.title,
+                            image: item.image,
+                            price: item.unitPrice,
+                            weight: item.subtitle,
+                            category: '',
+                            description: '',
+                            whyChoose: [],
+                          ),
+                        );
+                        final selectedVariant = item.variantId != null 
+                            ? product.variants.firstWhere((v) => v.id == item.variantId, orElse: () => ProductVariant(id: item.variantId!, label: item.weightLabel ?? '', price: item.unitPrice, stock: 99, weightInKg: 0.5, weightValue: 0.5, weightUnit: 'Kg'))
+                            : null;
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (context) =>
+                              SubscriptionConfigDrawer(
+                                product: product,
+                                selectedVariant: selectedVariant,
+                              ),
+                        );
+                      });
                     },
                     style: TextButton.styleFrom(
                       padding: EdgeInsets.zero,
@@ -305,7 +310,7 @@ class CartPage extends StatelessWidget {
     );
   }
 
-  Widget _buildSummarySection(BuildContext context, CartProvider cart) {
+  Widget _buildSummarySection(BuildContext context, WidgetRef ref, CartProvider cart) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -353,11 +358,13 @@ class CartPage extends StatelessWidget {
             height: 56,
             child: ElevatedButton(
               onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (_) => const ShippingAddressPage()),
-                );
+                AuthGuard.run(context, ref, () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const ShippingAddressPage()),
+                  );
+                });
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF439462),

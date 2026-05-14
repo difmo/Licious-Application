@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../routes/app_routes.dart';
 import '../../../data/services/db_service.dart';
-
 import '../provider/wallet_provider.dart';
+import '../../../core/utils/auth_guard.dart';
+import '../../auth/provider/auth_provider.dart' as auth;
 
 class WalletPage extends ConsumerWidget {
   const WalletPage({super.key});
@@ -13,6 +14,7 @@ class WalletPage extends ConsumerWidget {
     final cart = CartProviderScope.of(context);
     final balance = cart.walletBalance;
     final historyAsync = ref.watch(walletHistoryProvider);
+    final isAuthenticated = ref.watch(auth.isAuthenticatedProvider);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
@@ -22,7 +24,7 @@ class WalletPage extends ConsumerWidget {
         backgroundColor: Colors.white,
         elevation: 0,
         foregroundColor: Colors.black,
-        actions: [
+        actions: isAuthenticated ? [
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
@@ -30,22 +32,71 @@ class WalletPage extends ConsumerWidget {
               ref.invalidate(walletHistoryProvider);
             },
           ),
-        ],
+        ] : null,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+      body: !isAuthenticated 
+        ? _buildGuestView(context, ref)
+        : SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              children: [
+                // Balance card
+                _buildBalanceCard(balance),
+                const SizedBox(height: 30),
+                _buildActionButtons(context),
+                const SizedBox(height: 30),
+                // Transaction history
+                historyAsync.when(
+                  data: (history) => _buildTransactionHistory(history),
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (_, __) => const Text('Failed to load transactions'),
+                ),
+              ],
+            ),
+          ),
+    );
+  }
+
+  Widget _buildGuestView(BuildContext context, WidgetRef ref) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Balance card
-            _buildBalanceCard(balance),
-            const SizedBox(height: 30),
-            _buildActionButtons(context),
-            const SizedBox(height: 30),
-            // Transaction history
-            historyAsync.when(
-              data: (history) => _buildTransactionHistory(history),
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (_, __) => const Text('Failed to load transactions'),
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: const Color(0xFF68B92E).withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.account_balance_wallet_outlined, size: 64, color: Color(0xFF68B92E)),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Your Wallet is Waiting',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF1A1A1A)),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Login to see your balance, add money, and view transaction history.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey, fontSize: 16),
+            ),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: double.infinity,
+              height: 54,
+              child: ElevatedButton(
+                onPressed: () => AuthGuard.run(context, ref, () {}),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF68B92E),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  elevation: 0,
+                ),
+                child: const Text('Login / Signup', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              ),
             ),
           ],
         ),

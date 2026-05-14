@@ -14,6 +14,7 @@ import '../../../data/services/subscription_service.dart';
 import '../../../routes/app_routes.dart';
 import 'package:url_launcher/url_launcher.dart';
 import './address_management_page.dart';
+import '../../../core/utils/auth_guard.dart';
 
 class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
@@ -26,6 +27,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     final profileAsync = ref.watch(auth.userProfileProvider);
+    final isAuthenticated = ref.watch(auth.isAuthenticatedProvider);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -48,14 +50,19 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        profileAsync.when(
-                          data: (user) => _ProfileHeader(user: user),
-                          loading: () => const _ProfileHeaderSkeleton(),
-                          error: (e, _) => Center(child: Text('Error: $e')),
-                        ),
+                        if (isAuthenticated)
+                          profileAsync.when(
+                            data: (user) => _ProfileHeader(user: user),
+                            loading: () => const _ProfileHeaderSkeleton(),
+                            error: (e, _) => Center(child: Text('Error: $e')),
+                          )
+                        else
+                          const _GuestProfileHeader(),
                         const SizedBox(height: 30),
-                        const _ActiveOrdersAndSubscriptions(),
-                        const SizedBox(height: 24),
+                        if (isAuthenticated) ...[
+                          const _ActiveOrdersAndSubscriptions(),
+                          const SizedBox(height: 24),
+                        ],
                         const Text(
                           'Quick Actions',
                           style: TextStyle(
@@ -68,8 +75,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         const SizedBox(height: 24),
                         const _ListTilesSection(),
                         const SizedBox(height: 32),
-                        const _SignOutButton(),
-                        const SizedBox(height: 100),
+                        if (isAuthenticated) ...[
+                          const _SignOutButton(),
+                          const SizedBox(height: 100),
+                        ],
                       ],
                     ),
                   ),
@@ -266,6 +275,64 @@ class _ProfileHeader extends StatelessWidget {
   }
 }
 
+class _GuestProfileHeader extends ConsumerWidget {
+  const _GuestProfileHeader();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Welcome, Guest!',
+                style: TextStyle(
+                  color: Color(0xFF114F3B),
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const Text(
+                'Login to manage orders and subscriptions',
+                style: TextStyle(
+                  color: Colors.black45,
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 36,
+                child: ElevatedButton(
+                  onPressed: () => AuthGuard.run(context, ref, () {}),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF114F3B),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18)),
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                  ),
+                  child: const Text('Login / Signup',
+                      style:
+                          TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const CircleAvatar(
+          radius: 40,
+          backgroundColor: Color(0xFFEBFFD7),
+          child: Icon(Icons.person_outline, size: 40, color: Color(0xFF114F3B)),
+        ),
+      ],
+    );
+  }
+}
+
 class _ActiveOrdersAndSubscriptions extends ConsumerWidget {
   const _ActiveOrdersAndSubscriptions();
 
@@ -440,7 +507,7 @@ class _QuickActionsRow extends ConsumerWidget {
   }
 }
 
-class _QuickActionBtn extends StatelessWidget {
+class _QuickActionBtn extends ConsumerWidget {
   final String title;
   final String navigateTo;
   final int badgeCount;
@@ -452,34 +519,36 @@ class _QuickActionBtn extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final bool isFavBtn = navigateTo == 'My Favorites';
 
     return GestureDetector(
       onTap: () {
-        if (navigateTo == 'My Orders') {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const MyOrdersPage()),
-          );
-        } else if (isFavBtn) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => FavoritesPage()),
-          );
-        } else if (navigateTo == 'My Address') {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (context) => const AddressManagementPage()),
-          );
-        } else {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (context) => ProfileDetailPage(title: navigateTo)),
-          );
-        }
+        AuthGuard.run(context, ref, () {
+          if (navigateTo == 'My Orders') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const MyOrdersPage()),
+            );
+          } else if (isFavBtn) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => FavoritesPage()),
+            );
+          } else if (navigateTo == 'My Address') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => const AddressManagementPage()),
+            );
+          } else {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => ProfileDetailPage(title: navigateTo)),
+            );
+          }
+        });
       },
       child: Container(
         width: MediaQuery.of(context).size.width * 0.27,
@@ -816,125 +885,6 @@ class _ListTileItem extends ConsumerWidget {
                                 ],
                               ),
                             ),
-                            const SizedBox(height: 8),
-                            Expanded(
-                              child: ListView(
-                                controller: scrollController,
-                                children: [
-                                  const Text(
-                                    'Welcome to ShrimpBite! To ensure you get the freshest seafood exactly when you want it, please review how our scheduling and billing work.',
-                                    style: TextStyle(
-                                        color: Colors.grey,
-                                        height: 1.4,
-                                        fontSize: 13),
-                                  ),
-                                  const SizedBox(height: 24),
-                                  _buildSectionHeader(
-                                      '🗓️ 1. Flexible Subscription Plans'),
-                                  _buildBullet('Daily: ',
-                                      'Fresh delivery every single day.'),
-                                  _buildBullet('Alternative Days: ',
-                                      'Delivery every other day (Gap of 1 day).'),
-                                  _buildBullet('Custom Weekdays: ',
-                                      'Pick specific days (e.g., only Mondays, Wednesdays, and Fridays).'),
-                                  const SizedBox(height: 20),
-                                  _buildSectionHeader(
-                                      '🏖️ 2. Vacation Mode (Pause Delivery)'),
-                                  const Text(
-                                    'Going away? You can pause your deliveries without canceling your subscription.',
-                                    style: TextStyle(
-                                        color: Colors.black87, fontSize: 13),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  _buildBullet('Vacation ON: ',
-                                      'All upcoming deliveries are paused.'),
-                                  _buildBullet('Vacation OFF: ',
-                                      'Deliveries resume based on your original schedule.'),
-                                  const SizedBox(height: 20),
-                                  _buildSectionHeader(
-                                      '⏰ 3. The 8:00 PM "Cut-off" Rule'),
-                                  const Text(
-                                    'This is the most important rule for making changes. Our shop owners start prepping your fresh catch by 8:00 PM every night.',
-                                    style: TextStyle(
-                                        color: Colors.black87, fontSize: 13),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Container(
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                        color: const Color(0xFFEBFFD7)
-                                            .withOpacity(0.5),
-                                        borderRadius:
-                                            BorderRadius.circular(12)),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        _buildBullet('Before 8:00 PM: ',
-                                            'Starts Tomorrow'),
-                                        _buildBullet('After 8:00 PM: ',
-                                            'Starts Day After Tomorrow'),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  const Text(
-                                    'Why the delay? To guarantee maximum freshness and stock availability, we finalize all orders by 8:00 PM. Late-night changes happen after the next day\'s prep is already complete.',
-                                    style: TextStyle(
-                                        color: Colors.grey,
-                                        fontSize: 12,
-                                        fontStyle: FontStyle.italic),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  const Text('Real-World Examples:',
-                                      style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 13)),
-                                  const SizedBox(height: 4),
-                                  _buildBullet('Morning: ',
-                                      '"10:00 AM Monday. I turn Vacation ON. My Tuesday delivery is paused."'),
-                                  _buildBullet('Night: ',
-                                      '"9:30 PM Monday. I turn Vacation ON. Since it\'s past 8:00 PM, my Tuesday delivery is already packed. My vacation starts Wednesday."'),
-                                  const SizedBox(height: 20),
-                                  _buildSectionHeader(
-                                      '💳 4. Wallet & Payments'),
-                                  const Text(
-                                    'We believe in a "No Delivery = No Charge" policy.',
-                                    style: TextStyle(
-                                        color: Colors.black87,
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.bold),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  _buildBullet('One-time Orders: ',
-                                      'Charged instantly when you checkout.'),
-                                  _buildBullet('Subscriptions: ',
-                                      'Money is deducted automatically from your wallet at 12:01 AM on the day of delivery.'),
-                                  _buildBullet('Vacation Rule: ',
-                                      'If Vacation Mode is active, no money is deducted.'),
-                                  const SizedBox(height: 12),
-                                  const Text('Refunds & Credits',
-                                      style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 13,
-                                          color: Color(0xFF114F3B))),
-                                  const SizedBox(height: 4),
-                                  _buildBullet('Weight Adjustments: ',
-                                      'If you pay for 1kg but we deliver 900g, the difference is credited back to your wallet instantly.'),
-                                  _buildBullet('Cancellations: ',
-                                      'Approved cancellations are refunded immediately to your Shrimpbite Wallet.'),
-                                  const SizedBox(height: 20),
-                                  _buildSectionHeader('⚠️ 5. Important Notes'),
-                                  _buildBullet('Low Balance: ',
-                                      'If your wallet doesn\'t have enough funds at midnight, the delivery will be skipped, and you’ll receive a "Low Balance" notification.',
-                                      isWarning: true),
-                                  _buildBullet('Missed Cut-off: ',
-                                      'If you forget to turn on Vacation Mode before 8:00 PM, the system will charge and deliver the next day\'s order as planned.',
-                                      isWarning: true),
-                                  const SizedBox(height: 40),
-                                ],
-                              ),
-                            ),
                           ])),
                 ),
               ),
@@ -992,16 +942,20 @@ class _ListTileItem extends ConsumerWidget {
     return GestureDetector(
       onTap: () async {
         if (title == 'About me') {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const EditProfilePage()),
-          );
+          AuthGuard.run(context, ref, () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const EditProfilePage()),
+            );
+          });
         } else if (title == 'My Address' || title == 'Saved Addresses') {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (context) => const AddressManagementPage()),
-          );
+          AuthGuard.run(context, ref, () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => const AddressManagementPage()),
+            );
+          });
         } else if (title == 'Give us rating') {
           final url = Uri.parse(
               'https://play.google.com/store/apps/details?id=com.shrimpbite.app');
@@ -1022,11 +976,21 @@ class _ListTileItem extends ConsumerWidget {
           _showHelpSupportModal(context);
         } else if (title == 'Subscription Details') {
           _showSubscriptionGuideModal(context);
+        } else if (title == 'Notifications') {
+          AuthGuard.run(context, ref, () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => ProfileDetailPage(title: title)),
+            );
+          });
         } else if (title == 'Delete Account') {
-          final user = ref.read(auth.currentUserProvider);
-          if (user != null) {
-            _showDeleteAccountDialog(context, user, ref);
-          }
+          AuthGuard.run(context, ref, () {
+            final user = ref.read(auth.currentUserProvider);
+            if (user != null) {
+              _showDeleteAccountDialog(context, user, ref);
+            }
+          });
         } else {
           Navigator.push(
             context,
@@ -1082,75 +1046,75 @@ class _ListTileItem extends ConsumerWidget {
       "Account security issues",
       "Other",
     ];
+    bool isLoading = false;
 
-    try {
-      await showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        useSafeArea: true,
-        backgroundColor: Colors.white,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        builder: (context) => StatefulBuilder(
-          builder: (context, setModalState) => SafeArea(
-            child: Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom,
-                left: 24,
-                right: 24,
-                top: 24,
-              ),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => SafeArea(
+          child: Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom,
+              left: 24,
+              right: 24,
+              top: 24,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Delete Account',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'We are sorry to see you go. Please let us know why you want to delete your account.',
+                    style: TextStyle(color: Colors.black54, fontSize: 14),
+                  ),
+                  const SizedBox(height: 20),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: Column(
                       children: [
-                        const Text(
-                          'Delete Account',
-                          style: TextStyle(
-                            color: Colors.red,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () => Navigator.pop(context),
-                          icon: const Icon(Icons.close, color: Colors.grey),
-                        ),
+                        _buildInfoRow(
+                            Icons.person_outline, 'Name', nameController),
+                        const Divider(height: 24),
+                        _buildInfoRow(
+                            Icons.email_outlined, 'Email', emailController,
+                            keyboardType: TextInputType.emailAddress),
+                        const Divider(height: 24),
+                        _buildInfoRow(Icons.phone_android_outlined, 'Mobile',
+                            mobileController,
+                            keyboardType: TextInputType.phone),
                       ],
                     ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'We are sorry to see you go. Please let us know why you want to delete your account.',
-                      style: TextStyle(color: Colors.black54, fontSize: 14),
-                    ),
-                    const SizedBox(height: 20),
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey.shade200),
-                      ),
-                      child: Column(
-                        children: [
-                          _buildInfoRow(
-                              Icons.person_outline, 'Name', nameController),
-                          const Divider(height: 24),
-                          _buildInfoRow(Icons.email_outlined, 'Email',
-                              emailController,
-                              keyboardType: TextInputType.emailAddress),
-                          const Divider(height: 24),
-                          _buildInfoRow(Icons.phone_android_outlined, 'Mobile',
-                              mobileController,
-                              keyboardType: TextInputType.phone),
-                        ],
-                      ),
-                    ),
+                  ),
                   const SizedBox(height: 24),
                   const Text(
                     'Select a reason:',
@@ -1178,64 +1142,68 @@ class _ListTileItem extends ConsumerWidget {
                   SizedBox(
                     width: double.infinity,
                     height: 50,
-                    child: Consumer(
-                      builder: (context, ref, child) {
-                        final authState = ref.watch(auth.authProvider);
-                        final isLoading = authState is auth.AuthLoading;
+                    child: ElevatedButton(
+                      onPressed: selectedReason == null || isLoading
+                          ? null
+                          : () async {
+                              final confirm = await _showConfirmDialog(context);
+                              if (confirm == true) {
+                                setModalState(() => isLoading = true);
+                                try {
+                                  final success = await ref
+                                      .read(auth.authProvider.notifier)
+                                      .deleteAccount(reason: selectedReason);
 
-                        return ElevatedButton(
-                          onPressed: selectedReason == null || isLoading
-                              ? null
-                              : () async {
-                                  final confirm =
-                                      await _showConfirmDialog(context);
-                                  if (confirm == true) {
-                                    final success = await ref
-                                        .read(auth.authProvider.notifier)
-                                        .deleteAccount(reason: selectedReason);
-
-                                    if (success && context.mounted) {
-                                      Navigator.pop(context); // Close modal
-                                      Navigator.pushNamedAndRemoveUntil(
-                                        context,
-                                        AppRoutes.login,
-                                        (route) => false,
-                                      );
-                                    } else if (!success && context.mounted) {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        const SnackBar(
-                                            content: Text(
-                                                'Failed to delete account. Please try again.')),
-                                      );
-                                    }
+                                  if (success && context.mounted) {
+                                    Navigator.pop(context); // Close modal
+                                    Navigator.pushNamedAndRemoveUntil(
+                                      context,
+                                      AppRoutes.login,
+                                      (route) => false,
+                                      arguments: {'deleted': true},
+                                    );
+                                  } else if (!success && context.mounted) {
+                                    setModalState(() => isLoading = false);
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                          content: Text(
+                                              'Failed to delete account. Please try again.')),
+                                    );
                                   }
-                                },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                                } catch (e) {
+                                  if (context.mounted) {
+                                    setModalState(() => isLoading = false);
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                          content:
+                                              Text('An error occurred: $e')),
+                                    );
+                                  }
+                                }
+                              }
+                            },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: isLoading
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Text(
+                              'Delete',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 16),
                             ),
-                            elevation: 0,
-                          ),
-                          child: isLoading
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Text(
-                                  'Delete',
-                                  style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16),
-                                ),
-                        );
-                      },
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -1246,15 +1214,10 @@ class _ListTileItem extends ConsumerWidget {
         ),
       ),
     );
-    } finally {
-      nameController.dispose();
-      emailController.dispose();
-      mobileController.dispose();
-    }
   }
 
-  Widget _buildInfoRow(IconData icon, String label,
-      TextEditingController controller,
+  Widget _buildInfoRow(
+      IconData icon, String label, TextEditingController controller,
       {TextInputType? keyboardType}) {
     return Row(
       children: [

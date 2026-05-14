@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/utils/auth_guard.dart';
+import '../../auth/provider/auth_provider.dart';
 import '../../../data/models/shop_product_model.dart';
 import '../../../data/models/product_model.dart';
 import '../../../data/models/food_models.dart';
@@ -675,16 +677,18 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
       whyChoose: [],
     );
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => VariantSelectorSheet(
-        product: product,
-        shopId: widget.shopId,
-        shopName: shopName,
-      ),
-    );
+    AuthGuard.run(context, ref, () {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) => VariantSelectorSheet(
+          product: product,
+          shopId: widget.shopId,
+          shopName: shopName,
+        ),
+      );
+    });
   }
 
   Widget _buildCartControls(
@@ -723,7 +727,7 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
 
     if (cartItem.quantity == 0) {
       return GestureDetector(
-        onTap: () {
+        onTap: () => AuthGuard.run(context, ref, () {
           if (p.variants.isNotEmpty) {
             _showVariantSheet(context, p, shopName);
             return;
@@ -752,7 +756,7 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
           } else {
             _showReplaceCartDialog(context, cart, p, shopName);
           }
-        },
+        }),
         child: Container(
           width: 32,
           height: 32,
@@ -767,7 +771,9 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
 
     return QuantitySelector(
       quantity: cartItem.quantity,
-      onIncrement: () => cart.increment(p.id, variantId: selectedVariant?.id),
+      onIncrement: () => AuthGuard.run(context, ref, () {
+        cart.increment(p.id, variantId: selectedVariant?.id);
+      }),
       onDecrement: () => cart.decrement(p.id, variantId: selectedVariant?.id),
       size: 32, // Compact size for grid card
     );
@@ -914,15 +920,17 @@ class _FavoriteHeartState extends ConsumerState<_FavoriteHeart>
   }
 
   void _onTap() async {
-    // Animate the heart
-    await _bounce.forward();
-    _bounce.reverse();
+    AuthGuard.run(context, ref, () async {
+      // Animate the heart
+      await _bounce.forward();
+      _bounce.reverse();
 
-    // Flip local state immediately (instant visual feedback)
-    setState(() => _localFav = !(_localFav ?? false));
+      // Flip local state immediately (instant visual feedback)
+      setState(() => _localFav = !(_localFav ?? false));
 
-    // Delegate the actual API call + provider update
-    await ref.read(favoritesProvider.notifier).toggle(widget.productId);
+      // Delegate the actual API call + provider update
+      await ref.read(favoritesProvider.notifier).toggle(widget.productId);
+    });
   }
 
   @override

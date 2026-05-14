@@ -183,11 +183,11 @@ class AuthService {
   }) async {
     try {
       final json = await _client.post(
-        '${ApiClient.baseUrl}/delete-account-request',
+        '${ApiClient.baseUrl}/delete-account',
         data: {
           'name': name,
           'email': email,
-          'region': reason,
+          'reason': reason,
         },
         requiresAuth: true,
       );

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/services/db_service.dart';
 import '../../location/view/select_delivery_address_screen.dart';
 import '../../../data/models/food_models.dart';
+import '../../../core/utils/auth_guard.dart';
 
-class LocationBottomSheet extends StatelessWidget {
+class LocationBottomSheet extends ConsumerWidget {
   const LocationBottomSheet({super.key});
 
   static void show(BuildContext context) {
@@ -16,7 +18,7 @@ class LocationBottomSheet extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final cart = CartProviderScope.of(context);
     final addresses = cart.addresses;
 
@@ -69,16 +71,18 @@ class LocationBottomSheet extends StatelessWidget {
                 // Add New Address Button
                 InkWell(
                   onTap: () {
-                    final navigator = Navigator.of(context);
-                    final parentContext = context; // Capture context
-                    navigator.pop();
-                    navigator.push(
-                      MaterialPageRoute(builder: (_) => const SelectDeliveryAddressScreen()),
-                    ).then((result) {
-                      if (result == true && parentContext.mounted) {
-                        LocationBottomSheet.show(parentContext);
-                      }
-                      cart.loadAddresses();
+                    AuthGuard.run(context, ref, () {
+                      final navigator = Navigator.of(context);
+                      final parentContext = context; // Capture context
+                      navigator.pop();
+                      navigator.push(
+                        MaterialPageRoute(builder: (_) => const SelectDeliveryAddressScreen()),
+                      ).then((result) {
+                        if (result == true && parentContext.mounted) {
+                          LocationBottomSheet.show(parentContext);
+                        }
+                        cart.loadAddresses();
+                      });
                     });
                   },
                   borderRadius: BorderRadius.circular(16),
@@ -140,7 +144,7 @@ class LocationBottomSheet extends StatelessWidget {
                   ...List.generate(addresses.length, (index) {
                     final addr = addresses[index];
                     final isSelected = cart.selectedAddressIndex == index;
-                    return _buildAddressItem(context, cart, addr, index, isSelected);
+                    return _buildAddressItem(context, ref, cart, addr, index, isSelected);
                   }),
               ],
             ),
@@ -150,7 +154,7 @@ class LocationBottomSheet extends StatelessWidget {
     );
   }
 
-  Widget _buildAddressItem(BuildContext context, CartProvider cart, UserAddress addr, int index, bool isSelected) {
+  Widget _buildAddressItem(BuildContext context, WidgetRef ref, CartProvider cart, UserAddress addr, int index, bool isSelected) {
     return InkWell(
       onTap: () {
         cart.selectAddress(index);
@@ -227,21 +231,27 @@ class LocationBottomSheet extends StatelessWidget {
                     IconButton(
                       icon: const Icon(Icons.edit_outlined, size: 24, color: Colors.blueAccent),
                       onPressed: () {
-                         final navigator = Navigator.of(context);
-                         final parentContext = context;
-                         navigator.pop();
-                         navigator.push(MaterialPageRoute(builder: (_) => SelectDeliveryAddressScreen(addressToEdit: addr))).then((result) {
-                           if (result == true && parentContext.mounted) {
-                             LocationBottomSheet.show(parentContext);
-                           }
-                           cart.loadAddresses();
-                         });
+                        AuthGuard.run(context, ref, () {
+                           final navigator = Navigator.of(context);
+                           final parentContext = context;
+                           navigator.pop();
+                           navigator.push(MaterialPageRoute(builder: (_) => SelectDeliveryAddressScreen(addressToEdit: addr))).then((result) {
+                             if (result == true && parentContext.mounted) {
+                               LocationBottomSheet.show(parentContext);
+                             }
+                             cart.loadAddresses();
+                           });
+                        });
                       },
                       tooltip: 'Edit Address',
                     ),
                     IconButton(
                       icon: const Icon(Icons.delete_outline, size: 24, color: Colors.redAccent),
-                      onPressed: () => cart.removeAddress(addr.id),
+                      onPressed: () {
+                        AuthGuard.run(context, ref, () {
+                          cart.removeAddress(addr.id);
+                        });
+                      },
                       tooltip: 'Delete Address',
                     ),
                   ],
