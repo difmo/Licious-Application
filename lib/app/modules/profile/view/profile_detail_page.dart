@@ -10,6 +10,7 @@ import '../widgets/order_review_dialog.dart';
 import '../../../data/services/notification_api_service.dart';
 import '../../../data/models/notification_model.dart';
 import '../../auth/provider/auth_provider.dart';
+import "../../../core/utils/auth_guard.dart";
 
 class ProfileDetailPage extends ConsumerStatefulWidget {
   final String title;
@@ -317,10 +318,12 @@ class _ProfileDetailPageState extends ConsumerState<ProfileDetailPage> {
             color: Colors.transparent,
             child: InkWell(
               onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const AddressFormPage()),
-                );
+                AuthGuard.run(context, ref, () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const AddressFormPage()),
+                  );
+                });
               },
               borderRadius: BorderRadius.circular(16),
               child: const Padding(

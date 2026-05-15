@@ -1,18 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/models/food_models.dart';
 import '../../../data/services/db_service.dart';
+import '../../../core/utils/auth_guard.dart';
 
-class AddressFormPage extends StatefulWidget {
+class AddressFormPage extends ConsumerStatefulWidget {
   final UserAddress? address;
 
   const AddressFormPage({super.key, this.address});
 
   @override
-  State<AddressFormPage> createState() => _AddressFormPageState();
+  ConsumerState<AddressFormPage> createState() => _AddressFormPageState();
 }
 
-class _AddressFormPageState extends State<AddressFormPage> {
+class _AddressFormPageState extends ConsumerState<AddressFormPage> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _titleCtrl;
   late TextEditingController _nameCtrl;
@@ -87,27 +89,29 @@ class _AddressFormPageState extends State<AddressFormPage> {
 
   void _save(BuildContext context) {
     if (_formKey.currentState!.validate()) {
-      final provider = CartProviderScope.of(context);
-      
-      String combinedStreet = '';
-      if (_nameCtrl.text.trim().isNotEmpty) combinedStreet += 'Name: ${_nameCtrl.text.trim()}, ';
-      if (_phoneCtrl.text.trim().isNotEmpty) combinedStreet += 'Phone: ${_phoneCtrl.text.trim()}, ';
-      combinedStreet += _streetCtrl.text.trim();
+      AuthGuard.run(context, ref, () {
+        final provider = CartProviderScope.of(context);
+        
+        String combinedStreet = '';
+        if (_nameCtrl.text.trim().isNotEmpty) combinedStreet += 'Name: ${_nameCtrl.text.trim()}, ';
+        if (_phoneCtrl.text.trim().isNotEmpty) combinedStreet += 'Phone: ${_phoneCtrl.text.trim()}, ';
+        combinedStreet += _streetCtrl.text.trim();
 
-      final newAddress = UserAddress(
-        id: widget.address?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
-        title: _titleCtrl.text.trim(),
-        street: combinedStreet,
-        details: '${_cityCtrl.text.trim()}, ${_stateCtrl.text.trim()} ${_pincodeCtrl.text.trim()}',
-        isDefault: _isDefault,
-      );
+        final newAddress = UserAddress(
+          id: widget.address?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+          title: _titleCtrl.text.trim(),
+          street: combinedStreet,
+          details: '${_cityCtrl.text.trim()}, ${_stateCtrl.text.trim()} ${_pincodeCtrl.text.trim()}',
+          isDefault: _isDefault,
+        );
 
-      if (widget.address == null) {
-        provider.addAddress(newAddress);
-      } else {
-        provider.updateAddress(newAddress);
-      }
-      Navigator.pop(context);
+        if (widget.address == null) {
+          provider.addAddress(newAddress);
+        } else {
+          provider.updateAddress(newAddress);
+        }
+        Navigator.pop(context);
+      });
     }
   }
 

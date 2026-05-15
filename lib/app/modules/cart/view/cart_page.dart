@@ -7,7 +7,6 @@ import '../../home/widgets/quantity_selector.dart';
 import 'shipping_address_page.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/utils/auth_guard.dart';
-import '../../auth/provider/auth_provider.dart';
 
 class CartPage extends ConsumerWidget {
   const CartPage({super.key});

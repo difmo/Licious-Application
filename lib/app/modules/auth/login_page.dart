@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -7,7 +6,6 @@ import '../../widgets/common_button.dart';
 import 'provider/auth_provider.dart';
 import 'otp_verification_page.dart';
 
-import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});

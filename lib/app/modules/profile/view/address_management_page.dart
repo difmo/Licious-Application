@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../data/services/db_service.dart';
 import '../../../data/models/food_models.dart';
 import '../../location/view/select_delivery_address_screen.dart';
+import '../../../core/utils/auth_guard.dart';
 
 class AddressManagementPage extends ConsumerWidget {
   const AddressManagementPage({super.key});
@@ -42,11 +43,13 @@ class AddressManagementPage extends ConsumerWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: InkWell(
                   onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) => const SelectDeliveryAddressScreen(isFromProfile: true)),
-                    ).then((_) => cart.loadAddresses());
+                    AuthGuard.run(context, ref, () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const SelectDeliveryAddressScreen(isFromProfile: true)),
+                      ).then((_) => cart.loadAddresses());
+                    });
                   },
                   borderRadius: BorderRadius.circular(16),
                   child: Container(

@@ -11,6 +11,7 @@ import '../../../data/services/location_service.dart';
 import '../../../data/services/geocoding_service.dart';
 import '../../location/view/select_delivery_address_screen.dart';
 import 'payment_method_page.dart';
+import "../../../core/utils/auth_guard.dart";
 
 class ShippingAddressPage extends ConsumerStatefulWidget {
   const ShippingAddressPage({super.key});
@@ -22,41 +23,22 @@ class ShippingAddressPage extends ConsumerStatefulWidget {
 
 class _ShippingAddressPageState extends ConsumerState<ShippingAddressPage> {
   final _formKey = GlobalKey<FormState>();
-
-  final _fullAddressCtrl = TextEditingController();
   final _nameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
+  final _streetCtrl = TextEditingController();
   final _cityCtrl = TextEditingController();
   final _stateCtrl = TextEditingController();
   final _pincodeCtrl = TextEditingController();
-  bool _useProfileDetails = false;
 
-  String _selectedLabel = 'Home';
-  final List<Map<String, dynamic>> _labels = [
-    {'name': 'Home', 'icon': Icons.home_rounded},
-    {'name': 'Office', 'icon': Icons.work_rounded},
-    {'name': 'Other', 'icon': Icons.location_on_rounded},
-  ];
-
-  bool _isDefault = true;
   bool _isSaving = false;
   bool _showAddForm = false;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        CartProviderScope.of(context).loadAddresses();
-      }
-    });
-  }
+  bool _isDefault = true;
 
   @override
   void dispose() {
-    _fullAddressCtrl.dispose();
     _nameCtrl.dispose();
     _phoneCtrl.dispose();
+    _streetCtrl.dispose();
     _cityCtrl.dispose();
     _stateCtrl.dispose();
     _pincodeCtrl.dispose();
@@ -66,51 +48,28 @@ class _ShippingAddressPageState extends ConsumerState<ShippingAddressPage> {
   Future<void> _detectLocation() async {
     setState(() => _isSaving = true);
     try {
-      final loc = await ref.read(locationServiceProvider).getCurrentLocation();
-      if (!mounted) return;
-      if (loc != null) {
-        final geo = ref.read(geocodingServiceProvider);
-        final data =
-            await geo.getAddressFromLatLng(loc.latitude, loc.longitude);
-        if (!mounted) return;
-        if (data != null) {
-          _fullAddressCtrl.text = data['addressLine'] ?? '';
-          _cityCtrl.text = data['city'] ?? '';
-          _stateCtrl.text = data['state'] ?? '';
-          _pincodeCtrl.text = data['postalCode'] ?? '';
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Could not resolve address from your location.')),
-          );
+      final locService = ref.read(locationServiceProvider);
+      final geoService = ref.read(geocodingServiceProvider);
+
+      final pos = await locService.getCurrentLocation();
+      if (pos != null) {
+        final place = await geoService.getAddressFromLatLng(pos.latitude, pos.longitude);
+
+        if (place != null) {
+          setState(() {
+            _streetCtrl.text = place['addressLine'] ?? '';
+            _cityCtrl.text = place['city'] ?? '';
+            _stateCtrl.text = place['state'] ?? '';
+            _pincodeCtrl.text = place['postalCode'] ?? '';
+          });
         }
       }
     } catch (e) {
-      debugPrint('Detect Error: $e');
       if (!mounted) return;
-
-      String message = 'Could not detect location automatically.';
-      bool showSettingsBtn = false;
-
-      if (e.toString().contains('GPS_DISABLED')) {
-        message = 'Please enable GPS/Location to detect your location.';
-        showSettingsBtn = true;
-      } else if (e.toString().contains('PERMISSION')) {
-        message = 'Location permission is required to find your address.';
-        showSettingsBtn = true;
-      } else if (e.toString().contains('TIMEOUT')) {
-        message = 'Location fetch timed out. Please try again or enter manually.';
-      }
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(message),
-          backgroundColor: Colors.red.shade800,
-          behavior: SnackBarBehavior.floating,
-          action: showSettingsBtn ? SnackBarAction(
-            label: 'SETTINGS',
-            textColor: Colors.white,
-            onPressed: () => Geolocator.openLocationSettings(),
-          ) : null,
+          content: Text('Error detecting location: $e'),
+          backgroundColor: Colors.redAccent,
         ),
       );
     } finally {
@@ -134,10 +93,10 @@ class _ShippingAddressPageState extends ConsumerState<ShippingAddressPage> {
       if (_phoneCtrl.text.trim().isNotEmpty) {
         combinedAddress += 'Phone: ${_phoneCtrl.text.trim()}, ';
       }
-      combinedAddress += _fullAddressCtrl.text.trim();
+      combinedAddress += _streetCtrl.text.trim();
 
       final result = await service.saveAddress(
-        label: _selectedLabel,
+        label: 'Home', // Or allow user to select
         fullAddress: combinedAddress,
         city: _cityCtrl.text.trim(),
         state: _stateCtrl.text.trim(),
@@ -145,37 +104,29 @@ class _ShippingAddressPageState extends ConsumerState<ShippingAddressPage> {
         isDefault: _isDefault,
       );
 
-      if (result['success']) {
+      if (result['success'] == true) {
         await cart.loadAddresses();
+        setState(() {
+          _showAddForm = false;
+          _nameCtrl.clear();
+          _phoneCtrl.clear();
+          _streetCtrl.clear();
+          _cityCtrl.clear();
+          _stateCtrl.clear();
+          _pincodeCtrl.clear();
+        });
         if (mounted) {
-          setState(() {
-            _showAddForm = false;
-            _isSaving = false;
-            _fullAddressCtrl.clear();
-            _cityCtrl.clear();
-            _pincodeCtrl.clear();
-            _stateCtrl.clear();
-            _nameCtrl.clear();
-            _phoneCtrl.clear();
-          });
-          
-          // AUTO-NAVIGATE TO PAYMENT
-          if (mounted) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const PaymentMethodPage()),
-            );
-          }
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Address saved successfully!')),
+          );
         }
       }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content:
-              Text('Error: ${e is ApiException ? e.message : e.toString()}'),
+          content: Text('Failed to save address: $e'),
           backgroundColor: Colors.redAccent,
-          behavior: SnackBarBehavior.floating,
         ),
       );
     } finally {
@@ -188,138 +139,128 @@ class _ShippingAddressPageState extends ConsumerState<ShippingAddressPage> {
     final cart = CartProviderScope.of(context);
     final addresses = cart.addresses;
 
-    // Auto-show form if no addresses exist is no longer needed since it's always shown
-
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        centerTitle: true,
+        centerTitle: false,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded,
-              color: Colors.black, size: 20),
-          onPressed: () {
-            if (_showAddForm && addresses.isNotEmpty) {
-              setState(() => _showAddForm = false);
-            } else {
-              Navigator.pop(context);
-            }
-          },
+          icon: const Icon(Icons.arrow_back, color: Color(0xFF1F2937)),
+          onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
           'Shipping Address',
           style: TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.w800,
+            color: Color(0xFF1F2937),
+            fontWeight: FontWeight.bold,
             fontSize: 20,
-            letterSpacing: -0.5,
           ),
         ),
       ),
       body: Column(
         children: [
+          // TOP SECTION: Add new address triggers
           Container(
-            color: Colors.white,
-            padding: const EdgeInsets.only(bottom: 20, top: 10),
-            child: const _CheckoutStepper(currentStep: 1),
-          ),
-          if (_showAddForm)
-            Expanded(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                child: _buildAddAddressView(),
-              ),
-            )
-          else ...[
-            // TOP SECTION: Add new address actions
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Add New Address',
-                      style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF1F2937))),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () => setState(() => _showAddForm = true),
-                          icon: const Icon(Icons.edit_location_alt_rounded,
-                              size: 20, color: AppColors.accentGreen),
-                          label: const Text('Add Manually',
-                              style: TextStyle(
-                                  color: AppColors.accentGreen,
-                                  fontWeight: FontWeight.bold)),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            side:
-                                const BorderSide(color: AppColors.accentGreen),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
-                          ),
+            padding: const EdgeInsets.all(24),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Add New Address',
+                    style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1F2937))),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => AuthGuard.run(context, ref, () => setState(() => _showAddForm = true)),
+                        icon: const Icon(Icons.edit_location_alt_rounded,
+                            size: 20, color: AppColors.accentGreen),
+                        label: const Text('Add Manually',
+                            style: TextStyle(
+                                color: AppColors.accentGreen,
+                                fontWeight: FontWeight.bold)),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          side:
+                              const BorderSide(color: AppColors.accentGreen),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: _isSaving
-                              ? null
-                              : () {
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _isSaving
+                            ? null
+                            : () {
+                                AuthGuard.run(context, ref, () {
                                   setState(() => _showAddForm = true);
                                   _detectLocation();
-                                },
-                          icon: _isSaving
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                      color: Colors.white, strokeWidth: 2),
-                                )
-                              : const Icon(Icons.my_location,
-                                  size: 20, color: Colors.white),
-                          label: Text(_isSaving ? 'Locating...' : 'Locate Me',
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold)),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.accentGreen,
-                            elevation: 0,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
-                          ),
+                                });
+                              },
+                        icon: _isSaving
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                    color: Colors.white, strokeWidth: 2),
+                              )
+                            : const Icon(Icons.my_location,
+                                size: 20, color: Colors.white),
+                        label: Text(_isSaving ? 'Locating...' : 'Locate Me',
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.accentGreen,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
                         ),
                       ),
-                    ],
-                  ),
-                ],
-              ),
+                    ),
+                  ],
+                ),
+              ],
             ),
+          ),
 
-            const Divider(
-                height: 1, indent: 24, endIndent: 24, color: Colors.black12),
+          const Divider(
+              height: 1, indent: 24, endIndent: 24, color: Colors.black12),
 
-            // BOTTOM SECTION: Scrollable saved addresses list
-            Expanded(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                child: _buildAddressListView(cart),
-              ),
+          // BOTTOM SECTION: Scrollable saved addresses list
+          Expanded(
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: _buildAddressListView(cart),
             ),
-          ],
-          if (addresses.isNotEmpty && !_showAddForm) _buildBottomAction(cart),
+          ),
         ],
       ),
+      bottomNavigationBar: (addresses.isNotEmpty && !_showAddForm) ? _buildBottomAction(cart) : null,
     );
   }
 
   Widget _buildAddressListView(CartProvider cart) {
     final addresses = cart.addresses;
+    
+    if (_showAddForm) {
+      return Padding(
+        padding: const EdgeInsets.all(24),
+        child: _buildAddressForm(),
+      );
+    }
+
     return Container(
       key: const ValueKey('address_list'),
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
@@ -350,11 +291,16 @@ class _ShippingAddressPageState extends ConsumerState<ShippingAddressPage> {
                 }, () {
                   cart.removeAddress(addr.id);
                 }, () {
-                  Navigator.push(
+                  AuthGuard.run(context, ref, () {
+                    Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (_) => SelectDeliveryAddressScreen(
-                              addressToEdit: addr))).then((_) => cart.loadAddresses());
+                        builder: (_) => SelectDeliveryAddressScreen(
+                          addressToEdit: addr,
+                        ),
+                      ),
+                    ).then((_) => cart.loadAddresses());
+                  });
                 });
               },
             ),
@@ -374,27 +320,133 @@ class _ShippingAddressPageState extends ConsumerState<ShippingAddressPage> {
       ),
       child: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: AppColors.accentGreen.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(Icons.location_off_rounded,
-                color: AppColors.accentGreen, size: 40),
-          ),
+          Icon(Icons.location_off_rounded,
+              size: 48, color: Colors.grey.withOpacity(0.5)),
           const SizedBox(height: 16),
           const Text(
-            'No saved addresses',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            'No addresses yet',
+            style: TextStyle(
+                fontSize: 16, fontWeight: FontWeight.w600, color: Colors.grey),
           ),
           const SizedBox(height: 8),
-          Text(
-            'Please add an address to continue with your order.',
+          const Text(
+            'Add an address to proceed with checkout',
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.grey.shade500, fontSize: 14),
+            style: TextStyle(fontSize: 13, color: Colors.grey),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildAddressForm() {
+    return Form(
+      key: _formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Enter Address Details',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => setState(() => _showAddForm = false),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          _buildTextField(_nameCtrl, 'Full Name', Icons.person_outline,
+              validator: (v) => v!.isEmpty ? 'Required' : null),
+          const SizedBox(height: 16),
+          _buildTextField(_phoneCtrl, 'Phone Number', Icons.phone_android_outlined,
+              keyboardType: TextInputType.phone,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(10),
+              ],
+              validator: (v) => v!.length != 10 ? 'Enter 10 digits' : null),
+          const SizedBox(height: 16),
+          _buildTextField(_streetCtrl, 'Street / House No.', Icons.map_outlined,
+              validator: (v) => v!.isEmpty ? 'Required' : null),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                  child: _buildTextField(_cityCtrl, 'City', Icons.location_city,
+                      validator: (v) => v!.isEmpty ? 'Required' : null)),
+              const SizedBox(width: 12),
+              Expanded(
+                  child: _buildTextField(_stateCtrl, 'State', Icons.explore,
+                      validator: (v) => v!.isEmpty ? 'Required' : null)),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _buildTextField(_pincodeCtrl, 'Pincode', Icons.pin_drop,
+              keyboardType: TextInputType.number,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(6),
+              ],
+              validator: (v) => v!.length != 6 ? 'Enter 6 digits' : null),
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              Checkbox(
+                value: _isDefault,
+                onChanged: (v) => setState(() => _isDefault = v!),
+                activeColor: AppColors.accentGreen,
+              ),
+              const Text('Set as default address',
+                  style: TextStyle(fontWeight: FontWeight.w500)),
+            ],
+          ),
+          const SizedBox(height: 32),
+          SizedBox(
+            width: double.infinity,
+            height: 56,
+            child: ElevatedButton(
+              onPressed: _isSaving ? null : _saveAddress,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.accentGreen,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16)),
+              ),
+              child: _isSaving
+                  ? const CircularProgressIndicator(color: Colors.white)
+                  : const Text('Save Address',
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTextField(TextEditingController ctrl, String label, IconData icon,
+      {TextInputType? keyboardType,
+      List<TextInputFormatter>? inputFormatters,
+      String? Function(String?)? validator}) {
+    return TextFormField(
+      controller: ctrl,
+      keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
+      validator: validator,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, color: Colors.grey),
+        filled: true,
+        fillColor: Colors.white,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade200),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade200),
+        ),
       ),
     );
   }
@@ -408,40 +460,35 @@ class _ShippingAddressPageState extends ConsumerState<ShippingAddressPage> {
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(24),
           border: Border.all(
             color: isSelected ? AppColors.accentGreen : Colors.transparent,
             width: 2,
           ),
           boxShadow: [
             BoxShadow(
-              color: isSelected
-                  ? AppColors.accentGreen.withValues(alpha: 0.15)
-                  : Colors.black.withValues(alpha: 0.05),
-              blurRadius: 15,
-              offset: const Offset(0, 8),
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? AppColors.accentGreen.withValues(alpha: 0.1)
-                    : const Color(0xFFF1F4F8),
-                shape: BoxShape.circle,
+                    ? AppColors.accentGreen.withOpacity(0.1)
+                    : Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
                 addr.title.toLowerCase() == 'home'
                     ? Icons.home_rounded
-                    : addr.title.toLowerCase() == 'office'
-                        ? Icons.work_rounded
-                        : Icons.location_on_rounded,
-                color:
-                    isSelected ? AppColors.accentGreen : Colors.grey.shade600,
-                size: 24,
+                    : Icons.work_rounded,
+                color: isSelected ? AppColors.accentGreen : Colors.grey,
               ),
             ),
             const SizedBox(width: 16),
@@ -450,377 +497,58 @@ class _ShippingAddressPageState extends ConsumerState<ShippingAddressPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
                         addr.title,
                         style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: Color(0xFF1B2D1F),
-                        ),
+                            fontSize: 16, fontWeight: FontWeight.bold),
                       ),
-                      if (addr.isDefault) ...[
-                        const SizedBox(width: 8),
+                      if (addr.isDefault)
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
+                              horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF1F4F8),
+                            color: AppColors.accentGreen.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: const Text(
                             'DEFAULT',
                             style: TextStyle(
-                              fontSize: 8,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.grey,
-                            ),
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.accentGreen),
                           ),
                         ),
-                      ],
                     ],
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Text(
-                    addr.street,
-                    style: TextStyle(
-                      color: Colors.grey.shade600,
-                      fontSize: 13,
-                      height: 1.4,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    addr.details,
-                    style: TextStyle(
-                      color: Colors.grey.shade400,
-                      fontSize: 12,
-                    ),
+                    '${addr.street}\n${addr.details}',
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
                   ),
                 ],
               ),
             ),
             const SizedBox(width: 8),
             Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Container(
-                  width: 24,
-                  height: 24,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: isSelected
-                          ? AppColors.accentGreen
-                          : Colors.grey.shade300,
-                      width: 2,
-                    ),
-                  ),
-                  child: isSelected
-                      ? Center(
-                          child: Container(
-                            width: 12,
-                            height: 12,
-                            decoration: const BoxDecoration(
-                              color: AppColors.accentGreen,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                        )
-                      : null,
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined,
+                      size: 20, color: Colors.grey),
+                  onPressed: onEdit,
+                  constraints: const BoxConstraints(),
+                  padding: EdgeInsets.zero,
                 ),
-                const SizedBox(height: 16),
-                InkWell(
-                  onTap: onEdit,
-                  child: const Icon(Icons.edit_outlined,
-                      color: Colors.blueAccent, size: 22),
-                ),
-                const SizedBox(height: 16),
-                InkWell(
-                  onTap: onDelete,
-                  child: const Icon(Icons.delete_outline,
-                      color: Colors.redAccent, size: 22),
+                const SizedBox(height: 12),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline,
+                      size: 20, color: Colors.redAccent),
+                  onPressed: onDelete,
+                  constraints: const BoxConstraints(),
+                  padding: EdgeInsets.zero,
                 ),
               ],
-            ),
-          ],
-        ),
-      ).animate().fadeIn(duration: 400.ms).slideX(begin: 0.05, end: 0),
-    );
-  }
-
-  // removed _buildAddAddressButton
-
-  Widget _buildAddAddressView() {
-    return Padding(
-      key: const ValueKey('add_form'),
-      padding: const EdgeInsets.all(24),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Detect Location Button
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Add New Address',
-                  style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1F2937)),
-                ),
-                TextButton.icon(
-                  onPressed: _isSaving ? null : _detectLocation,
-                  icon: _isSaving
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                              color: AppColors.accentGreen, strokeWidth: 2),
-                        )
-                      : const Icon(Icons.my_location,
-                          size: 18, color: AppColors.accentGreen),
-                  label: Text(_isSaving ? 'Locating...' : 'Locate Me',
-                      style: const TextStyle(
-                          color: AppColors.accentGreen,
-                          fontWeight: FontWeight.bold)),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Address Label',
-              style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1F2937)),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: _labels.map((lbl) {
-                bool isSelected = _selectedLabel == lbl['name'];
-                return Expanded(
-                  child: GestureDetector(
-                    onTap: () => setState(() => _selectedLabel = lbl['name']),
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 4),
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      decoration: BoxDecoration(
-                        color:
-                            isSelected ? AppColors.accentGreen : Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: isSelected
-                            ? [
-                                BoxShadow(
-                                  color: AppColors.accentGreen
-                                      .withValues(alpha: 0.2),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
-                                )
-                              ]
-                            : [],
-                        border: Border.all(
-                            color: isSelected
-                                ? AppColors.accentGreen
-                                : Colors.grey.shade200),
-                      ),
-                      child: Column(
-                        children: [
-                          Icon(lbl['icon'],
-                              color: isSelected
-                                  ? Colors.white
-                                  : Colors.grey.shade600,
-                              size: 26),
-                          const SizedBox(height: 6),
-                          Text(
-                            lbl['name'],
-                            style: TextStyle(
-                              color: isSelected
-                                  ? Colors.white
-                                  : Colors.grey.shade600,
-                              fontWeight: isSelected
-                                  ? FontWeight.bold
-                                  : FontWeight.w500,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 32),
-            _buildInputField(
-              controller: _fullAddressCtrl,
-              label: 'Full Address',
-              hint: 'Flat no, House no, Street name',
-              icon: Icons.map_rounded,
-              validator: (v) => v!.isEmpty ? 'Please enter your address' : null,
-            ),
-            const SizedBox(height: 20),
-
-            // Toggle for Profile Data
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Use my profile details',
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                        color: Color(0xFF1B2D1F))),
-                Switch(
-                  value: _useProfileDetails,
-                  activeThumbColor: AppColors.accentGreen,
-                  activeTrackColor: const Color(0xFFEBFFD7),
-                  onChanged: (v) {
-                    setState(() {
-                      _useProfileDetails = v;
-                      if (v) {
-                        final profile =
-                            CartProviderScope.of(context).userProfile;
-                        _nameCtrl.text =
-                            profile.name != 'Guest User' ? profile.name : '';
-                        String phone = profile.phone.trim();
-                        if (phone.startsWith('+91')) {
-                          phone = phone.substring(3).trim();
-                        } else if (phone.startsWith('91') && phone.length > 10) {
-                          phone = phone.substring(2).trim();
-                        }
-                        _phoneCtrl.text = phone;
-                      } else {
-                        _nameCtrl.clear();
-                        _phoneCtrl.clear();
-                      }
-                    });
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            _buildInputField(
-              controller: _nameCtrl,
-              label: 'Receiver Name',
-              hint: 'John Doe',
-              readOnly: _useProfileDetails,
-              icon: Icons.person_outline,
-              validator: (v) =>
-                  v!.isEmpty ? 'Please enter receiver name' : null,
-            ),
-            const SizedBox(height: 16),
-
-            _buildInputField(
-              controller: _phoneCtrl,
-              label: 'Phone Number',
-              hint: '10-digit mobile number',
-              readOnly: _useProfileDetails,
-              icon: Icons.phone_outlined,
-              keyboardType: TextInputType.phone,
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                LengthLimitingTextInputFormatter(10),
-              ],
-              validator: (v) {
-                if (v == null || v.isEmpty) return 'Please enter phone number';
-                if (v.length != 10) return 'Must be 10 digits';
-                return null;
-              },
-            ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildInputField(
-                    controller: _cityCtrl,
-                    label: 'City',
-                    hint: 'e.g. Lucknow',
-                    icon: Icons.location_city_rounded,
-                    validator: (v) => v!.isEmpty ? 'Field required' : null,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _buildInputField(
-                    controller: _pincodeCtrl,
-                    label: 'Pincode',
-                    hint: '123456',
-                    icon: Icons.pin_drop_rounded,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
-                      LengthLimitingTextInputFormatter(6),
-                    ],
-                    validator: (v) {
-                      if (v == null || v.isEmpty) return 'Field required';
-                      if (v.length != 6) return 'Must be 6 digits';
-                      return null;
-                    },
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            _buildInputField(
-              controller: _stateCtrl,
-              label: 'State',
-              hint: 'e.g. Uttar Pradesh',
-              icon: Icons.holiday_village_rounded,
-              validator: (v) => v!.isEmpty ? 'Please enter state' : null,
-            ),
-            const SizedBox(height: 24),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.grey.shade200),
-              ),
-              child: Row(
-                children: [
-                  const Expanded(
-                    child: Text(
-                      'Set as default address',
-                      style:
-                          TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
-                    ),
-                  ),
-                  Switch.adaptive(
-                    value: _isDefault,
-                    activeTrackColor:
-                        AppColors.accentGreen.withValues(alpha: 0.5),
-                    activeThumbColor: AppColors.accentGreen,
-                    onChanged: (val) => setState(() => _isDefault = val),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 40),
-            SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: ElevatedButton(
-                onPressed: _isSaving ? null : _saveAddress,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.accentGreen,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16)),
-                ),
-                child: _isSaving
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text(
-                        'Save & Continue',
-                        style: TextStyle(
-                            fontSize: 17, fontWeight: FontWeight.bold),
-                      ),
-              ),
             ),
           ],
         ),
@@ -828,185 +556,38 @@ class _ShippingAddressPageState extends ConsumerState<ShippingAddressPage> {
     );
   }
 
-  Widget _buildInputField({
-    required TextEditingController controller,
-    required String label,
-    required String hint,
-    required IconData icon,
-    bool readOnly = false,
-    TextInputType? keyboardType,
-    List<TextInputFormatter>? inputFormatters,
-    String? Function(String?)? validator,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label,
-            style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1B2D1F))),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: controller,
-          readOnly: readOnly,
-          keyboardType: keyboardType,
-          inputFormatters: inputFormatters,
-          validator: validator,
-          cursorColor: AppColors.accentGreen,
-          decoration: InputDecoration(
-            hintText: hint,
-            hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
-            prefixIcon: Icon(icon, color: Colors.grey.shade400, size: 22),
-            filled: true,
-            fillColor: readOnly ? Colors.grey.shade100 : Colors.white,
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide(color: Colors.grey.shade200)),
-            enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide(color: Colors.grey.shade200)),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide(color: AppColors.accentGreen, width: 1.5),
-            ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: const BorderSide(color: Colors.redAccent),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildBottomAction(CartProvider cart) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 36),
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
-            offset: const Offset(0, -5),
-          )
+            offset: const Offset(0, -4),
+          ),
         ],
       ),
       child: SizedBox(
         width: double.infinity,
         height: 56,
         child: ElevatedButton(
-          onPressed: () {
-            Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const PaymentMethodPage()));
-          },
+          onPressed: cart.selectedAddress == null
+              ? null
+              : () => Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const PaymentMethodPage())),
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.accentGreen,
-            foregroundColor: Colors.white,
-            elevation: 0,
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           ),
-          child: const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text('Continue to Payment',
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
-              SizedBox(width: 8),
-              Icon(Icons.arrow_forward_rounded, size: 20),
-            ],
-          ),
-        ),
-      ),
-    ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1, end: 0);
-  }
-}
-
-class _CheckoutStepper extends StatelessWidget {
-  final int currentStep;
-  const _CheckoutStepper({required this.currentStep});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 40),
-      child: Row(
-        children: [
-          _StepDot(label: 'CART', stepIndex: 0, currentStep: currentStep),
-          _StepLine(active: currentStep >= 1),
-          _StepDot(label: 'ADDRESS', stepIndex: 1, currentStep: currentStep),
-          _StepLine(active: currentStep >= 2),
-          _StepDot(label: 'PAYMENT', stepIndex: 2, currentStep: currentStep),
-        ],
-      ),
-    );
-  }
-}
-
-class _StepDot extends StatelessWidget {
-  final String label;
-  final int stepIndex;
-  final int currentStep;
-  const _StepDot(
-      {required this.label,
-      required this.stepIndex,
-      required this.currentStep});
-
-  @override
-  Widget build(BuildContext context) {
-    final bool done = currentStep > stepIndex;
-    final bool active = currentStep == stepIndex;
-    final Color primary = AppColors.accentGreen;
-
-    return Column(
-      children: [
-        Container(
-          width: 32,
-          height: 32,
-          decoration: BoxDecoration(
-            color: (done || active) ? primary : Colors.white,
-            shape: BoxShape.circle,
-            border: Border.all(
-                color: (done || active) ? primary : Colors.grey.shade300,
-                width: 2),
-          ),
-          alignment: Alignment.center,
-          child: done
-              ? const Icon(Icons.check, color: Colors.white, size: 16)
-              : Text('${stepIndex + 1}',
-                  style: TextStyle(
-                      color: active ? Colors.white : Colors.grey.shade500,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13)),
-        ),
-        const SizedBox(height: 8),
-        Text(label,
+          child: const Text(
+            'Continue to Payment',
             style: TextStyle(
-                fontSize: 9,
-                fontWeight:
-                    (done || active) ? FontWeight.bold : FontWeight.w500,
-                color: (done || active) ? primary : Colors.grey.shade400)),
-      ],
-    );
-  }
-}
-
-class _StepLine extends StatelessWidget {
-  final bool active;
-  const _StepLine({required this.active});
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        height: 2,
-        margin: const EdgeInsets.only(bottom: 22, left: 8, right: 8),
-        decoration: BoxDecoration(
-            color: active ? AppColors.accentGreen : Colors.grey.shade200,
-            borderRadius: BorderRadius.circular(2)),
+                fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+          ),
+        ),
       ),
     );
   }

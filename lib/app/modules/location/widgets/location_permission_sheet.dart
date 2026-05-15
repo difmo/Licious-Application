@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../data/services/db_service.dart';
 import '../../../data/models/food_models.dart';
+import '../../../core/utils/auth_guard.dart';
 import '../view/select_delivery_address_screen.dart';
 
-class LocationPermissionSheet extends StatelessWidget {
+class LocationPermissionSheet extends ConsumerWidget {
   const LocationPermissionSheet({super.key});
 
   static void show(BuildContext context) {
@@ -19,7 +21,7 @@ class LocationPermissionSheet extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final cart = CartProviderScope.of(context);
     final addresses = cart.addresses;
 
@@ -126,7 +128,9 @@ class LocationPermissionSheet extends StatelessWidget {
                   ),
                 ),
                 ElevatedButton(
-                  onPressed: () => _handleEnableLocation(context),
+                  onPressed: () {
+                    AuthGuard.run(context, ref, () => _handleEnableLocation(context));
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF38B24D),
                     foregroundColor: Colors.white,
@@ -147,13 +151,15 @@ class LocationPermissionSheet extends StatelessWidget {
 
           InkWell(
             onTap: () {
-              final navigator = Navigator.of(context);
-              navigator.pop();
-              navigator.push(
-                MaterialPageRoute(
-                  builder: (_) => const SelectDeliveryAddressScreen(),
-                ),
-              );
+              AuthGuard.run(context, ref, () {
+                final navigator = Navigator.of(context);
+                navigator.pop();
+                navigator.push(
+                  MaterialPageRoute(
+                    builder: (_) => const SelectDeliveryAddressScreen(),
+                  ),
+                );
+              });
             },
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 16),

@@ -1,14 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../controller/main_controller.dart';
 import '../../../widgets/bounce_widget.dart';
 import '../../../data/services/db_service.dart';
-import '../../../data/services/notification_api_service.dart';
 import '../../../routes/app_routes.dart';
 import './location_bottom_sheet.dart';
 import '../../location/widgets/location_permission_sheet.dart';
-import '../../profile/view/profile_detail_page.dart';
 
 class HomeHeader extends StatefulWidget {
   const HomeHeader({super.key});
