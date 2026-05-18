@@ -1,5 +1,6 @@
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../network/api_client.dart';
 
 class PaymentService {
@@ -48,7 +49,7 @@ class PaymentService {
 
       // 2. Open Razorpay Checkout
       var options = {
-        'key': 'rzp_test_SUXGPUpcFjOpXn',
+        'key': dotenv.env['RAZORPAY_KEY'] ?? 'rzp_test_SUXGPUpcFjOpXn',
         'amount': (amount * 100).toInt(),
         'name': 'Shrimpbite',
         'order_id': orderId,
